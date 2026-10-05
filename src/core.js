@@ -262,6 +262,19 @@ function buildGrid(raw, meta) {
     hasGPS, lat0: hasGPS ? lat0 : null, lon0: hasGPS ? lon0 : null, dla: hasGPS ? dla : null, dlo: hasGPS ? dlo : null,
     name: raw.name || defaultName(start) }, meta || {});
 }
+/* ---------- Duplicate detection: the same workout must never be stored twice ---------- */
+// Same workout = same start minute (the id), or starts within 2 minutes with distance within 5%
+// (the same activity exported as .fit and .gpx, or re-exported, can start a few seconds apart).
+const runDist = r => r.summary ? r.dist : r.d[r.n - 1] - r.d[0];
+function sameWorkout(a, b) {
+  if (a.id === b.id) return true;
+  if (Math.abs(a.start - b.start) > 120000) return false;
+  const da = runDist(a), db = runDist(b);
+  return Math.abs(da - db) <= 0.05 * Math.max(da, db, 1);
+}
+// A copy is only worth storing when it adds detail: a full file over an activity-list CSV row,
+// or a newer file format version (e.g. one with the GPS route) over an old one.
+const betterCopy = (n, old) => (old.summary && !n.summary) || (!old.summary && !n.summary && (n.ver || 1) > (old.ver || 1));
 function defaultName(ms) { const h = new Date(ms).getHours(); return (h < 11 ? 'Morning' : h < 14 ? 'Lunch' : h < 18 ? 'Afternoon' : 'Evening') + ' Run'; }
 
 /* ---------- Per-run analysis: orchestrates the versioned algorithms in src/algo/ ---------- */

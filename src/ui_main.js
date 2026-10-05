@@ -507,7 +507,7 @@ function renderDataCard() {
   const full = st.runs.filter(r => !r.summary).length, gps = st.runs.filter(r => r.hasGPS).length;
   $('#dataCard').innerHTML = `<div class="ch"><h3>Your data</h3></div>
     <dl class="kv"><dt>Workouts</dt><dd>${st.runs.length}</dd><dt>With full detail</dt><dd>${full}</dd><dt>With GPS route</dt><dd>${gps}</dd><dt>Date range</dt><dd>${st.runs.length ? fmtDate(st.runs[0].start, { day: 'numeric', month: 'short', year: '2-digit' }) + ' – ' + fmtDate(st.runs[st.runs.length - 1].start, { day: 'numeric', month: 'short', year: '2-digit' }) : '–'}</dd></dl>
-    <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. Importing the same workout twice replaces it.</p>
+    <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. A workout that is already imported is skipped, even from a different file type; only a full file can replace an activity-list CSV row.</p>
     ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import files</label>${'webkitdirectory' in HTMLInputElement.prototype && !matchMedia('(pointer: coarse)').matches ? '<label class="btn" for="folder">Import folder</label>' : ''}<button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
   const arm = (id, text, fn) => { const b = $(id); if (!b) return; b.onclick = async () => { if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = text; return; } b.disabled = true; try { await fn(); } catch (e) { setStatus(e.message); } }; };
   arm('#delAll', 'Tap again to delete all', async () => { await st.backend.clearWorkouts(); st.runs = []; glyphCache.clear(); setStatus('All workouts deleted.'); refresh(); });
@@ -553,13 +553,24 @@ async function importFiles(files) {
   for (const f of files) { k++; if (files.length > 1) setStatus(`Reading file ${k} of ${files.length}… ${found.length} runs found`); await handle(f.name, () => f.arrayBuffer()); }
   const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
   if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
-  const byId = new Map(st.runs.map(r => [r.id, r])), toSave = []; let added = 0, upd = 0;
-  for (const r of found) { const ex = byId.get(r.id); if (ex && !ex.summary && r.summary) continue; if (ex) upd++; else added++; byId.set(r.id, r); toSave.push(r); }
+  // keep only workouts not already stored (or imported earlier in this batch); upgrade a CSV row to full detail
+  const kept = st.runs.slice(), bucket = new Map(), toSave = [], drop = []; let added = 0, upd = 0, dup = 0;
+  const key = t => Math.round(t / 60000), near = r => { const k = key(r.start), out = []; for (let m = k - 2; m <= k + 2; m++) out.push(...(bucket.get(m) || [])); return out; };
+  const index = r => { const k = key(r.start); if (!bucket.has(k)) bucket.set(k, []); bucket.get(k).push(r); };
+  kept.forEach(index);
+  for (const r of found.sort((a, b) => a.start - b.start)) {
+    const ex = near(r).find(x => kept.includes(x) && sameWorkout(x, r));
+    if (!ex) { kept.push(r); index(r); toSave.push(r); added++; continue; }
+    if (!betterCopy(r, ex)) { dup++; continue; }
+    kept[kept.indexOf(ex)] = r; index(r); toSave.push(r); upd++; if (ex.id !== r.id) drop.push(ex.id);
+  }
+  const dupMsg = dup ? ` Skipped ${dup} duplicate${dup === 1 ? "" : "s"} (already imported).` : '';
+  if (!toSave.length) { setStatus(`No new workouts: ${dup === 1 ? 'that workout is' : `all ${dup} are`} already imported.${tail}`); return; }
   setStatus(`Saving ${toSave.length} workouts…`);
-  try { await st.backend.putWorkouts(toSave); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
-  st.runs = [...byId.values()]; glyphCache.clear(); st.shown = 30; refresh();
+  try { await st.backend.putWorkouts(toSave); for (const id of drop) await st.backend.deleteWorkout(id); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
+  st.runs = kept; glyphCache.clear(); st.shown = 30; refresh();
   const lastNew = toSave.reduce((a, b) => (b.start > a.start ? b : a), toSave[0]);
-  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, updated ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
+  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, added full detail to ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${dupMsg}${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
   if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
 }
 ['#file', '#folder'].forEach(s => $(s).addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); }));

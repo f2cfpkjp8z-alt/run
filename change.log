@@ -3,6 +3,14 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v6 — 2026-10-05
+  Import never stores the same workout twice. A workout counts as already imported when it has the same
+    start minute, or starts within 2 minutes with distance within 5% (the same activity exported as .fit
+    and .gpx, or a re-export). Duplicates inside one batch (e.g. a .zip plus the .fit inside it) are caught too.
+    Only a copy that adds detail replaces the stored one: a full file over an activity-list CSV row, or a
+    newer file version with the GPS route. The import message says how many were skipped.
+    Why: re-importing used to overwrite workouts, and the same run from two file types could appear twice.
+
 v5 — 2026-10-05
   Every measurement is now its own versioned algorithm in src/algo/ (one file each):
     VO2alg2 (VO₂max), HRMAXalg2 (max heart rate), LOADalg1 (TRIMP), ZONEalg1 (HR zones & intensity mix),
