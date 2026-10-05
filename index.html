@@ -1,0 +1,1913 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a78d6"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Pace &amp; Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: app shell — top bar with tabs (desktop) / bottom tab bar (phone); each tab is a view of summary tiles, charts and ledgers. */
+:root {
+  --bg: #f3f6f8; --surface: #ffffff; --sunk: #eaeff3; --ink: #0f1b26; --ink2: #44525f; --muted: #6c7a87; --line: #d9e0e6;
+  --accent: #2a78d6; --accent-ink: #1c5cab; --accent-soft: #dceafb; --s2: #eb6834; --hr: #e34948; --elev: #1baf7a;
+  --good: #0ca30c; --good-ink: #0a7a0a; --warn: #fab219; --warn-ink: #8a5c00; --crit: #d03b3b;
+  --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 12px; --bnav-h: 0px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1217; --surface: #151c23; --sunk: #1b232b; --ink: #edf2f6; --ink2: #b3c0cb; --muted: #8796a3; --line: #27313b;
+  --accent: #3987e5; --accent-ink: #86b6ef; --accent-soft: #17304d; --s2: #d95926; --hr: #e66767; --elev: #199e70;
+  --good-ink: #4fd04f; --warn-ink: #fab219;
+  --z1: #184f95; --z2: #1c5cab; --z3: #2a78d6; --z4: #5598e7; --z5: #9ec5f4; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0d1217; --surface: #151c23; --sunk: #1b232b; --ink: #edf2f6; --ink2: #b3c0cb; --muted: #8796a3; --line: #27313b;
+  --accent: #3987e5; --accent-ink: #86b6ef; --accent-soft: #17304d; --s2: #d95926; --hr: #e66767; --elev: #199e70;
+  --good-ink: #4fd04f; --warn-ink: #fab219;
+  --z1: #184f95; --z2: #1c5cab; --z3: #2a78d6; --z4: #5598e7; --z5: #9ec5f4; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.7rem; line-height: 1.1; }
+h3 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .07em; color: var(--ink2); font-weight: 600; }
+a { color: var(--accent-ink); }
+.muted { color: var(--muted); margin: 0; } .sm { font-size: 13px; }
+.eyebrow { margin: 0 0 2px; font: 600 12px/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--accent-ink); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+button, .btn { font: 600 14px/1 var(--body); border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  padding: 10px 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; text-decoration: none; }
+button:hover, .btn:hover { border-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.primary:hover { filter: brightness(1.08); }
+.ghost { background: transparent; }
+.danger { color: var(--crit); }
+.danger.armed { background: var(--crit); color: #fff; border-color: var(--crit); }
+.link { background: none; border: 0; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; padding: 8px 0; min-height: 0; }
+.wide { width: 100%; }
+#file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+input, select, textarea { font: 15px var(--body); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 42px; width: 100%; }
+textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
+
+/* ---------- top bar & tabs ---------- */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.top-in { display: flex; align-items: center; gap: 16px; min-height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
+.brand-t { font: 700 1.45rem/1 var(--display); letter-spacing: .01em; }
+.brand small { display: block; font: 500 13px/1.3 var(--body); color: var(--muted); }
+.tabs { display: flex; gap: 2px; height: 60px; margin-right: auto; }
+.tabs a { display: flex; align-items: center; padding: 0 14px; color: var(--ink2); text-decoration: none; font-weight: 600; font-size: 15px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.top-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.avatar { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; background: var(--accent-soft); color: var(--accent-ink); font: 700 15px/1 var(--body); border: 1px solid transparent; }
+.avatar.guest { background: var(--sunk); color: var(--muted); }
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); padding: 8px; z-index: 40; box-shadow: 0 12px 32px rgb(0 0 0 / .18); }
+.menu .who { padding: 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.menu .who b { display: block; } .menu .who span { color: var(--muted); font-size: 13px; }
+.menu button { width: 100%; justify-content: flex-start; border: 0; background: transparent; font-weight: 500; }
+.menu button:hover { background: var(--sunk); }
+.menu .lbl { font: 600 11px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 10px 10px 4px; }
+.bnav { display: none; }
+@media (max-width: 820px) {
+  :root { --bnav-h: 62px; }
+  .tabs { display: none; }
+  .hide-sm { display: none; }
+  .bnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 11px/1 var(--body); }
+  .bnav a[aria-current="page"] { color: var(--accent-ink); }
+  .bnav svg { width: 22px; height: 22px; }
+  .main { padding-bottom: calc(var(--bnav-h) + 24px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+.main { padding-block: 8px 48px; }
+.banner { margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); font-size: 14px; }
+.banner .grow { flex: 1 1 260px; min-width: 0; }
+.banner.warn { background: color-mix(in srgb, var(--warn) 22%, var(--surface)); }
+.status { font-size: 13px; color: var(--ink2); min-height: 1.2em; margin-top: 8px; }
+.view { margin-top: 12px; }
+.vh { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 8px 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.ch { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+footer { color: var(--muted); font-size: 13px; padding-block: 28px 8px; }
+
+/* ---------- tiles ---------- */
+.hero { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.tile { display: flex; flex-direction: column; gap: 10px; }
+.tile .label { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.big { font: 700 3.5rem/0.9 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.big small { font: 500 14px/1 var(--body); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--body); padding: 5px 9px; border-radius: 999px; background: var(--sunk); color: var(--ink2); width: fit-content; white-space: nowrap; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+.chip.good { color: var(--good-ink); } .chip.warn { color: var(--warn-ink); } .chip.crit { color: var(--crit); } .chip.acc { color: var(--accent-ink); }
+.sub { font-size: 13px; color: var(--ink2); } .sub .num { color: var(--ink); }
+.delta-up { color: var(--good-ink); } .delta-down { color: var(--crit); }
+.scale { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--z1), var(--z3), var(--z5)); margin-top: 4px; }
+.scale b { position: absolute; top: -4px; width: 4px; height: 16px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); transform: translateX(-2px); }
+.scale-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; margin: 0; }
+.kv dt { color: var(--ink2); } .kv dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.kv dd small { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.grid-ov { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+
+/* latest workout card */
+.latest { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.latest .mini-map { aspect-ratio: 4 / 3; max-width: 100%; border-radius: 10px; overflow: hidden; background: var(--sunk); }
+.latest .mini-map svg { width: 100%; height: 100%; display: block; }
+@media (max-width: 520px) { .latest { grid-template-columns: 1fr; } }
+
+/* ---------- charts ---------- */
+.seg { display: inline-flex; background: var(--sunk); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; min-height: 32px; padding: 6px 12px; color: var(--ink2); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.seg-wide { display: flex; } .seg-wide button { flex: 1; }
+.charts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.chart-card h3 { margin-bottom: 2px; }
+.chart-card .cap { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.plot { position: relative; width: 100%; }
+.plot svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.plot .ax { fill: var(--muted); font: 11px var(--mono); }
+.plot .grid { stroke: var(--line); stroke-width: 1; }
+.plot .base { stroke: var(--ink2); stroke-width: 1; opacity: .5; }
+.plot .xh { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 3; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 6px 18px rgb(0 0 0 / .2); }
+.tip b { font-weight: 700; } .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.empty { color: var(--muted); font-size: 14px; padding: 24px 0; text-align: center; margin: 0; }
+
+/* ---------- bars / tables ---------- */
+.two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+.bars { display: grid; gap: 12px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; }
+.bar-row .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; }
+.bar-row .track i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+.bar-row .v { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink2); font-size: 13px; }
+.bar-row .hint { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin-top: -2px; }
+table.tb { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.tb th { text-align: left; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.tb td { padding: 9px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.tb td.n, table.tb th.n { text-align: right; } table.tb td.n { font-family: var(--mono); font-size: 13px; }
+table.tb tr.pb td:first-child { font-weight: 700; }
+table.tb .barcell { position: relative; } table.tb .barcell i { position: absolute; left: 0; top: 25%; bottom: 25%; background: var(--accent-soft); border-radius: 3px; z-index: 0; } table.tb .barcell span { position: relative; }
+.scroll-x { overflow-x: auto; }
+
+/* ---------- workouts ledger ---------- */
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.toolbar input { flex: 1 1 220px; width: auto; } .toolbar select { width: auto; flex: 0 1 auto; }
+.ledger-card { padding: 4px 8px 8px; }
+.ledger-head, .row { display: grid; grid-template-columns: 44px 104px minmax(0, 1.5fr) repeat(6, minmax(0, .8fr)); gap: 10px; align-items: center; padding: 10px 10px; }
+.ledger-head { font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); }
+.ledger-head span:nth-child(n+4), .row .m { text-align: right; }
+.row { width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; text-align: left; font: inherit; min-height: 0; cursor: pointer; color: var(--ink); }
+a.row { text-decoration: none; }
+.row:hover { background: var(--sunk); border-color: var(--line); }
+.row .glyph { width: 40px; height: 40px; border-radius: 8px; background: var(--sunk); display: grid; place-items: center; }
+.row .glyph svg { width: 34px; height: 34px; }
+.row .d { font-size: 13px; color: var(--ink2); line-height: 1.3; } .row .d span { display: block; color: var(--muted); font-size: 12px; }
+.row .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .nm small { font-weight: 500; color: var(--muted); margin-left: 6px; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
+.row .m { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; }
+.row .m em { display: none; font-style: normal; font-family: var(--body); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.more { margin: 12px auto 0; display: flex; }
+@media (max-width: 820px) {
+  .ledger-head { display: none; }
+  .row { grid-template-columns: 44px repeat(3, minmax(0, 1fr)); gap: 6px 10px; padding: 12px 4px; }
+  .row .glyph { grid-row: 1 / 3; }
+  .row .nm { grid-column: 2 / 4; grid-row: 1; } .row .d { grid-column: 4; grid-row: 1; text-align: right; } .row .d span { display: none; }
+  .row .m { text-align: left; } .row .m em { display: block; }
+  .row .m.xs { display: none; }
+  .big { font-size: 3rem; }
+}
+
+/* ---------- workout detail ---------- */
+.back { margin-bottom: 8px; }
+.wd-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+.wd-head h2 { font-size: 2rem; }
+.wd-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.stats { display: grid; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.stat { padding: 11px 13px; box-shadow: inset -1px -1px 0 var(--line); }
+.stat span { display: block; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.stat b { font: 600 1.4rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.stat b small { font: 500 12px var(--body); color: var(--muted); margin-left: 3px; }
+.wd-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.span2 { grid-column: 1 / -1; }
+
+/* map */
+.map { position: relative; width: 100%; height: clamp(260px, 52vw, 460px); border-radius: 10px; overflow: hidden; background: var(--sunk); touch-action: none; cursor: grab; user-select: none; }
+.map.no-tiles { background-color: var(--sunk); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
+.map .tiles { position: absolute; inset: 0; }
+.map .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+:root[data-theme="dark"] .map .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
+.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map .ctrl { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; z-index: 3; }
+.map .ctrl button { width: 36px; height: 36px; min-height: 0; padding: 0; font-size: 18px; box-shadow: 0 2px 6px rgb(0 0 0 / .15); }
+.map .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; z-index: 3; color: var(--ink2); }
+.map .tip { z-index: 4; }
+.map-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.ramp { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.ramp i { width: 120px; height: 8px; border-radius: 4px; display: inline-block; }
+
+/* ---------- records ---------- */
+.rec-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.rec .label { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.rec .val { font: 700 2.2rem/1.1 var(--display); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.rec .val small { font: 500 13px var(--body); color: var(--muted); margin-left: 4px; }
+.rec p { margin: 4px 0 0; font-size: 13px; color: var(--ink2); }
+.rec a { color: inherit; }
+
+/* ---------- profile ---------- */
+.form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top: 12px; }
+.form label, .form1 label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink2); }
+.form .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
+.pc-head { display: flex; gap: 14px; align-items: center; }
+.pc-head .avatar { width: 56px; height: 56px; font-size: 20px; flex: none; cursor: default; }
+.pc-head h3 { text-transform: none; letter-spacing: 0; font-size: 1.5rem; color: var(--ink); }
+.pc-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
+.pc-stats div { background: var(--sunk); border-radius: 9px; padding: 10px; }
+.pc-stats b { display: block; font: 600 1.3rem/1.1 var(--display); } .pc-stats span { font-size: 12px; color: var(--muted); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.radio { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.radio input { width: auto; min-height: 0; margin-top: 3px; accent-color: var(--accent); }
+.radio b { display: block; } .radio span { font-size: 13px; color: var(--muted); }
+.radio:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.stack { display: grid; gap: 10px; }
+.method { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.method p, .method li { font-size: 14px; color: var(--ink2); max-width: 65ch; }
+.method ol, .method ul { padding-left: 1.2em; margin: 8px 0 0; }
+.formula { font: 12px/1.6 var(--mono); background: var(--sunk); border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: pre; color: var(--ink); margin-top: 8px; }
+details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink2); }
+
+/* ---------- auth ---------- */
+.auth { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+.auth-side { background: var(--accent); color: #fff; padding: 48px clamp(16px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 32px;
+  background-image: repeating-linear-gradient(90deg, transparent 0 46px, rgb(255 255 255 / .07) 46px 48px); }
+.auth-side .brand { color: #fff; } .auth-side .brand h1 { font-size: 2.4rem; line-height: 1; } .auth-side .brand small { color: rgb(255 255 255 / .8); font-size: 15px; }
+.auth-points { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 16px; max-width: 40ch; }
+.auth-points li { padding-left: 18px; border-left: 3px solid rgb(255 255 255 / .5); }
+.auth-main { display: grid; place-items: center; padding: 32px 16px; }
+.auth-card { width: min(440px, 100%); display: grid; gap: 14px; padding: 24px; }
+.auth-card h2 { font-size: 1.6rem; }
+#authLocal, #authFire, #profilePick { display: grid; gap: 12px; }
+.auth-side .brand rect { fill: rgb(255 255 255 / .18); }
+.auth-note { margin: 0; padding: 10px 12px; border-radius: 9px; background: var(--accent-soft); font-size: 14px; }
+.form1 { display: grid; gap: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt { font-weight: 400; color: var(--muted); }
+.form-err { margin: 0; color: var(--crit); font-size: 13px; }
+.fine { margin: 0; font-size: 12px; color: var(--muted); }
+.plist { display: grid; gap: 8px; margin-top: 10px; }
+.plist button { justify-content: flex-start; gap: 12px; padding: 10px 12px; min-height: 56px; text-align: left; }
+.plist .avatar { width: 36px; height: 36px; font-size: 13px; flex: none; }
+.plist b { display: block; } .plist span span { font-weight: 400; font-size: 13px; color: var(--muted); }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin-top: 14px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+@media (max-width: 820px) { .auth { grid-template-columns: 1fr; } .auth-side { padding-block: 28px; gap: 18px; } .auth-points { font-size: 14px; } }
+
+.drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 22%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
+@keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+</style>
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth" class="auth" hidden>
+  <div class="auth-side">
+    <div class="brand brand-lg">
+      <svg width="40" height="40" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="var(--accent)"/><path d="M4 20h7l3-9 5 15 3-9h8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><h1>Pace &amp; Pulse</h1><small>Running physiology from your Garmin files</small></div>
+    </div>
+    <ul class="auth-points">
+      <li><b>VO₂max</b> from heart rate and pace on every steady run</li>
+      <li><b>Endurance score</b> built from volume, long runs and durability</li>
+      <li><b>Full history</b> with maps, splits, zones and records</li>
+    </ul>
+  </div>
+  <div class="auth-main">
+    <div class="auth-card card">
+      <p class="auth-note" id="authNote" hidden></p>
+      <div id="authLocal">
+        <div id="profilePick">
+          <h2>Choose a profile</h2>
+          <p class="muted">Profiles keep each runner’s workouts and heart-rate settings separate on this device.</p>
+          <div class="plist" id="plist"></div>
+          <div class="or"><span>or</span></div>
+        </div>
+        <h2 id="createTitle">Create a profile</h2>
+        <form id="fCreate" class="form1" autocomplete="on">
+          <label for="cName">Name<input id="cName" required autocomplete="name" placeholder="Your name"></label>
+          <label for="cEmail"><span>Email <span class="opt">(optional)</span></span><input id="cEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+          <div class="row2">
+            <label for="cRest">Resting HR<input id="cRest" type="number" inputmode="numeric" min="30" max="100" placeholder="55"></label>
+            <label for="cMax">Max HR<input id="cMax" type="number" inputmode="numeric" min="120" max="230" placeholder="Auto"></label>
+          </div>
+          <p class="form-err" id="cErr" hidden></p>
+          <button class="primary wide" type="submit">Create profile</button>
+        </form>
+        <p class="fine">Stored only in this browser. Switch to Firebase in Profile → Storage to sync across devices.</p>
+      </div>
+      <div id="authFire" hidden>
+        <div class="seg seg-wide" role="tablist" aria-label="Account">
+          <button type="button" role="tab" id="tabIn" aria-selected="true">Sign in</button>
+          <button type="button" role="tab" id="tabUp" aria-selected="false">Create account</button>
+        </div>
+        <form id="fFire" class="form1" autocomplete="on">
+          <label for="aName" id="lName" hidden>Name<input id="aName" autocomplete="name"></label>
+          <label for="aEmail">Email<input id="aEmail" type="email" required autocomplete="email"></label>
+          <label for="aPass">Password<input id="aPass" type="password" required minlength="6" autocomplete="current-password"></label>
+          <p class="form-err" id="aErr" hidden></p>
+          <button class="primary wide" type="submit" id="aSubmit">Sign in</button>
+        </form>
+        <button type="button" class="wide" id="aGoogle">Continue with Google</button>
+      </div>
+      <button type="button" class="link" id="btnGuest">Explore with a sample athlete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="shell">
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#overview" aria-label="Pace and Pulse home">
+      <svg width="32" height="32" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="var(--accent)"/><path d="M4 20h7l3-9 5 15 3-9h8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="brand-t">Pace &amp; Pulse</span>
+    </a>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+    <div class="top-actions">
+      <label class="btn primary" for="file" title="Import Garmin files">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 11v3h12v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="hide-sm">Import</span></label>
+      <input id="file" type="file" multiple accept=".fit,.tcx,.gpx,.csv,.zip,application/zip,application/gpx+xml,text/csv">
+      <div class="menu-wrap">
+        <button type="button" class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"></button>
+        <div class="menu card" id="menu" role="menu" hidden></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap main" id="main">
+  <div class="banner" id="banner" hidden></div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <!-- OVERVIEW -->
+  <section class="view" id="v-overview" data-view="overview">
+    <div class="vh"><div><p class="eyebrow" id="hello"></p><h2>Current fitness</h2></div><p class="muted" id="asof"></p></div>
+    <div class="hero">
+      <div class="card tile" id="tVo2"></div>
+      <div class="card tile" id="tEnd"></div>
+      <div class="card tile" id="tLoad"></div>
+      <div class="card tile" id="tRace"></div>
+    </div>
+    <div class="grid-ov">
+      <div class="card" id="latest"></div>
+      <div class="card chart-card"><div class="ch"><h3>VO₂max</h3><span class="muted sm">Last 6 months</span></div><div class="plot" id="oVo2"></div></div>
+      <div class="card chart-card"><div class="ch"><h3>Weekly distance</h3><span class="muted sm" id="oWkCap"></span></div><div class="plot" id="oWeek"></div></div>
+      <div class="card"><div class="ch"><h3>What drives your endurance</h3></div><div class="bars" id="breakdown"></div></div>
+    </div>
+  </section>
+
+  <!-- WORKOUTS -->
+  <section class="view" id="v-workouts" data-view="workouts" hidden>
+    <div class="vh"><h2>Workouts</h2><p class="muted" id="runCount"></p></div>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Search by name" aria-label="Search workouts">
+      <select id="yr" aria-label="Year"></select>
+      <select id="sort" aria-label="Sort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="dist">Longest</option><option value="vo2">Highest VO₂ est.</option></select>
+    </div>
+    <div class="card ledger-card"><div class="ledger" id="ledger"></div></div>
+  </section>
+
+  <!-- WORKOUT DETAIL -->
+  <section class="view" id="v-workout" data-view="workout" hidden></section>
+
+  <!-- TRENDS -->
+  <section class="view" id="v-trends" data-view="trends" hidden>
+    <div class="vh"><h2>Trends</h2>
+      <div class="seg" id="range" role="group" aria-label="Time range">
+        <button type="button" data-d="90">3M</button><button type="button" data-d="182">6M</button><button type="button" data-d="365">1Y</button><button type="button" data-d="0">All</button>
+      </div>
+    </div>
+    <div class="charts">
+      <div class="card chart-card"><h3>VO₂max</h3><p class="cap">Dots are single-run estimates (bigger = more steady data). The line is the blended value on each day.</p><div class="plot" id="cVo2"></div></div>
+      <div class="card chart-card"><h3>Endurance score</h3><p class="cap">Aerobic ceiling scaled by volume, long-run reach and durability.</p><div class="plot" id="cEnd"></div></div>
+      <div class="card chart-card"><h3>Fitness &amp; fatigue</h3><p class="cap">42-day and 7-day training load (TRIMP per day).</p><div class="plot" id="cLoad"></div></div>
+      <div class="card chart-card"><h3>Weekly distance</h3><p class="cap" id="capWeek"></p><div class="plot" id="cWeek"></div></div>
+      <div class="card chart-card"><h3>Aerobic efficiency</h3><p class="cap">Metres per heartbeat at grade-adjusted pace. Rising means more speed for the same effort.</p><div class="plot" id="cEf"></div></div>
+      <div class="card chart-card"><h3>Heart-rate drift</h3><p class="cap">Decoupling on runs of 40+ minutes. Under 5% (dashed line) shows a solid aerobic base.</p><div class="plot" id="cDec"></div></div>
+    </div>
+    <div class="card" style="margin-top:12px"><div class="ch"><h3>Monthly summary</h3></div><div class="scroll-x" id="monthly"></div></div>
+  </section>
+
+  <!-- RECORDS -->
+  <section class="view" id="v-records" data-view="records" hidden>
+    <div class="vh"><h2>Records</h2><p class="muted">All imported workouts</p></div>
+    <div class="rec-grid" id="recTop"></div>
+    <div class="two" style="margin-top:12px">
+      <div class="card"><div class="ch"><h3>Best efforts</h3></div><div class="scroll-x" id="recBest"></div></div>
+      <div class="card"><div class="ch"><h3>Personal-best progression</h3></div><div class="scroll-x" id="recProg"></div></div>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="view" id="v-profile" data-view="profile" hidden>
+    <div class="vh"><h2>Profile</h2></div>
+    <div class="two">
+      <div class="card" id="pCard"></div>
+      <form class="card" id="setForm">
+        <div class="ch"><h3>Physiology</h3></div>
+        <p class="muted sm">Heart-rate limits drive every estimate. Measured values beat formulas.</p>
+        <div class="form">
+          <label for="fHrMax">Max heart rate<input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
+          <label for="fHrRest">Resting heart rate<input id="fHrRest" type="number" min="30" max="100" inputmode="numeric" required><span class="hint">Morning, lying down.</span></label>
+          <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">For fitness ratings.</span></label>
+          <label for="fSex">Sex<select id="fSex"><option value="m">Male</option><option value="f">Female</option></select><span class="hint">TRIMP curve and norms.</span></label>
+          <label for="fWeight">Weight (kg)<input id="fWeight" type="number" min="30" max="200" step="0.1" inputmode="decimal"><span class="hint">Shows absolute VO₂ in L/min.</span></label>
+          <label for="fUnits">Units<select id="fUnits"><option value="km">Kilometres</option><option value="mi">Miles</option></select><span class="hint">Also used for Garmin CSV.</span></label>
+        </div>
+        <div class="foot"><span class="muted sm" id="setSaved"></span><button type="submit" class="primary">Save settings</button></div>
+      </form>
+      <div class="card" id="storeCard"></div>
+      <div class="card" id="dataCard"></div>
+    </div>
+    <div class="vh" style="margin-top:28px"><h2>How the numbers are made</h2></div>
+    <div class="method">
+      <div class="card">
+        <h3>VO₂max: anchored heart-rate regression</h3>
+        <ol>
+          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude.</li>
+          <li>Oxygen cost of every sample uses the Daniels–Gilbert running curve, corrected for slope with Minetti’s gradient cost model.</li>
+          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve.</li>
+          <li>A weighted, outlier-resistant line runs through those windows plus one physiological anchor, resting heart rate ↔ 3.5 ml/kg/min. Extending it to max heart rate gives the run’s VO₂max.</li>
+          <li>Estimates are blended with a 14-day half-life by data quality, then fused with race-effort VDOT (hard efforts ≥85% HRmax) by inverse-variance weighting.</li>
+        </ol>
+        <div class="formula">VO₂(HR) = a + b·HR   fitted with anchor (HRrest, 3.5)
+VO₂max  = a + b·HRmax</div>
+      </div>
+      <div class="card">
+        <h3>Endurance score</h3>
+        <p>VO₂max sets the ceiling. How much of it you can hold for hours depends on the work behind it, so the ceiling is scaled by three saturating factors.</p>
+        <div class="formula">E = 170 · VO₂max · √(f(H)·g(L)) · h(D)
+f(H) = 1 − e^(−H/4)    H = weekly hours (42-day)
+g(L) = 1 − e^(−L/75)   L = longest run, min (6 wk)
+h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
+        <p>Tiers: Recreational &lt;4000 · Intermediate 4000 · Trained 5500 · Well-trained 7000 · Expert 8500 · Superior 10000 · Elite 11500. The app’s own scale, set in a similar range to Garmin’s; not Garmin’s proprietary number.</p>
+      </div>
+      <div class="card">
+        <h3>Load, form and predictions</h3>
+        <ul>
+          <li><b>Training load</b> is Banister TRIMP. Runs without heart rate get an estimate from grade-adjusted pace.</li>
+          <li><b>Fitness / fatigue</b> are 42-day and 7-day exponential averages; <b>form</b> is the difference.</li>
+          <li><b>Heart-rate drift</b> compares pace per heartbeat in the first and second half of a run.</li>
+          <li><b>Race times</b> invert the Daniels VDOT formula, with a penalty on longer races when volume or long runs are short.</li>
+          <li>Every value is placed on the <b>date and time recorded in the workout file</b>, never the import date.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Getting files out of Garmin Connect</h3>
+        <ul>
+          <li><b>One run:</b> open the activity → gear menu → <i>Export Original</i> (.zip with the .fit) or <i>Export to TCX/GPX</i>.</li>
+          <li><b>Everything:</b> Account → Data Management → <i>Export Your Data</i>, then import the .zip files inside it.</li>
+          <li><b>Activity list:</b> Activities → All Activities → <i>Export CSV</i>. Summary-level only, no map.</li>
+        </ul>
+        <p>Files are processed in your browser. Only the parsed workouts are saved, to the storage chosen above.</p>
+      </div>
+    </div>
+    <footer>Estimates for training guidance, not a medical assessment.</footer>
+  </section>
+</main>
+<nav class="bnav" id="bnav" aria-label="Sections"></nav>
+</div>
+<div class="drop" id="drop" hidden>Drop Garmin files to import</div>
+<script>
+// ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
+const DAY = 86400000;
+const DT = 2; // analysis grid, seconds
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const FIT_EPOCH = 631065600; // 1989-12-31T00:00:00Z in unix seconds
+
+/* ---------- FIT ---------- */
+const FIT_SIZE = {0:1,1:1,2:1,3:2,4:2,5:4,6:4,7:1,8:4,9:8,10:1,11:2,12:4,13:1,14:8,15:8,16:8};
+function parseFIT(buf) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 14) throw new Error('File too small to be FIT');
+  const hs = dv.getUint8(0);
+  const sig = String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11));
+  if (sig !== '.FIT') throw new Error('Not a FIT file');
+  const dataSize = dv.getUint32(4, true);
+  const end = Math.min(hs + dataSize, buf.byteLength - 0);
+  let p = hs, lastTs = 0;
+  const defs = {}, pts = [];
+  let sport = null, session = null, created = null;
+
+  function readMsg(def) {
+    const m = {};
+    for (const [num, size, bt] of def.fields) {
+      const base = bt & 0x1f, ts = FIT_SIZE[base];
+      if (p + size > buf.byteLength) { p = buf.byteLength; return m; }
+      if (ts && size === ts && ts <= 4 && base !== 7) {
+        let v;
+        if (base === 8) v = dv.getFloat32(p, def.le);
+        else if (size === 1) v = (base === 1) ? dv.getInt8(p) : dv.getUint8(p);
+        else if (size === 2) v = (base === 3) ? dv.getInt16(p, def.le) : dv.getUint16(p, def.le);
+        else v = (base === 5) ? dv.getInt32(p, def.le) : dv.getUint32(p, def.le);
+        const inval =
+          (base === 0 || base === 2 || base === 13) ? v === 0xff :
+          base === 1 ? v === 0x7f : base === 3 ? v === 0x7fff : base === 4 ? v === 0xffff :
+          base === 5 ? v === 0x7fffffff : base === 6 ? v === 0xffffffff :
+          (base === 10 || base === 11 || base === 12) ? v === 0 : base === 8 ? !isFinite(v) : false;
+        if (!inval) m[num] = v;
+      }
+      p += size;
+    }
+    p += def.devSize;
+    return m;
+  }
+  function handle(g, m) {
+    if (g === 20) {
+      if (m[253] == null) return;
+      const spd = m[73] != null ? m[73] / 1000 : m[6] != null ? m[6] / 1000 : null;
+      const alt = m[78] != null ? m[78] / 5 - 500 : m[2] != null ? m[2] / 5 - 500 : null;
+      let cad = m[4] != null ? m[4] + (m[53] != null ? m[53] / 128 : 0) : null;
+      pts.push({ ts: m[253], d: m[5] != null ? m[5] / 100 : null, hr: m[3] ?? null, alt, cad, v: spd,
+        lat: m[0] != null ? m[0] * (180 / 2147483648) : null, lon: m[1] != null ? m[1] * (180 / 2147483648) : null });
+    } else if (g === 18) {
+      session = m; if (m[5] != null) sport = m[5];
+    } else if (g === 12) {
+      if (m[0] != null && sport == null) sport = m[0];
+    } else if (g === 0) {
+      if (m[4] != null) created = m[4];
+    }
+  }
+  while (p < end) {
+    const h = dv.getUint8(p++);
+    if (h & 0x80) {
+      const def = defs[(h >> 5) & 3]; if (!def) throw new Error('Corrupt FIT (compressed header)');
+      const off = h & 31; let ts = (lastTs & ~31) + off; if (off < (lastTs & 31)) ts += 32; lastTs = ts;
+      const m = readMsg(def); m[253] = ts; handle(def.g, m); continue;
+    }
+    const lt = h & 15;
+    if (h & 0x40) {
+      p++; const le = dv.getUint8(p++) === 0; const g = dv.getUint16(p, le); p += 2;
+      const n = dv.getUint8(p++); const fields = [];
+      for (let i = 0; i < n; i++) { fields.push([dv.getUint8(p), dv.getUint8(p + 1), dv.getUint8(p + 2)]); p += 3; }
+      let devSize = 0;
+      if (h & 0x20) { const nd = dv.getUint8(p++); for (let i = 0; i < nd; i++) { devSize += dv.getUint8(p + 1); p += 3; } }
+      defs[lt] = { g, le, fields, devSize };
+    } else {
+      const def = defs[lt]; if (!def) throw new Error('Corrupt FIT (missing definition)');
+      const m = readMsg(def); if (m[253] != null) lastTs = m[253]; handle(def.g, m);
+    }
+  }
+  if (!pts.length) return null;
+  const isRun = sport == null || sport === 1;
+  const t0 = pts[0].ts;
+  // workout date/time comes from the file: session start_time, else first record, else file creation time
+  const startTs = (session && session[2] != null) ? session[2] : (t0 || created);
+  return {
+    sport: isRun ? 'running' : 'other:' + sport,
+    start: (startTs + FIT_EPOCH) * 1000,
+    pts: pts.map(q => ({ t: q.ts - startTs, d: q.d, hr: q.hr, alt: q.alt, cad: q.cad, v: q.v, lat: q.lat, lon: q.lon })),
+  };
+}
+
+/* ---------- XML (TCX / GPX) ---------- */
+const tag = (el, name) => el.getElementsByTagNameNS('*', name);
+const txt = (el, name) => { const e = tag(el, name)[0]; return e ? e.textContent.trim() : null; };
+const num = s => (s == null || s === '' ? null : (isFinite(+s) ? +s : null));
+
+function parseTCX(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (tag(doc, 'parsererror').length) throw new Error('Unreadable TCX');
+  const act = tag(doc, 'Activity')[0];
+  const sp = (act && act.getAttribute('Sport')) || 'Running';
+  const tps = tag(doc, 'Trackpoint'); const pts = []; let t0 = null;
+  for (const tp of tps) {
+    const time = txt(tp, 'Time'); if (!time) continue;
+    const ms = Date.parse(time); if (t0 == null) t0 = ms;
+    const hrEl = tag(tp, 'HeartRateBpm')[0];
+    pts.push({ t: (ms - t0) / 1000, d: num(txt(tp, 'DistanceMeters')), alt: num(txt(tp, 'AltitudeMeters')),
+      hr: hrEl ? num(txt(hrEl, 'Value')) : null, cad: num(txt(tp, 'RunCadence')) ?? num(txt(tp, 'Cadence')),
+      v: num(txt(tp, 'Speed')), lat: num(txt(tp, 'LatitudeDegrees')), lon: num(txt(tp, 'LongitudeDegrees')) });
+  }
+  if (!pts.length) return null;
+  const name = act ? txt(act, 'Notes') : null;
+  const idT = act ? Date.parse(txt(act, 'Id') || '') : NaN;
+  const start = isFinite(idT) && Math.abs(idT - t0) < 6 * 3600e3 ? idT : t0;
+  if (start !== t0) pts.forEach(q => q.t += (t0 - start) / 1000);
+  return { sport: /run/i.test(sp) ? 'running' : 'other:' + sp, start, pts, name };
+}
+
+function parseGPX(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (tag(doc, 'parsererror').length) throw new Error('Unreadable GPX');
+  const trk = tag(doc, 'trk')[0];
+  const type = trk ? txt(trk, 'type') : null;
+  const name = trk ? txt(trk, 'name') : null;
+  const pts = []; let t0 = null;
+  for (const p of tag(doc, 'trkpt')) {
+    const time = txt(p, 'time'); if (!time) continue;
+    const ms = Date.parse(time); if (t0 == null) t0 = ms;
+    pts.push({ t: (ms - t0) / 1000, d: null, lat: +p.getAttribute('lat'), lon: +p.getAttribute('lon'),
+      alt: num(txt(p, 'ele')), hr: num(txt(p, 'hr')), cad: num(txt(p, 'cad')), v: null });
+  }
+  if (!pts.length) return null;
+  const isRun = !type || /run/i.test(type);
+  return { sport: isRun ? 'running' : 'other:' + type, start: t0, pts, name: name && name.trim() };
+}
+
+/* ---------- CSV (Garmin Connect activity list) ---------- */
+function splitCSV(line) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur); return out;
+}
+const hms = s => { if (!s) return null; const parts = s.split(':').map(Number); if (parts.some(isNaN)) return null; return parts.reduce((a, b) => a * 60 + b, 0); };
+const csvNum = s => { if (s == null) return null; s = String(s).replace(/,/g, '').trim(); return s === '' || s === '--' || isNaN(+s) ? null : +s; };
+
+function parseCSV(text, units) {
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const head = splitCSV(lines[0]).map(h => h.trim().toLowerCase());
+  const col = (...names) => { for (const n of names) { const i = head.indexOf(n); if (i >= 0) return i; } return -1; };
+  const cType = col('activity type'), cDate = col('date'), cTitle = col('title'), cDist = col('distance'),
+    cTime = col('time', 'moving time', 'elapsed time'), cAvg = col('avg hr', 'average heart rate'), cMax = col('max hr', 'maximum heart rate'),
+    cAsc = col('total ascent', 'elev gain'), cCad = col('avg run cadence', 'average run cadence');
+  if (cDate < 0 || cDist < 0 || cTime < 0) throw new Error('CSV is missing Date, Distance or Time columns');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const r = splitCSV(lines[i]);
+    const type = cType >= 0 ? r[cType] : 'Running';
+    if (!/run/i.test(type || '')) continue;
+    const start = Date.parse((r[cDate] || '').replace(' ', 'T'));
+    let dist = csvNum(r[cDist]); const dur = hms(r[cTime]);
+    if (!isFinite(start) || !dist || !dur) continue;
+    dist *= units === 'mi' ? 1609.344 : 1000;
+    let asc = cAsc >= 0 ? csvNum(r[cAsc]) : null; if (asc != null && units === 'mi') asc *= 0.3048;
+    out.push({ summary: true, id: 'a' + Math.round(start / 60000), start, name: (cTitle >= 0 && r[cTitle]) || 'Run',
+      src: 'CSV', dist, dur, avgHR: cAvg >= 0 ? csvNum(r[cAvg]) : null, maxHR: cMax >= 0 ? csvNum(r[cMax]) : null,
+      ascent: asc, cad: cCad >= 0 ? csvNum(r[cCad]) : null, hrPeak: cMax >= 0 ? csvNum(r[cMax]) : null });
+  }
+  return out;
+}
+
+/* ---------- ZIP (native DecompressionStream) ---------- */
+function zipEntries(buf) {
+  const dv = new DataView(buf); let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('Unreadable ZIP archive');
+  const cnt = dv.getUint16(e + 10, true); let off = dv.getUint32(e + 16, true); const out = [];
+  for (let k = 0; k < cnt; k++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true),
+      nlen = dv.getUint16(off + 28, true), xlen = dv.getUint16(off + 30, true), clen = dv.getUint16(off + 32, true),
+      loff = dv.getUint32(off + 42, true);
+    const name = new TextDecoder().decode(new Uint8Array(buf, off + 46, nlen));
+    off += 46 + nlen + xlen + clen;
+    if (name.endsWith('/')) continue;
+    const ds = loff + 30 + dv.getUint16(loff + 26, true) + dv.getUint16(loff + 28, true);
+    out.push({ name, method, data: new Uint8Array(buf, ds, csize) });
+  }
+  return out;
+}
+async function inflateEntry(en) {
+  if (en.method === 0) return en.data.slice().buffer;
+  if (en.method !== 8) throw new Error('Unsupported compression in ' + en.name);
+  const s = new Blob([en.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return await new Response(s).arrayBuffer();
+}
+
+/* ---------- Raw track -> uniform 2 s grid ---------- */
+function hav(a, b, c, d) {
+  const R = 6371008, r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2);
+  return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y));
+}
+function buildGrid(raw, meta) {
+  let pts = raw.pts.filter(q => isFinite(q.t) && q.t >= -5).sort((a, b) => a.t - b.t);
+  pts.forEach(q => { if (q.t < 0) q.t = 0; if (q.lat === 0 && q.lon === 0) q.lat = q.lon = null; if (q.lat != null && (!isFinite(q.lat) || Math.abs(q.lat) > 90)) q.lat = q.lon = null; });
+  pts = pts.filter((q, i) => i === 0 || q.t > pts[i - 1].t);
+  if (pts.length < 30) return null;
+  // distance: prefer device distance, else integrate speed, else GPS
+  const hasD = pts.filter(q => q.d != null).length > pts.length * 0.8;
+  if (!hasD) {
+    let acc = 0;
+    const hasV = pts.filter(q => q.v != null).length > pts.length * 0.8;
+    pts.forEach((q, i) => {
+      if (i) {
+        const pr = pts[i - 1], dt = q.t - pr.t;
+        if (hasV) acc += (q.v ?? pr.v ?? 0) * Math.min(dt, 10);
+        else if (q.lat != null && pr.lat != null) acc += hav(pr.lat, pr.lon, q.lat, q.lon);
+      }
+      q.d = acc;
+    });
+  } else { let last = 0; pts.forEach(q => { if (q.d == null || q.d < last) q.d = last; last = q.d; }); }
+  const T = pts[pts.length - 1].t, n = Math.floor(T / DT) + 1;
+  if (n < 60) return null;
+  const d = new Float32Array(n), hr = new Float32Array(n).fill(NaN), alt = new Float32Array(n).fill(NaN),
+    cad = new Float32Array(n).fill(NaN), mv = new Uint8Array(n);
+  const g0 = pts.find(q => q.lat != null && q.lon != null);
+  const lat0 = g0 ? g0.lat : null, lon0 = g0 ? g0.lon : null;
+  const dla = g0 ? new Float32Array(n).fill(NaN) : null, dlo = g0 ? new Float32Array(n).fill(NaN) : null;
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i * DT;
+    while (j < pts.length - 2 && pts[j + 1].t < t) j++;
+    const a = pts[j], b = pts[Math.min(j + 1, pts.length - 1)];
+    const span = b.t - a.t, f = span > 0 ? clamp((t - a.t) / span, 0, 1) : 0;
+    const lerp = (x, y) => x == null ? y : y == null ? x : x + (y - x) * f;
+    d[i] = lerp(a.d, b.d);
+    const gap = span > 12;
+    if (!gap) {
+      const h = lerp(a.hr, b.hr); if (h != null && h > 30 && h < 240) hr[i] = h;
+      const c = lerp(a.cad, b.cad); if (c != null && c > 0) cad[i] = c;
+      mv[i] = 1;
+    }
+    const al = lerp(a.alt, b.alt); if (al != null) alt[i] = al;
+    if (g0) { const la = lerp(a.lat, b.lat), lo = lerp(a.lon, b.lon); if (la != null && lo != null) { dla[i] = la - lat0; dlo[i] = lo - lon0; } }
+  }
+  // cadence: Garmin stores strides/min; convert to steps/min
+  let cs = 0, cn = 0; for (let i = 0; i < n; i++) if (cad[i] > 0) { cs += cad[i]; cn++; }
+  if (cn && cs / cn < 120) for (let i = 0; i < n; i++) cad[i] *= 2;
+  const hasHR = hr.some(x => x > 0), hasAlt = alt.some(x => !isNaN(x));
+  // fill alt gaps
+  if (hasAlt) { let last = NaN; for (let i = 0; i < n; i++) { if (isNaN(alt[i])) alt[i] = last; else last = alt[i]; } let first = alt.find(x => !isNaN(x)); for (let i = 0; i < n && isNaN(alt[i]); i++) alt[i] = first; }
+  // peak HR (30 s rolling mean max) for HRmax detection
+  let hrPeak = null;
+  if (hasHR) { const W = 15; for (let i = 0; i + W <= n; i++) { let s = 0, c = 0; for (let k = i; k < i + W; k++) if (hr[k] > 0) { s += hr[k]; c++; } if (c === W) hrPeak = Math.max(hrPeak || 0, s / W); } }
+  const start = raw.start;
+  const hasGPS = !!g0 && dla.filter(x => !isNaN(x)).length > n * 0.3;
+  return Object.assign({ ver: 2, id: 'a' + Math.round(start / 60000), start, n, d, hr, alt, cad, mv, hasHR, hasAlt, hrPeak,
+    hasGPS, lat0: hasGPS ? lat0 : null, lon0: hasGPS ? lon0 : null, dla: hasGPS ? dla : null, dlo: hasGPS ? dlo : null,
+    name: raw.name || defaultName(start) }, meta || {});
+}
+function defaultName(ms) { const h = new Date(ms).getHours(); return (h < 11 ? 'Morning' : h < 14 ? 'Lunch' : h < 18 ? 'Afternoon' : 'Evening') + ' Run'; }
+
+/* ---------- Physiology ---------- */
+// Minetti et al. (2002) energy cost of running vs gradient, J/kg/m; ratio to flat
+function costRatio(i) { i = clamp(i, -0.3, 0.3); return Math.max(0.45, (155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6) / 3.6); }
+// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. Shared by both VO2max models.
+const vo2Cost = v => { const m = v * 60; return Math.max(3.5, -4.60 + 0.182258 * m + 0.000104 * m * m); };
+// Daniels & Gilbert running formula
+function vdotOf(distM, sec) {
+  const t = sec / 60, v = distM / t;
+  const vo2 = -4.60 + 0.182258 * v + 0.000104 * v * v;
+  const pct = 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t);
+  return vo2 / pct;
+}
+function predictTime(distM, vdot) {
+  let lo = distM / 10, hi = distM / 0.8; // seconds: 10 m/s .. 0.8 m/s
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (vdotOf(distM, mid) > vdot) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+function smooth(a, w) {
+  const n = a.length, o = new Float32Array(n), h = w >> 1; let s = 0, c = 0;
+  for (let i = 0; i < Math.min(n, h); i++) if (!isNaN(a[i])) { s += a[i]; c++; }
+  for (let i = 0; i < n; i++) {
+    const add = i + h, rem = i - h - 1;
+    if (add < n && !isNaN(a[add])) { s += a[add]; c++; }
+    if (rem >= 0 && !isNaN(a[rem])) { s -= a[rem]; c--; }
+    o[i] = c ? s / c : NaN;
+  }
+  return o;
+}
+const trimpK = sex => sex === 'f' ? [0.86, 1.67] : [0.64, 1.92];
+const ZONES = [0.6, 0.7, 0.8, 0.9]; // %HRR upper bounds of Z1..Z4
+const EFFORTS = [[1000, '1 km'], [5000, '5 km'], [10000, '10 km'], [21097.5, 'Half marathon'], [42195, 'Marathon']];
+
+function analyze(r, S, vo2ref) {
+  const hrMax = S.hrMaxEff, hrRest = S.hrRest, [ka, kb] = trimpK(S.sex);
+  const hrrOf = h => (h - hrRest) / (hrMax - hrRest);
+  if (r.summary) {
+    const v = r.dist / r.dur, out = { dist: r.dist, mov: r.dur, avgHR: r.avgHR, maxHR: r.maxHR, ascent: r.ascent, cad: r.cad,
+      pace: r.dur / (r.dist / 1000), gapPace: r.dur / (r.dist / 1000), efforts: [], zones: null, dec: null, windows: [], est: null, conf: 0 };
+    if (r.avgHR) {
+      const q = clamp(hrrOf(r.avgHR), 0, 1);
+      out.load = r.dur / 60 * q * ka * Math.exp(kb * q);
+      out.ef = v * 60 / r.avgHR;
+      if (q > 0.45 && q < 0.95 && v > 1.6) { out.est = 3.5 + (vo2Cost(v) - 3.5) / q; out.conf = 0.3; }
+      if (r.dist >= 3000 && r.avgHR / hrMax >= (r.dur < 1800 ? 0.88 : 0.85)) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
+    } else out.load = loadNoHR(r.dur, v, vo2ref, ka, kb);
+    return out;
+  }
+  const n = r.n, d = r.d, hr = r.hr, mv = r.mv;
+  const v = new Float32Array(n), g = new Float32Array(n), K = 3;
+  for (let i = 0; i < n; i++) { const a = Math.max(0, i - K), b = Math.min(n - 1, i + K); v[i] = b > a ? (d[b] - d[a]) / ((b - a) * DT) : 0; }
+  const altS = r.hasAlt ? smooth(r.alt, 15) : null;
+  if (altS) for (let i = 0; i < n; i++) { const a = Math.max(0, i - 8), b = Math.min(n - 1, i + 8), dd = d[b] - d[a]; g[i] = dd > 20 ? clamp((altS[b] - altS[a]) / dd, -0.3, 0.3) : 0; }
+  const moving = i => mv[i] && v[i] > 0.8;
+  let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0;
+  const zones = [0, 0, 0, 0, 0];
+  const vo2 = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const rat = costRatio(g[i]); vo2[i] = vo2Cost(v[i] * rat);
+    if (!moving(i)) continue;
+    mov += DT; gapS += v[i] * rat * DT;
+    if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
+    if (hr[i] > 0) {
+      hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
+      const q = clamp(hrrOf(hr[i]), 0, 1); load += DT / 60 * q * ka * Math.exp(kb * q);
+      let z = 0; while (z < 4 && q >= ZONES[z]) z++; zones[z] += DT;
+    }
+  }
+  if (altS) { let ref = altS[0]; for (let i = 1; i < n; i++) { if (altS[i] - ref > 3) { asc += altS[i] - ref; ref = altS[i]; } else if (ref - altS[i] > 3) ref = altS[i]; } }
+  const dist = d[n - 1] - d[0];
+  const gapV = mov ? gapS / mov : 0;
+  const out = { dist, mov, elapsed: (n - 1) * DT, avgHR: hn ? hs / hn : null, maxHR: hn ? maxHR : null,
+    ascent: altS ? asc : null, cad: cn ? cs / cn : null, pace: dist > 0 ? mov / (dist / 1000) : null,
+    gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
+  out.load = hn > n * 0.5 ? load : loadNoHR(mov, gapV, vo2ref, ka, kb);
+  out.ef = out.avgHR ? gapV * 60 / out.avgHR : null;
+
+  // --- steady-state windows -> anchored HR–VO2 regression ---
+  const W = 30, warm = 150, wins = [];
+  if (r.hasHR) for (let s = Math.max(warm, W); s + W <= n; s += 15) {
+    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, so = 0, sg = 0;
+    for (let i = s - W; i < s + W; i++) { if (!moving(i)) { ok = false; break; } }
+    if (!ok) continue;
+    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; so += vo2[i]; sg += g[i]; }
+    if (!ok) continue;
+    for (let i = s - W; i < s; i++) pv += v[i];
+    const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W;
+    const h = sh / W, q = hrrOf(h);
+    if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || q < 0.35 || q > 0.95) continue;
+    const tMin = s * DT / 60;
+    wins.push([h, so / W, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]);
+  }
+  out.windows = wins; out.est = null; out.conf = 0;
+  if (wins.length >= 6) {
+    const fit = anchoredFit(wins, hrRest);
+    if (fit && fit.b > 0) {
+      out.est = fit.a + fit.b * hrMax; out.fit = fit;
+      const sw = wins.reduce((s, w) => s + w[2], 0);
+      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 6, 0.2, 1);
+      if (out.est < 20 || out.est > 90) { out.est = null; out.conf = 0; }
+    }
+  }
+  // --- aerobic decoupling (Pa:HR) ---
+  out.dec = null;
+  if (r.hasHR && mov >= 2400) {
+    const idx = []; for (let i = 300; i < n; i++) if (moving(i) && hr[i] > 0) idx.push(i);
+    if (idx.length > 200) {
+      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += v[i] * costRatio(g[i]); sh += hr[i]; } return sv / sh; };
+      const e1 = ef(0, half), e2 = ef(half, idx.length); out.dec = (e1 - e2) / e1 * 100;
+    }
+  }
+  // --- best efforts ---
+  out.efforts = [];
+  const pre = new Float64Array(n + 1), prc = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) { pre[i + 1] = pre[i] + (hr[i] > 0 ? hr[i] : 0); prc[i + 1] = prc[i] + (hr[i] > 0 ? 1 : 0); }
+  for (const [D, label] of EFFORTS) {
+    if (dist < D) continue;
+    let best = Infinity, bi = 0, bj = 0, i = 0;
+    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT; if (t < best) { best = t; bi = i; bj = j; } } }
+    if (!isFinite(best)) continue;
+    const c = prc[bj + 1] - prc[bi], ehr = c > (bj - bi) * 0.8 ? (pre[bj + 1] - pre[bi]) / c : null;
+    const e = { D, label, sec: best, hr: ehr };
+    if (D >= 3000 && ehr && ehr / hrMax >= (best < 1800 ? 0.88 : 0.85)) e.vdot = vdotOf(D, best);
+    out.efforts.push(e);
+  }
+  return out;
+}
+function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp((vo2Cost(v) - 3.5) / ((vo2ref || 45) - 3.5), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
+
+// Weighted least squares of VO2 on HR with a physiological anchor (HRrest, 3.5 ml/kg/min),
+// one Huber reweighting pass for robustness.
+function anchoredFit(wins, hrRest) {
+  const solve = ws => {
+    const sw0 = ws.reduce((s, w) => s + w[2], 0);
+    const pts = ws.concat([[hrRest, 3.5, Math.max(2, 0.15 * sw0)]]);
+    let sw = 0, sx = 0, sy = 0; for (const [x, y, w] of pts) { sw += w; sx += w * x; sy += w * y; }
+    const mx = sx / sw, my = sy / sw; let sxy = 0, sxx = 0;
+    for (const [x, y, w] of pts) { sxy += w * (x - mx) * (y - my); sxx += w * (x - mx) ** 2; }
+    const b = sxy / sxx, a = my - b * mx;
+    let se = 0, sw1 = 0; for (const [x, y, w] of ws) { se += w * (y - a - b * x) ** 2; sw1 += w; }
+    return { a, b, sd: Math.sqrt(se / sw1) };
+  };
+  let f = solve(wins);
+  const c = Math.max(1.5, 1.345 * f.sd);
+  const rw = wins.map(([x, y, w]) => { const r = Math.abs(y - f.a - f.b * x); return [x, y, w * (r <= c ? 1 : c / r)]; });
+  f = solve(rw);
+  return f;
+}
+
+/* ---------- Timeline: fitness, VO2max fusion, endurance ---------- */
+const TIERS = [[0, 'Recreational'], [4000, 'Intermediate'], [5500, 'Trained'], [7000, 'Well-trained'], [8500, 'Expert'], [10000, 'Superior'], [11500, 'Elite']];
+const tierOf = e => { let t = TIERS[0]; for (const x of TIERS) if (e >= x[0]) t = x; return t[1]; };
+const fVol = H => 1 - Math.exp(-H / 4), gLong = L => 1 - Math.exp(-L / 75), hDur = D => clamp(1.04 - 0.012 * D, 0.8, 1.04);
+const RACES = [[5000, '5K', 0], [10000, '10K', 0.01], [21097.5, 'Half marathon', 0.04], [42195, 'Marathon', 0.10]];
+
+function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x.getTime(); }
+
+function fuseVO2(items, T) {
+  // items: [{t, est, conf, vdots:[...]}] sorted by t
+  let hw = 0, hs = 0, perf = null;
+  for (const it of items) {
+    if (it.t > T + DAY) break;
+    const age = (T - it.t) / DAY; if (age > 60) continue;
+    if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; hs += w * it.est; }
+    for (const vd of it.vdots) if (perf == null || vd > perf) perf = vd;
+  }
+  if (!hw && perf == null) return null;
+  if (!hw) return { v: perf, hr: null, perf };
+  const vh = hs / hw, sh = 2.5 / Math.sqrt(Math.min(hw, 4));
+  if (perf == null) return { v: vh, hr: vh, perf: null };
+  const sp = 2.0, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
+  return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
+}
+
+function buildTimeline(runs, res, asOf) {
+  // runs sorted by start; res[i] analysis
+  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => e.vdot) }));
+  const d0 = dayStart(runs[0].start), dEnd = dayStart(asOf);
+  const kC = 1 - Math.exp(-1 / 42), kA = 1 - Math.exp(-1 / 7);
+  const byDay = new Map();
+  runs.forEach((r, i) => { const k = dayStart(r.start); const o = byDay.get(k) || { load: 0, sec: 0 }; o.load += res[i].load || 0; o.sec += res[i].mov || 0; byDay.set(k, o); });
+  let sl = 0, ss = 0; for (const [k, o] of byDay) if (k < d0 + 28 * DAY) { sl += o.load; ss += o.sec; }
+  const span = Math.max(7, Math.min(28, (dEnd - d0) / DAY + 1));
+  let ctl = sl / span, atl = ctl, hrs = ss / 3600 / span * 7; const days = [];
+  let j = 0; // pointer for long-run & decoupling windows
+  for (let t = d0; t <= dEnd; t = dayStart(t + DAY * 1.5)) {
+    const o = byDay.get(t) || { load: 0, sec: 0 };
+    ctl += (o.load - ctl) * kC; atl += (o.load - atl) * kA; hrs += (o.sec / 3600 * 7 - hrs) * kC;
+    days.push({ t, ctl, atl, tsb: ctl - atl, H: hrs, load: o.load });
+  }
+  // per-day VO2 & endurance (sample every day; cost is small)
+  let lo = 0;
+  for (const day of days) {
+    const T = day.t + DAY - 1;
+    while (lo < runs.length && runs[lo].start < T - 42 * DAY) lo++;
+    let L = 0, ds = 0, dw = 0;
+    for (let i = lo; i < runs.length && runs[i].start <= T; i++) {
+      L = Math.max(L, (res[i].mov || 0) / 60);
+      if (res[i].dec != null && res[i].mov >= 3600) { ds += clamp(res[i].dec, -5, 20) * res[i].mov; dw += res[i].mov; }
+    }
+    const D = dw ? ds / dw : 7;
+    const f = fuseVO2(items, T);
+    day.vo2 = f ? f.v : null; day.vo2hr = f ? f.hr : null; day.vo2perf = f ? f.perf : null;
+    day.L = L; day.D = D; day.hasDec = dw > 0;
+    day.end = day.vo2 ? 170 * day.vo2 * Math.sqrt(fVol(day.H) * gLong(L)) * hDur(D) : null;
+  }
+  return days;
+}
+
+/* ---------- Synthetic sample athlete (deterministic) ---------- */
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function vFor(vo2) { let lo = 0, hi = 10; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (vo2Cost(m) < vo2) lo = m; else hi = m; } return lo; }
+function makeSample(today) {
+  const rnd = mulberry(42), gauss = () => { let u = 0; for (let k = 0; k < 6; k++) u += rnd(); return u - 3; };
+  const HRMAX = 189, HRREST = 50, end = dayStart(today) - DAY, weeks = 20, start = end - weeks * 7 * DAY;
+  const runs = [];
+  const plan = [ // [dow offset, kind]
+    [1, 'easy'], [3, 'tempo'], [5, 'easy'], [6, 'long']];
+  for (let w = 0; w < weeks; w++) {
+    const recov = w % 4 === 3;
+    for (const [dow, kind0] of plan) {
+      let kind = kind0;
+      if (w === 9 && dow === 5) kind = 'race5';
+      if (w === 18 && dow === 5) kind = 'race10';
+      const day = start + (w * 7 + dow) * DAY;
+      if (day > end) continue;
+      if (rnd() < 0.08) continue; // missed session
+      const frac = (day - start) / (end - start);
+      const VO2 = 46.5 + 5 * frac;
+      const p = { easy: 0.6, tempo: 0.62, long: 0.58, race5: 0.97, race10: 0.93 }[kind];
+      let mins = { easy: 42, tempo: 55, long: 70 + 55 * frac, race5: 20, race10: 41 }[kind] * (recov ? 0.7 : 1) * (0.92 + 0.16 * rnd());
+      const hilly = rnd() < 0.5, hour = kind === 'long' ? 8 : 18;
+      const runStart = day + hour * 3600000 + Math.floor(rnd() * 40) * 60000;
+      const n = Math.floor((mins + (kind.startsWith('race') ? 15 : 0)) * 60 / DT);
+      const d = new Float32Array(n), hr = new Float32Array(n), alt = new Float32Array(n), cad = new Float32Array(n), mv = new Uint8Array(n).fill(1);
+      const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
+      const dla = new Float32Array(n), dlo = new Float32Array(n);
+      let dist = 0, h = 70, drift = 0;
+      const fit = (VO2 - 3.5);
+      for (let i = 0; i < n; i++) {
+        const tm = i * DT / 60;
+        let q = p;
+        if (kind === 'tempo') { const b = tm - 12; q = (b > 0 && b < 34 && (b % 12) < 10) ? 0.86 : 0.6; }
+        if (kind.startsWith('race')) q = tm < 12 ? 0.55 : p;
+        if (tm < 3) q *= 0.85;
+        const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
+        const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
+        const rat = costRatio(slope);
+        const vTarget = vFor(3.5 + q * fit);
+        const vel = Math.max(1.2, vTarget / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
+        const vo2 = vo2Cost(vel * rat);
+        if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
+        const target = HRREST + clamp((vo2 - 3.5) / fit, 0, 1.05) * (HRMAX - HRREST) + drift;
+        h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
+        dist += vel * DT; d[i] = dist;
+        { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));
+          dla[i] = rr * Math.sin(th) / 111320; dlo[i] = rr * Math.cos(th) * route.sq / (111320 * Math.cos(route.lat * Math.PI / 180)); } hr[i] = Math.round(Math.min(HRMAX + 1, h)); alt[i] = 120 + terrain; cad[i] = Math.round(158 + 9 * (vel - 2.5) + gauss());
+      }
+      const names = { easy: 'Easy Run', tempo: 'Tempo 3×10 min', long: 'Long Run', race5: 'Park 5K Race', race10: '10K Race' };
+      // shift so the trace starts at the origin offset
+      const a0 = dla[0], o0 = dlo[0]; for (let i = 0; i < n; i++) { dla[i] -= a0; dlo[i] -= o0; }
+      runs.push({ ver: 2, id: 's' + runs.length, start: runStart, n, d, hr, alt, cad, mv, hasHR: true, hasAlt: true,
+        hasGPS: true, lat0: 47.37 + 0.004, lon0: 8.54 - 0.01, dla, dlo,
+        hrPeak: null, name: names[kind], src: 'Sample', sample: true });
+    }
+  }
+  runs.forEach(r => { let pk = 0; for (let i = 15; i < r.n; i++) { let s = 0; for (let k = i - 15; k < i; k++) s += r.hr[k]; pk = Math.max(pk, s / 15); } r.hrPeak = pk; });
+  return { runs, settings: { hrRest: HRREST, hrMax: HRMAX, age: 34, sex: 'm' } };
+}
+// ===== END CORE =====
+
+/* ---------- splits per km / mile ---------- */
+function splitsOf(r, unitM) {
+  const out = [], n = r.n, d = r.d; let i0 = 0, target = unitM;
+  const altS = r.hasAlt ? smooth(r.alt, 15) : null;
+  const seg = (a, b, len) => {
+    let mt = 0, hs = 0, hc = 0, gs = 0, cs = 0, cc = 0;
+    for (let i = a + 1; i <= b; i++) {
+      const v = (d[i] - d[i - 1]) / DT; if (!r.mv[i] || v < 0.8) continue; mt += DT;
+      if (r.hr[i] > 0) { hs += r.hr[i]; hc++; } if (r.cad[i] > 0) { cs += r.cad[i]; cc++; }
+      if (altS && i > 8 && i < n - 8) { const dd = d[i + 8] - d[i - 8]; gs += dd > 20 ? costRatio(clamp((altS[i + 8] - altS[i - 8]) / dd, -0.3, 0.3)) * DT : DT; } else gs += DT;
+    }
+    return { len, sec: mt, hr: hc ? hs / hc : null, cad: cc ? cs / cc : null, elev: altS ? altS[b] - altS[a] : null, gap: mt ? mt / (gs / mt) : null };
+  };
+  for (let i = 1; i < n; i++) if (d[i] - d[0] >= target) { out.push(seg(i0, i, unitM)); i0 = i; target += unitM; }
+  const rest = d[n - 1] - d[i0]; if (rest > unitM * 0.1) out.push(seg(i0, n - 1, rest));
+  return out;
+}
+// ===== STORAGE & AUTH =====
+// Every backend implements the same interface, so the UI never knows where data lives:
+//   init() · user() · accounts() · signIn(cred) · signUp(info) · signOut()
+//   updateProfile(patch) · deleteAccount()
+//   listWorkouts() · putWorkouts(list) · deleteWorkout(id) · clearWorkouts()
+// To ship with Firebase by default, paste your web-app config here (Firebase console →
+// Project settings → Your apps → SDK setup and configuration → Config).
+const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }
+const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+
+const DEFAULT_SETTINGS = { hrMax: null, hrRest: 55, age: null, sex: 'm', units: 'km', weight: null };
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
+const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ---------- Local: profiles in localStorage, workouts in IndexedDB ---------- */
+const LocalBackend = {
+  kind: 'local', label: 'This device', secure: false,
+  db: null, mem: new Map(),
+  async init() {
+    try {
+      this.db = await new Promise((res, rej) => {
+        const rq = indexedDB.open('pace-pulse', 2);
+        rq.onupgradeneeded = ev => {
+          const db = rq.result, tx = rq.transaction;
+          const ws = db.objectStoreNames.contains('workouts') ? tx.objectStore('workouts') : db.createObjectStore('workouts', { keyPath: 'key' });
+          if (!ws.indexNames.contains('pid')) ws.createIndex('pid', 'pid');
+          if (ev.oldVersion === 1 && db.objectStoreNames.contains('runs')) { // migrate v1 data into a profile
+            const g = tx.objectStore('runs').getAll();
+            g.onsuccess = () => {
+              if (g.result.length) {
+                g.result.forEach(r => ws.put(Object.assign(r, { pid: 'p-legacy', key: 'p-legacy|' + r.id })));
+                const profs = lsGet('pp-profiles', []);
+                if (!profs.some(p => p.id === 'p-legacy')) {
+                  profs.push({ id: 'p-legacy', name: 'My profile', email: '', createdAt: Date.now(), settings: Object.assign({}, DEFAULT_SETTINGS, lsGet('pp-settings', {})) });
+                  lsSet('pp-profiles', profs); lsSet('pp-session', 'p-legacy');
+                }
+              }
+              db.deleteObjectStore('runs');
+            };
+          }
+        };
+        rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+      });
+    } catch (e) { this.db = null; }
+  },
+  accounts() { return lsGet('pp-profiles', []); },
+  user() { const id = lsGet('pp-session', null); return this.accounts().find(p => p.id === id) || null; },
+  async signIn({ id }) { if (!this.accounts().some(p => p.id === id)) throw new Error('Profile not found'); lsSet('pp-session', id); return this.user(); },
+  async signUp({ name, email, settings }) {
+    if (!name || !name.trim()) throw new Error('Enter a name for the profile.');
+    const p = { id: uid(), name: name.trim(), email: (email || '').trim(), createdAt: Date.now(), settings: Object.assign({}, DEFAULT_SETTINGS, settings || {}) };
+    lsSet('pp-profiles', [...this.accounts(), p]); lsSet('pp-session', p.id); return p;
+  },
+  async signOut() { lsSet('pp-session', null); },
+  async updateProfile(patch) {
+    const u = this.user(); if (!u) return;
+    const all = this.accounts().map(p => p.id === u.id ? Object.assign({}, p, patch, { settings: Object.assign({}, p.settings, patch.settings || {}) }) : p);
+    lsSet('pp-profiles', all); return this.user();
+  },
+  async deleteAccount() { const u = this.user(); if (!u) return; await this.clearWorkouts(); lsSet('pp-profiles', this.accounts().filter(p => p.id !== u.id)); lsSet('pp-session', null); },
+  _tx(mode, fn) {
+    return new Promise((res, rej) => { const tx = this.db.transaction('workouts', mode); const out = fn(tx.objectStore('workouts')); tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out); tx.onerror = () => rej(tx.error); });
+  },
+  async listWorkouts() {
+    const u = this.user(); if (!u) return [];
+    if (!this.db) return [...this.mem.values()].filter(r => r.pid === u.id);
+    return await this._tx('readonly', os => os.index('pid').getAll(u.id));
+  },
+  async putWorkouts(list) {
+    const u = this.user(); if (!u) throw new Error('Sign in first');
+    const rows = list.map(r => Object.assign({}, r, { pid: u.id, key: u.id + '|' + r.id }));
+    if (!this.db) { rows.forEach(r => this.mem.set(r.key, r)); return; }
+    await this._tx('readwrite', os => { rows.forEach(r => os.put(r)); });
+  },
+  async deleteWorkout(id) { const u = this.user(); if (!u) return; const k = u.id + '|' + id; if (!this.db) { this.mem.delete(k); return; } await this._tx('readwrite', os => { os.delete(k); }); },
+  async clearWorkouts() { const list = await this.listWorkouts(); for (const r of list) await this.deleteWorkout(r.id); },
+};
+
+/* ---------- Firebase: Auth + Firestore (users/{uid}, users/{uid}/workouts/{id}) ---------- */
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); }); }
+const TYPED = { Float32Array, Float64Array, Uint8Array };
+const FirebaseBackend = {
+  kind: 'firebase', label: 'Firebase cloud', secure: true,
+  profile: null,
+  async init(config) {
+    if (!window.firebase) for (const m of ['app', 'auth', 'firestore']) await loadScript(FIREBASE_SDK + 'firebase-' + m + '-compat.js');
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    this.auth = firebase.auth(); this.fs = firebase.firestore();
+    await new Promise(res => { const un = this.auth.onAuthStateChanged(() => { un(); res(); }); });
+    if (this.auth.currentUser) await this._loadProfile();
+  },
+  async _loadProfile() {
+    const u = this.auth.currentUser, ref = this.fs.collection('users').doc(u.uid), snap = await ref.get();
+    this.profile = snap.exists ? snap.data() : { name: u.displayName || (u.email || '').split('@')[0], email: u.email || '', createdAt: Date.now(), settings: Object.assign({}, DEFAULT_SETTINGS) };
+    if (!snap.exists) await ref.set(this.profile);
+  },
+  accounts() { return []; },
+  user() { const u = this.auth && this.auth.currentUser; return u && this.profile ? Object.assign({ id: u.uid }, this.profile, { email: u.email || this.profile.email }) : null; },
+  async signIn({ email, password, google }) {
+    if (google) await this.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    else await this.auth.signInWithEmailAndPassword(email, password);
+    await this._loadProfile(); return this.user();
+  },
+  async signUp({ name, email, password, settings }) {
+    const cred = await this.auth.createUserWithEmailAndPassword(email, password);
+    await cred.user.updateProfile({ displayName: name });
+    this.profile = { name, email, createdAt: Date.now(), settings: Object.assign({}, DEFAULT_SETTINGS, settings || {}) };
+    await this.fs.collection('users').doc(cred.user.uid).set(this.profile); return this.user();
+  },
+  async signOut() { await this.auth.signOut(); this.profile = null; },
+  async updateProfile(patch) {
+    this.profile = Object.assign({}, this.profile, patch, { settings: Object.assign({}, this.profile.settings, patch.settings || {}) });
+    await this.fs.collection('users').doc(this.auth.currentUser.uid).set(this.profile, { merge: true }); return this.user();
+  },
+  async deleteAccount() { await this.clearWorkouts(); await this.fs.collection('users').doc(this.auth.currentUser.uid).delete(); await this.auth.currentUser.delete(); this.profile = null; },
+  _col() { return this.fs.collection('users').doc(this.auth.currentUser.uid).collection('workouts'); },
+  _enc(r) { const o = {}; for (const [k, v] of Object.entries(r)) { if (v == null || k === 'pid' || k === 'key') continue; o[k] = ArrayBuffer.isView(v) ? { __t: v.constructor.name, b: firebase.firestore.Blob.fromUint8Array(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) } : v; } return o; },
+  _dec(o) { const r = {}; for (const [k, v] of Object.entries(o)) { if (v && v.__t && TYPED[v.__t]) { const u8 = v.b.toUint8Array(); r[k] = new TYPED[v.__t](u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } else r[k] = v; } return r; },
+  async listWorkouts() { if (!this.auth.currentUser) return []; const qs = await this._col().get(); return qs.docs.map(d => this._dec(d.data())); },
+  async putWorkouts(list) {
+    for (let i = 0; i < list.length; i += 20) { // small batches keep each commit well under Firestore's 10 MB request cap
+      const b = this.fs.batch(); list.slice(i, i + 20).forEach(r => b.set(this._col().doc(r.id), this._enc(r))); await b.commit();
+    }
+  },
+  async deleteWorkout(id) { await this._col().doc(id).delete(); },
+  async clearWorkouts() { const qs = await this._col().get(); for (let i = 0; i < qs.docs.length; i += 400) { const b = this.fs.batch(); qs.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit(); } },
+};
+
+/* ---------- backend selection ---------- */
+function storageChoice() { const c = lsGet('pp-backend', null); if (c) return c; return FIREBASE_CONFIG ? { kind: 'firebase', config: FIREBASE_CONFIG } : { kind: 'local' }; }
+async function openBackend() {
+  const c = storageChoice(); LocalBackend.fallbackError = null;
+  if (c.kind === 'firebase' && c.config) {
+    try { await FirebaseBackend.init(c.config); return FirebaseBackend; }
+    catch (e) { console.warn(e); await LocalBackend.init(); LocalBackend.fallbackError = 'Could not reach Firebase, so this session uses on-device storage. ' + (e.message || ''); return LocalBackend; }
+  }
+  await LocalBackend.init(); return LocalBackend;
+}
+// ===== END STORAGE =====
+/* ---------- formatting ---------- */
+const U = () => st.S.units === 'mi' ? 1609.344 : 1000;
+const uName = () => st.S.units === 'mi' ? 'mi' : 'km';
+const fmtDur = s => { if (s == null || !isFinite(s)) return '–'; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+const fmtPace = secPerKm => secPerKm == null || !isFinite(secPerKm) ? '–' : fmtDur(secPerKm * U() / 1000);
+const fmtDist = m => m == null ? '–' : (m / U()).toFixed(m / U() >= 100 ? 0 : 2);
+const fmtDate = (ms, o = { day: 'numeric', month: 'short' }) => new Date(ms).toLocaleDateString(undefined, o);
+const f1 = x => x == null || !isFinite(x) ? '–' : x.toFixed(1);
+const f0 = x => x == null || !isFinite(x) ? '–' : Math.round(x).toLocaleString();
+
+/* ---------- VO2max norms (approx. Cooper Institute percentiles, as used by most watches) ---------- */
+const NORMS = { m: [[20, 41.7, 45.4, 51.1, 55.4], [30, 40.5, 44.0, 48.3, 54.0], [40, 38.5, 42.4, 46.4, 52.5], [50, 35.6, 39.2, 43.4, 48.9], [60, 32.3, 35.5, 39.5, 45.7], [70, 29.4, 32.3, 36.7, 42.1]],
+  f: [[20, 36.1, 39.5, 43.9, 49.6], [30, 34.4, 37.8, 42.4, 47.4], [40, 33.0, 36.3, 39.7, 45.3], [50, 30.1, 33.0, 36.7, 41.1], [60, 27.5, 30.0, 33.0, 37.8], [70, 25.9, 28.1, 30.9, 36.7]] };
+function vo2Category(v) {
+  if (!st.S.age) return null;
+  const rows = NORMS[st.S.sex] || NORMS.m; let row = rows[0]; for (const r of rows) if (st.S.age >= r[0]) row = r;
+  const names = ['Poor', 'Fair', 'Good', 'Excellent', 'Superior']; let k = 0; for (let i = 1; i <= 4; i++) if (v >= row[i]) k = i;
+  return { name: names[k], cls: k >= 3 ? 'good' : k === 2 ? 'acc' : k === 1 ? 'warn' : 'crit' };
+}
+
+/* ---------- charts ---------- */
+function niceTicks(a, b, n) {
+  if (a === b) { a -= 1; b += 1; }
+  const raw = (b - a) / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  const step = (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * p;
+  const out = []; for (let v = Math.floor(a / step) * step; v <= b + step * 0.001; v += step) out.push(+v.toFixed(10));
+  if (out[out.length - 1] < b) out.push(out[out.length - 1] + step);
+  return out;
+}
+function timeTicks(x0, x1) {
+  const span = (x1 - x0) / DAY, out = [];
+  if (span > 75) {
+    const k = span > 700 ? 3 : span > 300 ? 2 : 1; const d = new Date(x0); d.setDate(1); d.setHours(0, 0, 0, 0); d.setMonth(d.getMonth() + 1);
+    while (d.getTime() <= x1) { if (d.getMonth() % k === 0) out.push(d.getTime()); d.setMonth(d.getMonth() + 1); }
+    return { ticks: out, fmt: t => fmtDate(t, span > 400 ? { month: 'short', year: '2-digit' } : { month: 'short' }) };
+  }
+  const step = span > 40 ? 14 : span > 14 ? 7 : span > 6 ? 2 : 1; const d0 = dayStart(x0);
+  for (let t = d0; t <= x1; t += step * DAY) if (t >= x0) out.push(t);
+  return { ticks: out, fmt: t => fmtDate(t) };
+}
+/* series: {name, color, pts:[[x,y,extra]], kind:'line'|'dots'|'bars'|'area', fmt, r(pt)} */
+function plot(el, o) {
+  el.innerHTML = '';
+  const series = o.series.filter(s => s.pts.length);
+  if (!series.length) { el.innerHTML = `<p class="empty">${esc(o.empty || 'Not enough data yet.')}</p>`; return; }
+  const W = Math.max(260, el.clientWidth || 600), H = o.height || 210, m = { l: o.ml || 42, r: 12, t: 10, b: 24 };
+  let x0 = o.xMin ?? Infinity, x1 = o.xMax ?? -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const s of series) for (const p of s.pts) { if (o.xMin == null) x0 = Math.min(x0, p[0]); if (o.xMax == null) x1 = Math.max(x1, p[0]); if (p[1] != null) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } }
+  if (o.zero) y0 = Math.min(0, y0);
+  const floorY = o.zero ? 0 : -Infinity;
+  if (o.yMin != null) y0 = Math.min(y0, o.yMin); if (o.yMax != null) y1 = Math.max(y1, o.yMax);
+  if (x1 === x0) { x0 -= DAY; x1 += DAY; }
+  const padY = (y1 - y0) * 0.08 || 1; const yt = niceTicks(Math.max(floorY, o.zero ? y0 : y0 - padY), y1 + padY, o.yTicks || 4);
+  y0 = yt[0]; y1 = yt[yt.length - 1];
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const sx = x => m.l + (x - x0) / (x1 - x0) * iw;
+  const sy = y => o.invert ? m.t + (y - y0) / (y1 - y0) * ih : m.t + ih - (y - y0) / (y1 - y0) * ih;
+  const yf = o.yFmt || (v => String(v));
+  let g = '';
+  yt.forEach(v => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${esc(yf(v))}</text>`; });
+  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt } : timeTicks(x0, x1);
+  const minGap = 46; let lastX = -1e9;
+  xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
+  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${sy(o.invert ? y1 : y0)}" y2="${sy(o.invert ? y1 : y0)}"/>`;
+  for (const s of series) {
+    if (s.kind === 'bars') {
+      const bw = Math.max(2, (s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length) - 2);
+      for (const p of s.pts) { const x = sx(p[0]) - bw / 2, y = sy(p[1]), yb = sy(Math.max(0, y0)); const h = Math.max(0, yb - y);
+        if (h > 0) g += `<path d="M${x},${yb}V${y + Math.min(3, h)}q0,-3 3,-3h${bw - 6}q3,0 3,3V${yb}Z" fill="${s.color}"/>`; }
+    } else if (s.kind === 'dots') {
+      for (const p of s.pts) g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="${s.r ? s.r(p) : 4}" fill="${s.color}" fill-opacity="${s.op ?? 0.55}" stroke="var(--surface)" stroke-width="1.5"/>`;
+    } else {
+      let d = '', pen = false;
+      for (const p of s.pts) { if (p[1] == null) { pen = false; continue; } d += (pen ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1); pen = true; }
+      if (s.kind === 'area') { const yb = sy(o.invert ? y1 : y0); const pts = s.pts.filter(p => p[1] != null); g += `<path d="${d}L${sx(pts[pts.length - 1][0])},${yb}L${sx(pts[0][0])},${yb}Z" fill="${s.color}" fill-opacity=".12"/>`; }
+      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
+      if (s.end !== false) { const lp = [...s.pts].reverse().find(p => p[1] != null); if (lp) g += `<circle cx="${sx(lp[0])}" cy="${sy(lp[1])}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; }
+    }
+  }
+  if (o.extra) g += o.extra(sx, sy, { x0, x1, y0, y1, W, H, m });
+  const leg = series.filter(s => !s.noLegend);
+  const legend = leg.length > 1 ? `<div class="legend">${leg.map(s => `<span><i class="${s.kind === 'dots' ? 'dot' : ''}" style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || '')}">${g}<line class="xh" id="xh" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><g class="hl"></g><rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div>`;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), xh = svg.querySelector('.xh'), hl = svg.querySelector('.hl');
+  const scatter = series.every(s => s.kind === 'dots');
+  const nearest = (pts, x) => { let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid][0] < x) lo = mid; else hi = mid; } return Math.abs(pts[lo][0] - x) <= Math.abs(pts[hi][0] - x) ? pts[lo] : pts[hi]; };
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), k = W / r.width, px = (ev.clientX - r.left) * k, py = (ev.clientY - r.top) * k;
+    if (px < m.l - 4 || px > W - m.r + 4) return hide();
+    const xv = x0 + (px - m.l) / iw * (x1 - x0);
+    let rows = [], ax = null, dots = '';
+    if (scatter) {
+      let best = null, bd = 1e9; for (const s of series) for (const p of s.pts) { const dd = Math.hypot(sx(p[0]) - px, sy(p[1]) - py); if (dd < bd) { bd = dd; best = [s, p]; } }
+      if (!best || bd > 40) return hide();
+      ax = sx(best[1][0]); rows.push(best[0].tip ? best[0].tip(best[1]) : `<b>${esc(best[0].fmt ? best[0].fmt(best[1][1]) : best[1][1])}</b>`);
+      dots += `<circle cx="${ax}" cy="${sy(best[1][1])}" r="6" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
+    } else {
+      let cands = series.map(s => [s, nearest(s.pts, xv)]);
+      const tx = cands.reduce((b, c) => Math.abs(c[1][0] - xv) < Math.abs(b - xv) ? c[1][0] : b, cands[0][1][0]);
+      ax = sx(tx); const head = o.tipX ? o.tipX(tx) : fmtDate(tx, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      rows.push(`<div style="opacity:.75">${esc(head)}</div>`);
+      for (const [s, p] of cands) {
+        if (s.kind === 'dots' && Math.abs(sx(p[0]) - ax) > 8) continue;
+        if (s.kind === 'bars' && p[0] !== tx) continue;
+        if (p[1] == null) continue;
+        rows.push(`<div><span class="sw" style="background:${s.color}"></span>${esc(s.name)} <b>${esc(s.fmt ? s.fmt(p[1], p) : p[1])}</b></div>`);
+        if (s.kind !== 'bars') dots += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`;
+      }
+      if (rows.length < 2) return hide();
+    }
+    xh.setAttribute('x1', ax); xh.setAttribute('x2', ax); xh.setAttribute('visibility', scatter ? 'hidden' : 'visible'); hl.innerHTML = dots;
+    tip.innerHTML = rows.join(''); tip.hidden = false;
+    const tw = tip.offsetWidth, cw = el.clientWidth, left = ax / k;
+    tip.style.left = Math.max(0, Math.min(cw - tw, left + 12 + tw > cw ? left - tw - 12 : left + 12)) + 'px';
+    tip.style.top = (legend ? el.querySelector('.legend').offsetHeight : 0) + 4 + 'px';
+  };
+  const hide = () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); hl.innerHTML = ''; };
+  svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move); svg.addEventListener('pointerleave', hide);
+}
+
+// ===== APP =====
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+
+const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
+  range: 182, shown: 30, view: 'overview', detail: null, q: '', yr: 'all', sort: 'new', mapMode: 'pace', pending: null, authMode: 'in' };
+
+const VIEWS = [
+  ['overview', 'Overview', '<path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['workouts', 'Workouts', '<path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['trends', 'Trends', '<path d="M3 20h18M5 16l4-5 4 3 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['records', 'Records', '<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['profile', 'Profile', '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+];
+$('#tabs').innerHTML = VIEWS.map(([k, l]) => `<a href="#${k}" data-v="${k}">${l}</a>`).join('');
+$('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${l}</a>`).join('');
+
+/* ---------- compute ---------- */
+function compute() {
+  const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
+  const peaks = runs.map(r => r.hrPeak || 0).filter(x => x > 0);
+  const tanaka = S.age ? 208 - 0.7 * S.age : 190;
+  st.detectedMax = peaks.length ? Math.round(Math.max(...peaks)) : null;
+  S.hrMaxEff = S.hrMax || st.detectedMax || tanaka;
+  S.hrRest = S.hrRest || 55;
+  if (!runs.length) { st.res = []; st.days = []; return; }
+  const last = runs[runs.length - 1].start;
+  st.asOf = Date.now() - last < 14 * DAY ? Date.now() : last;
+  st.res = runs.map(r => analyze(r, S, 45));
+  st.days = buildTimeline(runs, st.res, st.asOf);
+  const ref = st.days[st.days.length - 1].vo2 || 45; let changed = false;
+  runs.forEach((r, i) => { if (!(r.hasHR || r.avgHR)) { st.res[i] = analyze(r, S, ref); changed = true; } });
+  if (changed) st.days = buildTimeline(runs, st.res, st.asOf);
+  st.idx = new Map(runs.map((r, i) => [r.id, i]));
+}
+const dayAt = t => { const d = st.days; if (!d.length) return null; let lo = 0, hi = d.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (d[m].t <= t) lo = m; else hi = m - 1; } return d[lo]; };
+
+/* ---------- session ---------- */
+function setShell(app) { $('#auth').hidden = app; $('#shell').hidden = !app; }
+function loadSample() { const s = makeSample(Date.now()); st.runs = s.runs; st.sample = true; st.S = Object.assign({}, DEFAULT_SETTINGS, s.settings, { units: st.S.units || 'km' }); }
+function enterGuest() { st.user = null; st.guest = true; loadSample(); setShell(true); refresh(); }
+async function enterUser(u) {
+  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {});
+  setStatus('Loading workouts…');
+  try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
+  setShell(true); st.shown = 30; refresh();
+  if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
+  maybeOfferMigration();
+}
+function showAuth(note) {
+  const b = st.backend, local = b.kind === 'local';
+  $('#authNote').hidden = !note; $('#authNote').textContent = note || '';
+  $('#authLocal').hidden = !local; $('#authFire').hidden = local;
+  if (local) {
+    const accts = b.accounts();
+    $('#profilePick').hidden = !accts.length;
+    $('#plist').innerHTML = accts.map(p => `<button type="button" data-id="${esc(p.id)}"><span class="avatar">${esc(initials(p.name))}</span><span><b>${esc(p.name)}</b><span>${esc(p.email || 'Created ' + fmtDate(p.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }))}</span></span></button>`).join('');
+    $$('#plist button').forEach(x => x.onclick = async () => enterUser(await b.signIn({ id: x.dataset.id })));
+    $('#createTitle').textContent = accts.length ? 'Create a new profile' : 'Create your profile';
+  } else setAuthMode(st.authMode);
+  setShell(false); $('#cErr').hidden = $('#aErr').hidden = true;
+  scrollTo(0, 0);
+}
+function setAuthMode(m) {
+  st.authMode = m; const up = m === 'up';
+  $('#tabIn').setAttribute('aria-selected', String(!up)); $('#tabUp').setAttribute('aria-selected', String(up));
+  $('#lName').hidden = !up; $('#aSubmit').textContent = up ? 'Create account' : 'Sign in';
+  $('#aPass').autocomplete = up ? 'new-password' : 'current-password';
+}
+$('#tabIn').onclick = () => setAuthMode('in'); $('#tabUp').onclick = () => setAuthMode('up');
+$('#fCreate').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  try {
+    const rest = parseFloat($('#cRest').value), mx = parseFloat($('#cMax').value);
+    const u = await st.backend.signUp({ name: $('#cName').value, email: $('#cEmail').value, settings: { hrRest: isFinite(rest) ? rest : 55, hrMax: isFinite(mx) ? mx : null, units: st.S.units } });
+    $('#fCreate').reset(); enterUser(u);
+  } catch (e) { $('#cErr').textContent = e.message; $('#cErr').hidden = false; }
+});
+const fireMsg = e => ({ 'auth/invalid-credential': 'Email or password is wrong.', 'auth/wrong-password': 'Email or password is wrong.', 'auth/user-not-found': 'No account with that email. Create one instead.',
+  'auth/email-already-in-use': 'That email already has an account. Sign in instead.', 'auth/weak-password': 'Use at least 6 characters for the password.', 'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
+  'auth/network-request-failed': 'Firebase could not be reached. Check your connection.' }[e.code] || e.message);
+$('#fFire').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('#aErr').hidden = true;
+  try {
+    const email = $('#aEmail').value, password = $('#aPass').value;
+    const u = st.authMode === 'up' ? await st.backend.signUp({ name: $('#aName').value || email.split('@')[0], email, password, settings: { units: st.S.units } }) : await st.backend.signIn({ email, password });
+    enterUser(u);
+  } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; }
+});
+$('#aGoogle').onclick = async () => { try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
+$('#btnGuest').onclick = () => { st.pending = null; enterGuest(); location.hash = '#overview'; };
+async function signOut() { await st.backend.signOut(); st.user = null; closeMenu(); showAuth(); }
+
+/* ---------- account menu ---------- */
+function renderChrome() {
+  const u = st.user, av = $('#avatar');
+  av.textContent = u ? initials(u.name) : '?'; av.classList.toggle('guest', !u);
+  $('#menu').innerHTML = u
+    ? `<div class="who"><b>${esc(u.name)}</b><span>${esc(u.email || 'Local profile')} · ${esc(st.backend.label)}</span></div>
+       <button type="button" role="menuitem" data-a="profile">Profile &amp; settings</button>
+       ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="switch">Switch profile</button>' : ''}
+       <button type="button" role="menuitem" data-a="out">${st.backend.kind === 'local' ? 'Sign out of profile' : 'Sign out'}</button>`
+    : `<div class="who"><b>Guest preview</b><span>Sample athlete, nothing is saved</span></div>
+       <button type="button" role="menuitem" data-a="signin">${st.backend && st.backend.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button>`;
+  $$('#menu button').forEach(b => b.onclick = () => { closeMenu(); const a = b.dataset.a;
+    if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
+  const bn = $('#banner'); const fb = st.backend && st.backend.fallbackError;
+  if (st.sample) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>Guest preview with a sample athlete.</b> Create a profile, then import .fit, .tcx, .gpx, .zip or the activities .csv from Garmin Connect.</span><button type="button" class="primary" id="bnGo">Create profile</button>`; $('#bnGo').onclick = () => showAuth(); }
+  else if (fb) { bn.hidden = false; bn.className = 'banner warn'; bn.innerHTML = `<span class="grow">${esc(fb)}</span>`; }
+  else if (!st.runs.length) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>No workouts yet.</b> Import your Garmin Connect exports to start tracking. Drag files anywhere on the page, or use Import.</span><label class="btn primary" for="file">Import workouts</label>`; }
+  else bn.hidden = true;
+}
+const closeMenu = () => { $('#menu').hidden = true; $('#avatar').setAttribute('aria-expanded', 'false'); };
+$('#avatar').onclick = ev => { ev.stopPropagation(); const m = $('#menu'); m.hidden = !m.hidden; $('#avatar').setAttribute('aria-expanded', String(!m.hidden)); };
+document.addEventListener('click', ev => { if (!$('#menu').hidden && !ev.target.closest('.menu-wrap')) closeMenu(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeMenu(); });
+
+/* ---------- router ---------- */
+function route() {
+  const h = (location.hash || '#overview').slice(1);
+  let v = h, id = null;
+  if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
+  if (!['overview', 'workouts', 'workout', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  st.view = v; st.detail = id;
+  $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
+  const tab = v === 'workout' ? 'workouts' : v;
+  $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  renderView();
+}
+addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
+function renderView() {
+  const v = st.view;
+  if (v === 'overview') renderOverview();
+  else if (v === 'workouts') renderLedger();
+  else if (v === 'workout') renderWorkout(st.detail);
+  else if (v === 'trends') renderTrends();
+  else if (v === 'records') renderRecords();
+  else if (v === 'profile') renderProfile();
+}
+function refresh() { compute(); renderChrome(); route(); }
+
+/* ---------- route glyph & map ---------- */
+const glyphCache = new Map();
+function routeGlyph(r, size = 34, pad = 3) {
+  if (!r.hasGPS) return '';
+  const key = r.id + ':' + size; if (glyphCache.has(key)) return glyphCache.get(key);
+  const k = Math.cos(r.lat0 * Math.PI / 180), step = Math.max(1, Math.floor(r.n / 120)), xs = [], ys = [];
+  for (let i = 0; i < r.n; i += step) if (!isNaN(r.dla[i])) { xs.push(r.dlo[i] * k); ys.push(-r.dla[i]); }
+  if (xs.length < 2) return '';
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), s = (size - 2 * pad) / Math.max(x1 - x0, y1 - y0, 1e-9);
+  const ox = (size - (x1 - x0) * s) / 2, oy = (size - (y1 - y0) * s) / 2;
+  const d = xs.map((x, i) => (i ? 'L' : 'M') + ((x - x0) * s + ox).toFixed(1) + ',' + ((ys[i] - y0) * s + oy).toFixed(1)).join('');
+  glyphCache.set(key, d); return d;
+}
+const wx = (lo, z) => (lo + 180) / 360 * 256 * 2 ** z;
+const wy = (la, z) => { const s = Math.sin(la * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256 * 2 ** z; };
+function mapView(el, r, mode) {
+  const n = r.n, step = Math.max(1, Math.floor(n / 1800)), I = [];
+  for (let i = 0; i < n; i += step) if (!isNaN(r.dla[i])) I.push(i);
+  if (I.length < 2) { el.outerHTML = '<p class="empty">No GPS positions in this file.</p>'; return; }
+  const LA = i => r.lat0 + r.dla[i], LO = i => r.lon0 + r.dlo[i];
+  // values to colour by
+  const sp = new Float32Array(n); for (let i = 0; i < n; i++) { const a = Math.max(0, i - 5), b = Math.min(n - 1, i + 5); sp[i] = b > a ? (r.d[b] - r.d[a]) / ((b - a) * DT) : 0; }
+  const val = i => mode === 'hr' ? (r.hr[i] > 0 ? r.hr[i] : NaN) : mode === 'elev' ? r.alt[i] : (r.mv[i] && sp[i] > 1 ? sp[i] : NaN);
+  const vs = I.map(val).filter(x => !isNaN(x)).sort((a, b) => a - b);
+  const lo = vs[Math.floor(vs.length * 0.05)] ?? 0, hi = vs[Math.floor(vs.length * 0.95)] ?? 1;
+  const ramp = ['--z1', '--z2', '--z3', '--z4', '--z5'].map(css);
+  const bin = i => { const v = val(i); if (isNaN(v) || hi <= lo) return 2; return clamp(Math.floor((v - lo) / (hi - lo) * 5), 0, 4); };
+  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180; for (const i of I) { const a = LA(i), o = LO(i); la0 = Math.min(la0, a); la1 = Math.max(la1, a); lo0 = Math.min(lo0, o); lo1 = Math.max(lo1, o); }
+  el.classList.add('no-tiles');
+  el.innerHTML = `<div class="tiles"></div><svg aria-label="Route map"></svg><div class="ctrl"><button type="button" data-z="1" aria-label="Zoom in">+</button><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="0" aria-label="Fit route" style="font-size:13px">⤢</button></div><div class="attr" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div><div class="tip" hidden></div>`;
+  const tilesEl = el.querySelector('.tiles'), svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  let W = el.clientWidth, H = el.clientHeight, z, cx, cy;
+  const fit = () => { W = el.clientWidth; H = el.clientHeight; for (z = 18; z > 2; z--) if (wx(lo1, z) - wx(lo0, z) <= W - 60 && wy(la0, z) - wy(la1, z) <= H - 60) break; cx = (wx(lo0, z) + wx(lo1, z)) / 2; cy = (wy(la0, z) + wy(la1, z)) / 2; };
+  const unit = U(); let P = [];
+  const draw = () => {
+    const x0 = cx - W / 2, y0 = cy - H / 2, N = 2 ** z; let im = '';
+    for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W) / 256); tx++) for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H) / 256); ty++) {
+      if (ty < 0 || ty >= N) continue; const wxp = ((tx % N) + N) % N;
+      im += `<img alt="" draggable="false" src="https://tile.openstreetmap.org/${z}/${wxp}/${ty}.png" style="left:${tx * 256 - x0}px;top:${ty * 256 - y0}px">`;
+    }
+    tilesEl.innerHTML = im;
+    tilesEl.querySelectorAll('img').forEach(img => { img.onload = () => { el.classList.remove('no-tiles'); el.querySelector('.attr').hidden = false; }; img.onerror = () => img.remove(); });
+    P = I.map(i => [wx(LO(i), z) - x0, wy(LA(i), z) - y0, i]);
+    let halo = '', segs = '', cur = -1, d = '';
+    for (let k = 0; k < P.length; k++) {
+      const [x, y, i] = P[k], b = bin(i), gap = k && !r.mv[i] && !r.mv[P[k - 1][2]];
+      if (b !== cur || gap) { if (d) segs += `<path d="${d}" stroke="${ramp[cur]}"/>`; d = k && !gap ? `M${P[k - 1][0].toFixed(1)},${P[k - 1][1].toFixed(1)}` : ''; cur = b; }
+      d += (d ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+    }
+    if (d) segs += `<path d="${d}" stroke="${ramp[cur]}"/>`;
+    halo = `<path d="${P.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('')}" stroke="var(--surface)" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
+    let marks = ''; const total = r.d[n - 1] - r.d[0], every = total / unit > 30 ? 5 : 1;
+    if (z >= 13) for (let km = every; km * unit < total; km += every) { const p = P.find(q => r.d[q[2]] - r.d[0] >= km * unit); if (p) marks += `<g transform="translate(${p[0]},${p[1]})"><circle r="8" fill="var(--surface)" stroke="var(--ink2)" stroke-width="1.2"/><text text-anchor="middle" y="3.5" style="font:600 9px var(--mono);fill:var(--ink)">${km}</text></g>`; }
+    const s = P[0], e = P[P.length - 1];
+    svg.innerHTML = halo + `<g fill="none" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${segs}</g>` + marks +
+      `<circle cx="${e[0]}" cy="${e[1]}" r="7" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="7" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/><g class="hl"></g>`;
+  };
+  fit(); draw();
+  // interactions: drag to pan, buttons / double-click to zoom, hover for details
+  let drag = null;
+  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.setPointerCapture(ev.pointerId); el.style.cursor = 'grabbing'; });
+  el.addEventListener('pointerup', () => { drag = null; el.style.cursor = ''; });
+  el.addEventListener('pointermove', ev => {
+    if (drag) { cx = drag.cx - (ev.clientX - drag.x); cy = drag.cy - (ev.clientY - drag.y); draw(); tip.hidden = true; return; }
+    const rc = el.getBoundingClientRect(), px = ev.clientX - rc.left, py = ev.clientY - rc.top;
+    let best = null, bd = 26; for (const p of P) { const dd = Math.hypot(p[0] - px, p[1] - py); if (dd < bd) { bd = dd; best = p; } }
+    const hl = svg.querySelector('.hl'); if (!best) { tip.hidden = true; hl.innerHTML = ''; return; }
+    const i = best[2]; hl.innerHTML = `<circle cx="${best[0]}" cy="${best[1]}" r="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`;
+    tip.innerHTML = `<b>${fmtDist(r.d[i] - r.d[0])} ${uName()}</b> · ${fmtDur(i * DT)}<br>${sp[i] > 1 ? fmtPace(1000 / sp[i]) + '/' + uName() : '–'}${r.hr[i] > 0 ? ' · ' + Math.round(r.hr[i]) + ' bpm' : ''}${!isNaN(r.alt[i]) ? ' · ' + Math.round(r.alt[i]) + ' m' : ''}`;
+    tip.hidden = false; tip.style.left = Math.min(W - tip.offsetWidth - 4, best[0] + 12) + 'px'; tip.style.top = Math.max(4, best[1] - tip.offsetHeight - 10) + 'px';
+  });
+  el.addEventListener('pointerleave', () => { tip.hidden = true; });
+  const zoom = (dz, px = W / 2, py = H / 2) => { const nz = clamp(z + dz, 2, 18); if (nz === z) return; const f = 2 ** (nz - z); cx = (cx - W / 2 + px) * f - px + W / 2; cy = (cy - H / 2 + py) * f - py + H / 2; z = nz; draw(); };
+  el.querySelectorAll('.ctrl button').forEach(b => b.onclick = () => { const dz = +b.dataset.z; if (dz) zoom(dz); else { fit(); draw(); } });
+  el.addEventListener('dblclick', ev => { const rc = el.getBoundingClientRect(); zoom(1, ev.clientX - rc.left, ev.clientY - rc.top); });
+  return { lo, hi };
+}
+
+/* ---------- overview ---------- */
+function renderOverview() {
+  const u = st.user;
+  $('#hello').textContent = u ? `Hi, ${u.name.split(' ')[0]}` : 'Sample athlete';
+  if (!st.runs.length) { ['#tVo2', '#tEnd', '#tLoad', '#tRace'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see this</p>'); $('#latest').innerHTML = '<p class="empty">No workouts yet</p>'; ['#oVo2', '#oWeek', '#breakdown'].forEach(s => $(s).innerHTML = ''); $('#asof').textContent = ''; return; }
+  const days = st.days, D = days[days.length - 1], ago = dayAt(D.t - 28 * DAY);
+  $('#asof').textContent = (Date.now() - st.asOf > DAY ? 'As of your last workout, ' : 'Today, ') + fmtDate(st.asOf, { day: 'numeric', month: 'long', year: 'numeric' });
+  if (D.vo2) {
+    const cat = vo2Category(D.vo2), dv = ago && ago.vo2 && ago !== D ? D.vo2 - ago.vo2 : null;
+    $('#tVo2').innerHTML = `<span class="label">VO₂max</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
+      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
+      <div class="sub">${dv != null ? `<span class="${dv >= 0.05 ? 'delta-up' : dv <= -0.05 ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(1)}</span> in 4 weeks</span><br>` : ''}
+      Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+  } else $('#tVo2').innerHTML = `<span class="label">VO₂max</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`;
+  if (D.end) {
+    const tier = tierOf(D.end), pos = clamp((D.end - 2000) / 11000, 0, 1) * 100, de = ago && ago.end && ago !== D ? D.end - ago.end : null;
+    $('#tEnd').innerHTML = `<span class="label">Endurance score</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tier}</span>
+      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
+      ${de != null ? `<div class="sub"><span class="${de > 20 ? 'delta-up' : de < -20 ? 'delta-down' : ''}">${de >= 0 ? '▲' : '▼'} <span class="num">${f0(Math.abs(de))}</span> in 4 weeks</span></div>` : ''}`;
+  } else $('#tEnd').innerHTML = `<span class="label">Endurance score</span><p class="sub">Appears once a VO₂max estimate exists.</p>`;
+  const tsb = D.tsb, state = tsb > 5 ? ['Fresh', 'good'] : tsb > -10 ? ['Balanced', 'acc'] : tsb > -25 ? ['Building', 'warn'] : ['Overreaching', 'crit'];
+  $('#tLoad').innerHTML = `<span class="label">Training status</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${state[1]}"><i></i>${state[0]}</span>
+    <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
+  if (D.vo2) {
+    const k = Math.sqrt(fVol(D.H) * gLong(D.L));
+    $('#tRace').innerHTML = `<span class="label">Race predictions</span><dl class="kv">${RACES.map(([dist, name, pen]) => { const t = predictTime(dist, D.vo2) * (1 + pen * (1 - k)); return `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`; }).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
+  } else $('#tRace').innerHTML = `<span class="label">Race predictions</span><p class="sub">Appear once a VO₂max estimate exists.</p>`;
+  // latest workout
+  const li = st.runs.length - 1, r = st.runs[li], e = st.res[li], g = routeGlyph(r, 300, 18);
+  $('#latest').innerHTML = `<div class="ch"><h3>Latest workout</h3><a href="#w-${esc(r.id)}" class="sm">Open details →</a></div>
+    <div class="latest">${g ? `<a class="mini-map" href="#w-${esc(r.id)}" aria-label="Open route"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"><path d="${g}" fill="none" stroke="var(--surface)" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg></a>` : ''}
+    <div><p style="margin:0;font-weight:700;font-size:18px">${esc(r.name)}</p><p class="muted sm" style="margin-bottom:12px">${new Date(r.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+    <dl class="kv"><dt>Distance</dt><dd>${fmtDist(e.dist)} ${uName()}</dd><dt>Time</dt><dd>${fmtDur(e.mov)}</dd><dt>Pace</dt><dd>${fmtPace(e.pace)}/${uName()}</dd><dt>Avg HR</dt><dd>${e.avgHR ? Math.round(e.avgHR) + ' bpm' : '–'}</dd><dt>VO₂max est.</dt><dd>${e.est ? f1(e.est) : '–'}</dd><dt>Load</dt><dd>${f0(e.load)}</dd></dl></div></div>`;
+  const xMax = D.t, xMin = Math.max(days[0].t, xMax - 182 * DAY), inR = t => t >= xMin - DAY && t <= xMax + DAY;
+  plot($('#oVo2'), { label: 'VO2max, last 6 months', xMin, xMax, height: 200, series: [{ name: 'VO₂max', kind: 'area', color: css('--accent'), pts: days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
+  const wpts = weekly().filter(p => p[0] >= xMax - 16 * 7 * DAY);
+  $('#oWkCap').textContent = `Last 16 weeks, ${uName()}`;
+  plot($('#oWeek'), { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMin, xMax: xMax + 3 * DAY, zero: true, height: 200, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
+  renderBreakdown(D);
+}
+function weekly() {
+  const wk = new Map();
+  st.runs.forEach((r, i) => { const d = new Date(dayStart(r.start)); const k = d.getTime() - ((d.getDay() + 6) % 7) * DAY; const w = wk.get(k) || { d: 0, n: 0, t: 0 }; w.d += st.res[i].dist || 0; w.t += st.res[i].mov || 0; w.n++; wk.set(k, w); });
+  return [...wk.entries()].sort((a, b) => a[0] - b[0]).map(([k, w]) => [k + 3.5 * DAY, w.d / U(), w.n, w.t]);
+}
+function renderBreakdown(D) {
+  if (!D || !D.vo2) { $('#breakdown').innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }
+  const items = [
+    ['Aerobic ceiling', `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
+    ['Training volume', `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
+    ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
+    ['Durability', D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
+  ];
+  $('#breakdown').innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
+}
+
+/* ---------- workouts ledger ---------- */
+function renderLedger() {
+  const years = [...new Set(st.runs.map(r => new Date(r.start).getFullYear()))].sort((a, b) => b - a);
+  $('#yr').innerHTML = `<option value="all">All years</option>` + years.map(y => `<option value="${y}">${y}</option>`).join(''); $('#yr').value = years.includes(+st.yr) ? st.yr : 'all';
+  $('#q').value = st.q; $('#sort').value = st.sort;
+  const q = st.q.trim().toLowerCase();
+  let idx = st.runs.map((r, i) => i).filter(i => (st.yr === 'all' || new Date(st.runs[i].start).getFullYear() === +st.yr) && (!q || st.runs[i].name.toLowerCase().includes(q)));
+  const by = { new: (a, b) => st.runs[b].start - st.runs[a].start, old: (a, b) => st.runs[a].start - st.runs[b].start, dist: (a, b) => st.res[b].dist - st.res[a].dist, vo2: (a, b) => (st.res[b].est || 0) - (st.res[a].est || 0) };
+  idx.sort(by[st.sort]);
+  const totD = idx.reduce((s, i) => s + (st.res[i].dist || 0), 0), totT = idx.reduce((s, i) => s + (st.res[i].mov || 0), 0);
+  $('#runCount').textContent = `${idx.length} workouts · ${fmtDist(totD)} ${uName()} · ${fmtDur(totT)}`;
+  const head = `<div class="ledger-head"><span></span><span>Date</span><span>Workout</span><span>Dist ${uName()}</span><span>Time</span><span>Pace</span><span>Avg HR</span><span>VO₂ est.</span><span>Load</span></div>`;
+  const rows = idx.slice(0, st.shown).map(i => { const r = st.runs[i], e = st.res[i], g = routeGlyph(r);
+    return `<a class="row" href="#w-${esc(r.id)}"><span class="glyph">${g ? `<svg viewBox="0 0 34 34"><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 34 34"><path d="M7 21h5l3-8 4 10 2-5h6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}</span>
+      <span class="d">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}<span>${new Date(r.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span></span>
+      <span class="nm">${esc(r.name)}${r.summary ? '<small>CSV</small>' : ''}</span>
+      <span class="m"><em>Dist</em>${fmtDist(e.dist)}</span><span class="m"><em>Time</em>${fmtDur(e.mov)}</span><span class="m"><em>Pace</em>${fmtPace(e.pace)}</span>
+      <span class="m xs"><em>Avg HR</em>${e.avgHR ? Math.round(e.avgHR) : '–'}</span><span class="m xs"><em>VO₂ est.</em>${e.est ? f1(e.est) : '–'}</span><span class="m xs"><em>Load</em>${f0(e.load)}</span></a>`; }).join('');
+  $('#ledger').innerHTML = idx.length ? head + rows + (idx.length > st.shown ? `<button type="button" class="more" id="more">Show ${Math.min(30, idx.length - st.shown)} more</button>` : '') : '<p class="empty">No workouts match.</p>';
+  const mo = $('#more'); if (mo) mo.onclick = () => { st.shown += 30; renderLedger(); };
+}
+$('#q').addEventListener('input', ev => { st.q = ev.target.value; st.shown = 30; renderLedger(); });
+$('#yr').addEventListener('change', ev => { st.yr = ev.target.value; st.shown = 30; renderLedger(); });
+$('#sort').addEventListener('change', ev => { st.sort = ev.target.value; renderLedger(); });
+
+/* ---------- workout detail ---------- */
+function renderWorkout(id) {
+  const box = $('#v-workout'), i = st.idx ? st.idx.get(id) : undefined;
+  if (i == null) { box.innerHTML = `<a class="btn back" href="#workouts">← Workouts</a><p class="empty">This workout isn’t in the current profile.</p>`; return; }
+  const r = st.runs[i], e = st.res[i], S = st.S, D = dayAt(r.start);
+  const stat = (l, v, u = '') => `<div class="stat"><span>${l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`;
+  const when = new Date(r.start).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
+    <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
+    <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
+    ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
+    <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
+    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName())}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm')}
+    ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–')}
+    ${stat('Load (TRIMP)', f0(e.load))}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat')}
+    ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
+  if (r.summary) h += `<p class="sub" style="margin-top:12px">This workout came from the activity list CSV, so only totals are known. Import its .fit file for the map, charts and splits.</p>`;
+  else {
+    h += `<div class="wd-grid">
+      <div class="card span2"><div class="map-bar"><h3>Route</h3>${r.hasGPS ? `<div class="seg" id="mapMode" role="group" aria-label="Colour route by"><button type="button" data-m="pace">Pace</button><button type="button" data-m="hr">Heart rate</button><button type="button" data-m="elev">Elevation</button></div>` : ''}</div>
+        ${r.hasGPS ? `<div class="map" id="map"></div><div class="map-bar" style="margin:10px 0 0"><span class="ramp" id="ramp"></span><a class="sm" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${(r.lat0 + r.dla[0]).toFixed(5)}&mlon=${(r.lon0 + r.dlo[0]).toFixed(5)}#map=14/${(r.lat0 + r.dla[0]).toFixed(5)}/${(r.lon0 + r.dlo[0]).toFixed(5)}">Open start point in OpenStreetMap ↗</a></div>`
+          : `<p class="empty">${r.ver >= 2 ? 'No GPS in this file (treadmill or indoor run).' : 'Imported before maps were supported. Import the file again to add its route.'}</p>`}</div>
+      <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
+      <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
+      ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
+      <div class="card chart-card"><h3>How this run’s VO₂max was found</h3><p class="cap">Each dot is a steady 60-s window. The line runs from your resting point to max HR; where it ends is the estimate.</p><div class="plot" id="dFit"></div></div>
+      <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
+      <div class="card"><div class="ch"><h3>Time in heart-rate zones</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
+      ${e.efforts.length ? `<div class="card"><div class="ch"><h3>Best efforts in this run</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
+    </div>`;
+  }
+  box.innerHTML = h;
+  const del = $('#delW'); if (del) del.onclick = async () => {
+    if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Tap again to delete'; return; }
+    try { await st.backend.deleteWorkout(r.id); st.runs = st.runs.filter(x => x.id !== r.id); glyphCache.clear(); setStatus(`Deleted “${r.name}”.`); location.hash = '#workouts'; compute(); renderChrome(); }
+    catch (err) { setStatus('Could not delete: ' + err.message); }
+  };
+  if (r.summary) return;
+  requestAnimationFrame(() => drawWorkout(r, e, S));
+}
+function drawWorkout(r, e, S) {
+  if (r.hasGPS) {
+    const syncMode = () => $$('#mapMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === st.mapMode)));
+    const paint = () => { const m = $('#map'); if (!m) return; const fresh = m.cloneNode(false); m.replaceWith(fresh); const rg = mapView(fresh, r, st.mapMode);
+      const lab = { pace: ['slower', 'faster', v => fmtPace(1000 / v)], hr: ['lower', 'higher', v => Math.round(v) + ' bpm'], elev: ['lower', 'higher', v => Math.round(v) + ' m'] }[st.mapMode];
+      if (rg) $('#ramp').innerHTML = `<span>${lab[0]} ${lab[2](rg.lo)}</span><i style="background:linear-gradient(90deg,var(--z1),var(--z2),var(--z3),var(--z4),var(--z5))"></i><span>${lab[2](rg.hi)} ${lab[1]}</span>`; };
+    $$('#mapMode button').forEach(b => b.onclick = () => { st.mapMode = b.dataset.m; syncMode(); paint(); });
+    syncMode(); paint();
+  }
+  const n = r.n, step = Math.max(1, Math.ceil(n / 500)), sp = smooth(Array.from(r.d, (x, i) => i ? (x - r.d[i - 1]) / DT : 0), 15), hrS = smooth(r.hr, 5);
+  const pace = [], hr = [], alt = []; const altS = r.hasAlt ? smooth(r.alt, 9) : null;
+  for (let i = 0; i < n; i += step) { const t = i * DT / 60; pace.push([t, r.mv[i] && sp[i] > 1.2 ? 1000 / sp[i] : null]); hr.push([t, hrS[i] > 0 ? hrS[i] : null]); if (altS) alt.push([t, altS[i]]); }
+  const tf = v => fmtDur(v * 60), pv = pace.filter(p => p[1] != null).map(p => p[1]).sort((a, b) => a - b);
+  const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
+  const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
+  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+  const hrr = q => S.hrRest + q * (S.hrMaxEff - S.hrRest);
+  plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
+    empty: 'No heart-rate data in this file.',
+    extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
+  if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }], yFmt: v => Math.round(v) }));
+  if (e.fit && e.windows.length) {
+    const a = e.fit.a, b = e.fit.b;
+    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est + 3, height: 220, label: 'Heart rate versus oxygen cost',
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--accent'), pts: e.windows.map(w => [w[0], w[1], w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ml/kg/min` }],
+      yFmt: v => v.toFixed(0),
+      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(a + b * S.hrRest)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="${sx(S.hrRest)}" cy="${sy(3.5)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(3.5) - 6}">rest ${S.hrRest}</text>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end" style="font:600 13px var(--mono);fill:var(--ink)">${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
+  } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
+  const sp2 = splitsOf(r, U());
+  if (sp2.length) {
+    const ps = sp2.map(s => s.sec / (s.len / 1000)), pmin = Math.min(...ps), pmax = Math.max(...ps);
+    $('#dSplits').innerHTML = `<table class="tb"><thead><tr><th>${uName()}</th><th class="n">Pace</th><th class="n">GAP</th><th class="n">HR</th><th class="n">Elev</th><th class="n">Cad</th></tr></thead><tbody>${sp2.map((s, k) => {
+      const p = s.sec / (s.len / 1000), w = pmax > pmin ? 35 + 65 * (pmax - p) / (pmax - pmin) : 70;
+      return `<tr><td>${s.len < U() * 0.99 ? (s.len / U()).toFixed(2) : k + 1}</td><td class="n barcell"><i style="width:${w}%"></i><span>${fmtPace(p)}</span></td><td class="n">${fmtPace(s.gap / (s.len / 1000))}</td><td class="n">${s.hr ? Math.round(s.hr) : '–'}</td><td class="n">${s.elev != null ? (s.elev >= 0 ? '+' : '') + Math.round(s.elev) : '–'}</td><td class="n">${s.cad ? Math.round(s.cad) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+  } else $('#dSplits').innerHTML = '<p class="empty">Too short for splits.</p>';
+  if (e.zones) {
+    const tot = e.zones.reduce((a, b) => a + b, 0) || 1, lab = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO₂max'], lim = ['<60%', '60–70%', '70–80%', '80–90%', '>90%'];
+    $('#dZones').innerHTML = e.zones.map((z, k) => `<div class="bar-row"><span>${lab[k]} <span class="sub">${lim[k]}${k ? ' · ' + Math.round(hrr([0, 0.6, 0.7, 0.8, 0.9][k])) + '+ bpm' : ''}</span></span><span class="v">${fmtDur(z)} · ${Math.round(z / tot * 100)}%</span><div class="track"><i style="width:${Math.max(1, z / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('');
+  } else $('#dZones').innerHTML = '<p class="empty">No heart-rate data.</p>';
+  if ($('#dEff')) $('#dEff').innerHTML = effTable(e.efforts.map(x => ({ e: x, r })), false);
+}
+function effTable(rows, withRun = true) {
+  return `<table class="tb"><thead><tr><th>Distance</th><th class="n">Time</th><th class="n">Pace</th><th class="n">Avg HR</th><th class="n">VDOT</th>${withRun ? '<th>Workout</th>' : ''}</tr></thead><tbody>${rows.map(({ e, r }) =>
+    `<tr><td>${e.label}</td><td class="n">${fmtDur(e.sec)}</td><td class="n">${fmtPace(e.sec / (e.D / 1000))}</td><td class="n">${e.hr ? Math.round(e.hr) : '–'}</td><td class="n">${e.vdot ? f1(e.vdot) : '–'}</td>${withRun ? `<td><a href="#w-${esc(r.id)}">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}</a></td>` : ''}</tr>`).join('')}</tbody></table>`;
+}
+
+/* ---------- trends ---------- */
+function renderTrends() {
+  const days = st.days;
+  if (!days.length) { ['#cVo2', '#cEnd', '#cLoad', '#cWeek', '#cEf', '#cDec'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see trends.</p>'); $('#monthly').innerHTML = ''; return; }
+  const xMax = days[days.length - 1].t, xMin = st.range ? Math.max(days[0].t, xMax - st.range * DAY) : days[0].t;
+  const inR = t => t >= xMin - DAY && t <= xMax + DAY, dd = days.filter(d => inR(d.t));
+  const runPts = [], efPts = [], decPts = [];
+  st.runs.forEach((r, i) => { const e = st.res[i]; if (!inR(r.start)) return;
+    if (e.est) runPts.push([r.start, e.est, e.conf, r.name]);
+    if (e.ef && !r.summary) efPts.push([r.start, e.ef, 0, r.name]);
+    if (e.dec != null) decPts.push([r.start, clamp(e.dec, -5, 25), Math.min(1, e.mov / 7200), r.name]); });
+  const roll = pts => { const out = []; for (const p of pts) { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); out.push([p[0], w[w.length >> 1]]); } return out; };
+  plot($('#cVo2'), { label: 'VO2max over time', xMin, xMax, series: [
+    { name: 'Run estimate', kind: 'dots', color: css('--accent'), pts: runPts, r: p => 3 + 3 * p[2], op: 0.35, fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
+    { name: 'Blended VO₂max', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
+  plot($('#cEnd'), { label: 'Endurance score over time', xMin, xMax, series: [{ name: 'Endurance score', kind: 'area', color: css('--accent'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }], yFmt: v => v >= 1000 ? (v / 1000) + 'k' : v,
+    extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
+  plot($('#cLoad'), { label: 'Fitness and fatigue', xMin, xMax, zero: true, series: [
+    { name: 'Fitness (42-day)', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
+    { name: 'Fatigue (7-day)', kind: 'line', color: css('--s2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+  $('#capWeek').textContent = `Total running distance per week, ${uName()}.`;
+  plot($('#cWeek'), { label: 'Weekly distance', xMin, xMax: xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: weekly().filter(p => inR(p[0])), fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
+  plot($('#cEf'), { label: 'Aerobic efficiency', xMin, xMax, empty: 'Needs runs with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--accent'), pts: efPts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
+    { name: '28-day median', kind: 'line', color: css('--accent'), w: 2.5, pts: roll(efPts), fmt: v => v.toFixed(2) }], yFmt: v => v.toFixed(2) });
+  plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, empty: 'Needs runs of 40+ minutes with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--s2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: v => v + '%',
+    extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5%</text>` : '' });
+  // monthly
+  const mon = new Map();
+  st.runs.forEach((r, i) => { const dt = new Date(r.start), k = dt.getFullYear() * 12 + dt.getMonth(); const m = mon.get(k) || { n: 0, d: 0, t: 0, hs: 0, hc: 0, l: 0 }; const e = st.res[i];
+    m.n++; m.d += e.dist || 0; m.t += e.mov || 0; m.l += e.load || 0; if (e.avgHR) { m.hs += e.avgHR * e.mov; m.hc += e.mov; } mon.set(k, m); });
+  const ks = [...mon.keys()].sort((a, b) => b - a), dmax = Math.max(...ks.map(k => mon.get(k).d));
+  $('#monthly').innerHTML = `<table class="tb"><thead><tr><th>Month</th><th class="n">Runs</th><th class="n">Distance ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th><th class="n">Load</th><th class="n">VO₂max</th><th class="n">Endurance</th></tr></thead><tbody>${ks.map(k => {
+    const m = mon.get(k), y = Math.floor(k / 12), mo = k % 12, endT = Math.min(new Date(y, mo + 1, 0).getTime(), st.asOf), D = dayAt(endT);
+    return `<tr><td>${new Date(y, mo, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</td><td class="n">${m.n}</td><td class="n barcell"><i style="width:${m.d / dmax * 100}%"></i><span>${fmtDist(m.d)}</span></td><td class="n">${fmtDur(m.t)}</td><td class="n">${m.hc ? Math.round(m.hs / m.hc) : '–'}</td><td class="n">${f0(m.l)}</td><td class="n">${D && D.vo2 ? f1(D.vo2) : '–'}</td><td class="n">${D && D.end ? f0(D.end) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+}
+function syncRange() { $$('#range button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.d === st.range))); }
+$$('#range button').forEach(b => b.onclick = () => { st.range = +b.dataset.d; lsSet('pp-range', st.range); syncRange(); renderTrends(); });
+
+/* ---------- records ---------- */
+function renderRecords() {
+  if (!st.runs.length) { $('#recTop').innerHTML = '<p class="empty">Import workouts to see records.</p>'; $('#recBest').innerHTML = $('#recProg').innerHTML = ''; return; }
+  const best = {}, prog = [];
+  st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) { if (e.label === 'Run') continue; const b = best[e.label]; if (!b || e.sec < b.e.sec) { if (b) prog.push({ e, r, prev: b.e.sec }); else prog.push({ e, r, prev: null }); best[e.label] = { e, r }; } } });
+  let longest = 0, mostUp = 0, totD = 0, totT = 0; st.res.forEach((e, i) => { if (e.dist > st.res[longest].dist) longest = i; if ((e.ascent || 0) > (st.res[mostUp].ascent || 0)) mostUp = i; totD += e.dist || 0; totT += e.mov || 0; });
+  const wk = weekly(), bw = wk.reduce((b, w) => w[1] > b[1] ? w : b, wk[0]);
+  let vmax = null, emax = null; for (const d of st.days) { if (d.vo2 && (!vmax || d.vo2 > vmax.vo2)) vmax = d; if (d.end && (!emax || d.end > emax.end)) emax = d; }
+  const card = (l, v, u, p, href) => `<div class="card rec"><span class="label">${l}</span><div class="val">${v}<small>${u}</small></div><p>${href ? `<a href="${href}">${p}</a>` : p}</p></div>`;
+  const R = i => st.runs[i];
+  $('#recTop').innerHTML =
+    card('Highest VO₂max', vmax ? f1(vmax.vo2) : '–', 'ml/kg/min', vmax ? fmtDate(vmax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Needs heart-rate data') +
+    card('Best endurance score', emax ? f0(emax.end) : '–', emax ? tierOf(emax.end) : '', emax ? fmtDate(emax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : '') +
+    card('Longest run', fmtDist(st.res[longest].dist), uName(), `${esc(R(longest).name)} · ${fmtDate(R(longest).start, { day: 'numeric', month: 'short', year: 'numeric' })}`, '#w-' + R(longest).id) +
+    card('Biggest week', bw ? bw[1].toFixed(1) : '–', uName(), bw ? `Week of ${fmtDate(bw[0] - 3.5 * DAY, { day: 'numeric', month: 'short', year: 'numeric' })} · ${bw[2]} runs` : '') +
+    card('Most climbing', st.res[mostUp].ascent ? Math.round(st.res[mostUp].ascent) : '–', 'm', `${esc(R(mostUp).name)}`, '#w-' + R(mostUp).id) +
+    card('All time', fmtDist(totD), uName(), `${st.runs.length} workouts · ${fmtDur(totT)} since ${fmtDate(st.runs[0].start, { month: 'short', year: 'numeric' })}`);
+  const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
+  $('#recBest').innerHTML = rows.length ? effTable(rows) : '<p class="empty">No efforts found.</p>';
+  $('#recProg').innerHTML = prog.length ? `<table class="tb"><thead><tr><th>Date</th><th>Distance</th><th class="n">Time</th><th class="n">Improved by</th></tr></thead><tbody>${prog.slice().reverse().slice(0, 40).map(({ e, r, prev }) =>
+    `<tr><td><a href="#w-${esc(r.id)}">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}</a></td><td>${e.label}</td><td class="n">${fmtDur(e.sec)}</td><td class="n">${prev ? '−' + fmtDur(prev - e.sec) : 'first'}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No efforts yet.</p>';
+}
+
+/* ---------- profile ---------- */
+function renderProfile() {
+  const u = st.user, b = st.backend;
+  const totD = st.res.reduce((s, e) => s + (e.dist || 0), 0);
+  $('#pCard').innerHTML = u ? `<div class="pc-head"><span class="avatar">${esc(initials(u.name))}</span><div><h3>${esc(u.name)}</h3><p>${esc(u.email || 'No email')} · ${esc(b.label)}</p></div></div>
+      <div class="pc-stats"><div><b>${st.runs.length}</b><span>workouts</span></div><div><b>${fmtDist(totD)}</b><span>${uName()} total</span></div><div><b>${st.runs.length ? fmtDate(st.runs[0].start, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div>
+      <form id="pEdit" class="form1" hidden><label for="pName">Name<input id="pName" required value="${esc(u.name)}"></label>${b.kind === 'local' ? `<label for="pEmail">Email<input id="pEmail" type="email" value="${esc(u.email || '')}"></label>` : ''}<div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="pCancel">Cancel</button></div></form>
+      <div class="btns" id="pBtns"><button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
+    : `<div class="pc-head"><span class="avatar guest">?</span><div><h3>Guest preview</h3><p>You’re viewing a sample athlete. Nothing is saved.</p></div></div>
+      <div class="btns" style="margin-top:16px"><button type="button" class="primary" id="pCreate">${b && b.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button></div>`;
+  if (u) {
+    $('#pEditB').onclick = () => { $('#pEdit').hidden = false; $('#pBtns').hidden = true; $('#pName').focus(); };
+    $('#pCancel').onclick = () => { $('#pEdit').hidden = true; $('#pBtns').hidden = false; };
+    $('#pEdit').onsubmit = async ev => { ev.preventDefault(); const patch = { name: $('#pName').value.trim() || u.name }; if ($('#pEmail')) patch.email = $('#pEmail').value.trim(); st.user = await b.updateProfile(patch); renderChrome(); renderProfile(); };
+    if ($('#pSwitch')) $('#pSwitch').onclick = () => showAuth();
+    $('#pOut').onclick = signOut;
+  } else $('#pCreate').onclick = () => showAuth();
+  // settings
+  const S = st.S;
+  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
+  $('#hrMaxHint').textContent = st.detectedMax ? `Empty = ${st.detectedMax} bpm, the highest 30-s average in your runs.` : 'Empty = detect from your runs.';
+  $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
+  renderStorage(); renderDataCard();
+}
+$('#setForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : null; };
+  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), units: $('#fUnits').value };
+  Object.assign(st.S, settings);
+  if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
+  glyphCache.clear(); compute(); renderChrome(); renderProfile();
+});
+function parseConfig(txt) {
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('Paste the firebaseConfig object, including the braces.');
+  const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
+  const c = JSON.parse(json); if (!c.apiKey || !c.projectId) throw new Error('The config needs at least apiKey and projectId.'); return c;
+}
+function renderStorage() {
+  const ch = storageChoice(), active = st.backend ? st.backend.kind : 'local';
+  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${active === 'firebase' ? 'good' : ''}"><i></i>Active: ${active === 'firebase' ? 'Firebase cloud' : 'This device'}</span></div>
+    <div class="stack">
+      <label class="radio"><input type="radio" name="bk" value="local" ${ch.kind !== 'firebase' ? 'checked' : ''}><span><b>This device</b><span>Profiles and workouts stay in this browser (IndexedDB). No account needed, no sync.</span></span></label>
+      <label class="radio"><input type="radio" name="bk" value="firebase" ${ch.kind === 'firebase' ? 'checked' : ''}><span><b>Firebase cloud</b><span>Email or Google sign-in, workouts in Firestore, synced across devices.</span></span></label>
+      <div id="fbBox" ${ch.kind === 'firebase' ? '' : 'hidden'} class="stack">
+        <label for="fbCfg" class="sm" style="font-weight:600;color:var(--ink2)">Firebase web config</label>
+        <textarea id="fbCfg" spellcheck="false" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${ch.config ? esc(JSON.stringify(ch.config, null, 2)) : ''}</textarea>
+        <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, and create a Firestore database.</p>
+        <p class="fine">Firebase needs the page served from a normal web address (for example Firebase Hosting). Inside the Claude preview, outside network calls are blocked, so the app falls back to this device.</p>
+        <details><summary>Firestore security rules</summary><div class="formula">rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /users/{uid}/{doc=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid;
+    }
+  }
+}</div></details>
+      </div>
+      <p class="form-err" id="fbErr" hidden></p>
+      <div class="foot" style="margin-top:4px"><button type="button" class="primary" id="bkSave">Use this storage</button></div>
+    </div>`;
+  $$('input[name="bk"]').forEach(x => x.onchange = () => { $('#fbBox').hidden = x.value !== 'firebase' || !x.checked; });
+  $('#bkSave').onclick = async () => {
+    const kind = $$('input[name="bk"]').find(x => x.checked).value; $('#fbErr').hidden = true;
+    try {
+      if (kind === 'firebase') { const config = parseConfig($('#fbCfg').value); if (st.user && st.backend.kind === 'local' && st.runs.length) lsSet('pp-migrate', st.user.id); lsSet('pp-backend', { kind, config }); }
+      else lsSet('pp-backend', { kind: 'local' });
+      await boot();
+    } catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
+  };
+}
+async function maybeOfferMigration() {
+  const pid = lsGet('pp-migrate', null); if (!pid || st.backend.kind !== 'firebase' || !st.user) return;
+  const prof = LocalBackend.accounts().find(p => p.id === pid); if (!prof) { lsSet('pp-migrate', null); return; }
+  await LocalBackend.init(); const saved = lsGet('pp-session', null); lsSet('pp-session', pid); const list = await LocalBackend.listWorkouts(); lsSet('pp-session', saved);
+  if (!list.length) { lsSet('pp-migrate', null); return; }
+  const bn = $('#banner'); bn.hidden = false; bn.className = 'banner';
+  bn.innerHTML = `<span class="grow"><b>${list.length} workouts</b> from the on-device profile “${esc(prof.name)}” can be copied to your Firebase account.</span><button type="button" class="primary" id="mgGo">Copy to cloud</button><button type="button" class="ghost" id="mgNo">Not now</button>`;
+  $('#mgNo').onclick = () => { lsSet('pp-migrate', null); renderChrome(); };
+  $('#mgGo').onclick = async () => { $('#mgGo').disabled = true; setStatus('Copying workouts to Firebase…');
+    try { await st.backend.putWorkouts(list); lsSet('pp-migrate', null); st.runs = await st.backend.listWorkouts(); setStatus(`Copied ${list.length} workouts to Firebase.`); refresh(); }
+    catch (e) { setStatus('Copy failed: ' + e.message); $('#mgGo').disabled = false; } };
+}
+function renderDataCard() {
+  const u = st.user;
+  const full = st.runs.filter(r => !r.summary).length, gps = st.runs.filter(r => r.hasGPS).length;
+  $('#dataCard').innerHTML = `<div class="ch"><h3>Your data</h3></div>
+    <dl class="kv"><dt>Workouts</dt><dd>${st.runs.length}</dd><dt>With full detail</dt><dd>${full}</dd><dt>With GPS route</dt><dd>${gps}</dd><dt>Date range</dt><dd>${st.runs.length ? fmtDate(st.runs[0].start, { day: 'numeric', month: 'short', year: '2-digit' }) + ' – ' + fmtDate(st.runs[st.runs.length - 1].start, { day: 'numeric', month: 'short', year: '2-digit' }) : '–'}</dd></dl>
+    <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. Importing the same workout twice replaces it.</p>
+    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import more</label><button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
+  const arm = (id, text, fn) => { const b = $(id); if (!b) return; b.onclick = async () => { if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = text; return; } b.disabled = true; try { await fn(); } catch (e) { setStatus(e.message); } }; };
+  arm('#delAll', 'Tap again to delete all', async () => { await st.backend.clearWorkouts(); st.runs = []; glyphCache.clear(); setStatus('All workouts deleted.'); refresh(); });
+  arm('#delAcct', 'Tap again to delete profile', async () => { await st.backend.deleteAccount(); st.user = null; setStatus(''); showAuth('Profile deleted.'); });
+}
+
+/* ---------- import ---------- */
+const setStatus = t => { $('#status').textContent = t; };
+async function importFiles(files) {
+  if (!st.user) { st.pending = files; showAuth(`Create a profile${st.backend.kind === 'firebase' ? ' or sign in' : ''} to keep the ${files.length} file${files.length === 1 ? '' : 's'} you chose. The import continues right after.`); return; }
+  const found = [], skipped = { other: 0, bad: 0 }; let seen = 0;
+  const handle = async (name, getBuf) => {
+    const ext = name.toLowerCase().split('.').pop();
+    if (!['fit', 'tcx', 'gpx', 'csv', 'zip'].includes(ext)) return;
+    seen++; if (seen % 5 === 0) { setStatus(`Reading files… ${seen} so far, ${found.length} runs found`); await new Promise(r => setTimeout(r)); }
+    try {
+      const buf = await getBuf();
+      if (ext === 'zip') { for (const en of zipEntries(buf)) await handle(en.name, () => inflateEntry(en)); return; }
+      if (ext === 'csv') { found.push(...parseCSV(new TextDecoder().decode(buf), st.S.units)); return; }
+      const raw = ext === 'fit' ? parseFIT(buf) : ext === 'tcx' ? parseTCX(new TextDecoder().decode(buf)) : parseGPX(new TextDecoder().decode(buf));
+      if (!raw) { skipped.bad++; return; }
+      if (raw.sport !== 'running') { skipped.other++; return; }
+      const g = buildGrid(raw, { src: ext.toUpperCase() }); if (g) found.push(g); else skipped.bad++;
+    } catch (err) { skipped.bad++; console.warn(name, err); }
+  };
+  setStatus('Reading files…');
+  for (const f of files) await handle(f.name, () => f.arrayBuffer());
+  const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
+  if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
+  const byId = new Map(st.runs.map(r => [r.id, r])), toSave = []; let added = 0, upd = 0;
+  for (const r of found) { const ex = byId.get(r.id); if (ex && !ex.summary && r.summary) continue; if (ex) upd++; else added++; byId.set(r.id, r); toSave.push(r); }
+  setStatus(`Saving ${toSave.length} workouts…`);
+  try { await st.backend.putWorkouts(toSave); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
+  st.runs = [...byId.values()]; glyphCache.clear(); st.shown = 30; refresh();
+  const lastNew = toSave.reduce((a, b) => (b.start > a.start ? b : a), toSave[0]);
+  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, updated ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
+  if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
+}
+$('#file').addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); });
+let dragN = 0;
+addEventListener('dragenter', ev => { if ([...(ev.dataTransfer?.types || [])].includes('Files')) { dragN++; $('#drop').hidden = false; } });
+addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#drop').hidden = true; } });
+addEventListener('dragover', ev => ev.preventDefault());
+addEventListener('drop', ev => { ev.preventDefault(); dragN = 0; $('#drop').hidden = true; const fs = [...(ev.dataTransfer?.files || [])]; if (fs.length) importFiles(fs); });
+
+/* ---------- resize / theme ---------- */
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends'].includes(st.view)) renderView(); }, 200); });
+const repaint = () => { if (!$('#shell').hidden) renderView(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', repaint);
+new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- boot ---------- */
+async function boot() {
+  const r = lsGet('pp-range', 182); if ([90, 182, 365, 0].includes(r)) st.range = r; syncRange();
+  if (!st.backend) enterGuest(); // instant first frame with the sample athlete
+  st.backend = await openBackend();
+  const u = st.backend.user();
+  if (u) await enterUser(u);
+  else if (st.backend.kind === 'firebase' || st.backend.accounts().length) showAuth();
+  else { renderChrome(); route(); }
+}
+boot();
+</script>
+</body></html>
