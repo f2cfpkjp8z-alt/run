@@ -307,6 +307,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
 .smap .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; color: var(--ink2); }
 .shared-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.ver { margin: 24px 0 0; text-align: center; font: 12px var(--mono); color: var(--muted); }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>
 <!-- ============ AUTH SCREEN ============ -->
@@ -362,6 +363,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
         <button type="button" class="link" id="goLocal">Use profiles on this device instead</button>
       </div>
       <button type="button" class="link" id="btnGuest">Explore with a sample athlete</button>
+      <p class="ver" data-ver></p>
     </div>
   </div>
 </div>
@@ -532,12 +534,14 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
     </div>
     <footer>Estimates for training guidance, not a medical assessment.</footer>
   </section>
+  <p class="ver" data-ver></p>
 </main>
 <nav class="bnav" id="bnav" aria-label="Sections"></nav>
 </div>
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
+const BUILD = { v: 3, at: '2026-10-05T22:25:58Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -2308,6 +2312,7 @@ async function boot() {
   else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
   else { renderChrome(); route(); }
 }
+if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
 initSocial();
 boot();
 </script></body></html>

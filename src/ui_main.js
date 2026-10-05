@@ -631,5 +631,6 @@ async function boot() {
   else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
   else { renderChrome(); route(); }
 }
+if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
 initSocial();
 boot();
