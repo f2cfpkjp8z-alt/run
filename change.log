@@ -3,6 +3,16 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v7 — 2026-10-05
+  Garmin-style gauges with an arrow at your value: VO₂max (Poor → Superior for your age and sex), Endurance
+    score (Recreational → Elite) and Training load (Low / Optimal / High / Very high).
+  RATEalg1 → RATEalg2 (VO₂max rating): boundaries are interpolated between age decades instead of jumping at
+    each decade; adds fitness age (the age whose average VO₂max equals yours).
+  Height added to Profile (with BMI). VO₂max explanation now says what weight, height and age do:
+    weight and height don't change a run-based VO₂max (it is already per kg); age and sex set the rating,
+    fitness age and default max HR. No VO₂max calculation changed (still VO2alg2).
+  Why: to show at a glance where you stand, and answer whether body size should change VO₂max.
+
 v6 — 2026-10-05
   Import never stores the same workout twice. A workout counts as already imported when it has the same
     start minute, or starts within 2 minutes with distance within 5% (the same activity exported as .fit

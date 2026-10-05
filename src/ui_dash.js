@@ -42,20 +42,23 @@ const head = (t, extra = '', key) => `<div class="ch"><h3>${key ? al(key, t) : t
 const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
 function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
 const WIDGETS = {
-  vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating and 4-week change', size: 'S', render(el) {
-    const D = lastDay(), ago = agoDay();
+  vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating for your age and fitness age', size: 'S', render(el) {
+    const D = lastDay(), ago = agoDay(), S = st.S;
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
-    const cat = vo2Category(D.vo2);
-    el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
-      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
-      <div class="sub">${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+    const rt = RATE.rate(D.vo2, S.age, S.sex), fa = S.age ? RATE.fitnessAge(D.vo2, S.sex) : null;
+    let g = `<div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>`;
+    if (rt) { const b = rt.bounds, lo = Math.floor(b[0] - (b[1] - b[0]) * 1.6), hi = Math.ceil(b[3] + (b[3] - b[2]) * 1.2);
+      g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),
+        bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ramp(k, 5)]) }); }
+    el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
+      ${rt ? `<span class="chip acc">${al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)}</span>` : `<span class="chip">Add age &amp; sex in Profile for a rating</span>`}
+      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
     if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
-    const pos = clamp((D.end - 2000) / 11000, 0, 1) * 100;
-    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tierOf(D.end)}</span>
-      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
+    const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ramp(k, TIERS.length)]);
+    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands })}
       ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
   status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
@@ -82,10 +85,9 @@ const WIDGETS = {
   acute: { name: 'Training load', desc: '7-day load against your optimal range', size: 'S', render(el) {
     const L = ACWR.compute(st.runs, st.res, st.asOf), lab = `<span class="label">${al('acwr', 'Training load')}</span>`;
     if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
-    const a = L.acute, c = L.chronic, s = L.status, max = Math.max(c * 1.8, a * 1.1), pc = x => clamp(x / max * 100, 0, 100);
-    el.innerHTML = lab + `<div class="big">${f0(a)}<small>7-day load</small></div><span class="chip ${s[1]}"><i></i>${s[0]} · ${L.ratio.toFixed(2)}×</span>
-      <div><div class="meter"><span class="opt" style="left:${pc(0.8 * c)}%;width:${pc(1.3 * c) - pc(0.8 * c)}%"></span><b style="left:${pc(a)}%"></b></div><div class="scale-l"><span>0</span><span>optimal ${f0(0.8 * c)}–${f0(1.3 * c)}</span><span>${f0(max)}</span></div></div>
-      <div class="sub">${s[2]}</div>`;
+    const bands = [[0, 0.8, 'Low', 'var(--warn)'], [0.8, 1.3, 'Optimal', 'var(--good)'], [1.3, 1.5, 'High', 'var(--warn)'], [1.5, 2, 'Very high', 'var(--crit)']];
+    el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands })
+      + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}<br>${L.status[2]}</div>`;
   } },
   ai: { name: 'AI coach', desc: 'A short Gemini read on what you do well and what you miss', size: 'L', always: true, render(el) { renderAICard(el); } },
   latest: { name: 'Latest workout', desc: 'Route, distance, pace and heart rate', size: 'M', render(el) {

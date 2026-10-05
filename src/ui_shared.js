@@ -8,15 +8,21 @@ const fmtDate = (ms, o = { day: 'numeric', month: 'short' }) => new Date(ms).toL
 const f1 = x => x == null || !isFinite(x) ? '–' : x.toFixed(1);
 const f0 = x => x == null || !isFinite(x) ? '–' : Math.round(x).toLocaleString();
 
-/* ---------- VO2max norms (approx. Cooper Institute percentiles, as used by most watches) ---------- */
-const NORMS = { m: [[20, 41.7, 45.4, 51.1, 55.4], [30, 40.5, 44.0, 48.3, 54.0], [40, 38.5, 42.4, 46.4, 52.5], [50, 35.6, 39.2, 43.4, 48.9], [60, 32.3, 35.5, 39.5, 45.7], [70, 29.4, 32.3, 36.7, 42.1]],
-  f: [[20, 36.1, 39.5, 43.9, 49.6], [30, 34.4, 37.8, 42.4, 47.4], [40, 33.0, 36.3, 39.7, 45.3], [50, 30.1, 33.0, 36.7, 41.1], [60, 27.5, 30.0, 33.0, 37.8], [70, 25.9, 28.1, 30.9, 36.7]] };
-function vo2Category(v) {
-  if (!st.S.age) return null;
-  const rows = NORMS[st.S.sex] || NORMS.m; let row = rows[0]; for (const r of rows) if (st.S.age >= r[0]) row = r;
-  const names = ['Poor', 'Fair', 'Good', 'Excellent', 'Superior']; let k = 0; for (let i = 1; i <= 4; i++) if (v >= row[i]) k = i;
-  return { name: names[k], cls: k >= 3 ? 'good' : k === 2 ? 'acc' : k === 1 ? 'warn' : 'crit' };
+/* ---------- gauge: Garmin-style arc of bands with an arrow at your value ---------- */
+// bands: [[from, to, label, colour]], value; returns SVG markup. Bands outside the current one are dimmed.
+function gauge(o) {
+  const cx = 120, cy = 116, r = 92, sw = 16, g = 0.014, span = o.max - o.min;
+  const ang = v => Math.PI * (1 - (clamp(v, o.min, o.max) - o.min) / span), pt = (a, rr) => (cx + rr * Math.cos(a)).toFixed(1) + ',' + (cy - rr * Math.sin(a)).toFixed(1);
+  const cur = o.bands.findIndex(([f, t]) => o.value >= f && o.value < t), ci = cur < 0 ? (o.value < o.bands[0][0] ? 0 : o.bands.length - 1) : cur;
+  let s = o.bands.map(([f, t, lab, col], k) => `<path d="M${pt(ang(f) - (k ? g : 0), r)} A${r} ${r} 0 0 1 ${pt(ang(t) + (k < o.bands.length - 1 ? g : 0), r)}" style="stroke:${col}" stroke-width="${sw}" fill="none" opacity="${k === ci ? 1 : 0.4}"><title>${esc(lab)}: ${esc(o.fmt(f))}–${esc(o.fmt(t))}</title></path>`).join('');
+  // boundary values outside the arc; the arrow sits just inside it, pointing at your value
+  s += o.bands.slice(1).map(([f]) => { const a = ang(f), x = cx + (r + sw / 2 + 9) * Math.cos(a); return `<text class="g-tick" x="${x.toFixed(1)}" y="${(cy - (r + sw / 2 + 9) * Math.sin(a) + 3).toFixed(1)}" text-anchor="${x < cx - 20 ? 'end' : x > cx + 20 ? 'start' : 'middle'}">${esc(o.fmt(f))}</text>`; }).join('');
+  const a = ang(o.value);
+  s += `<path d="M${pt(a, r - sw / 2 - 1)} L${pt(a - 0.09, r - sw / 2 - 15)} L${pt(a + 0.09, r - sw / 2 - 15)} Z" fill="var(--ink)" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<text class="g-val" x="${cx}" y="${cy - 22}" text-anchor="middle">${esc(o.center)}</text><text class="g-lab" x="${cx}" y="${cy + 4}" text-anchor="middle">${esc(o.bands[ci][2])}</text>`;
+  return `<svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>`;
 }
+const ramp = (k, n) => n <= 1 ? 'var(--z3)' : `color-mix(in oklab, var(--z5) ${Math.round(k / (n - 1) * 100)}%, var(--z1))`;
 
 /* ---------- charts ---------- */
 function niceTicks(a, b, n) {

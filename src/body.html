@@ -157,9 +157,10 @@
         <div class="form">
           <label for="fHrMax"><span>Max heart rate · <span class="algo-l" role="button" tabindex="0" data-algo="hrmax">how it’s chosen</span></span><input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
           <label for="fHrRest">Resting heart rate<input id="fHrRest" type="number" min="30" max="100" inputmode="numeric" required><span class="hint">Morning, lying down.</span></label>
-          <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">For fitness ratings.</span></label>
+          <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">Rates your VO₂max and fitness age.</span></label>
           <label for="fSex">Sex<select id="fSex"><option value="m">Male</option><option value="f">Female</option></select><span class="hint">TRIMP curve and norms.</span></label>
           <label for="fWeight">Weight (kg)<input id="fWeight" type="number" min="30" max="200" step="0.1" inputmode="decimal"><span class="hint">Shows absolute VO₂ in L/min.</span></label>
+          <label for="fHeight">Height (cm)<input id="fHeight" type="number" min="120" max="230" step="1" inputmode="numeric"><span class="hint" id="bmiHint">With weight, gives your BMI.</span></label>
           <label for="fUnits">Units<select id="fUnits"><option value="km">Kilometres</option><option value="mi">Miles</option></select><span class="hint">Also used for Garmin CSV.</span></label>
         </div>
         <div class="foot"><span class="muted sm" id="setSaved"></span><button type="submit" class="primary">Save settings</button></div>

@@ -177,6 +177,12 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
+/* gauge */
+.gauge { width: 100%; max-width: 260px; display: block; margin: 0 auto; overflow: visible; }
+.gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }
+.gauge .g-lab { font: 700 0.75rem var(--body); fill: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.gauge .g-tick { font: 0.625rem var(--mono); fill: var(--muted); }
+
 /* ---------- AI coach ---------- */
 .ai-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .ai-lines li { display: grid; grid-template-columns: 1.6em 1fr; gap: 6px; font-size: 0.9375rem; line-height: 1.4; }
@@ -537,9 +543,10 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
         <div class="form">
           <label for="fHrMax"><span>Max heart rate · <span class="algo-l" role="button" tabindex="0" data-algo="hrmax">how it’s chosen</span></span><input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
           <label for="fHrRest">Resting heart rate<input id="fHrRest" type="number" min="30" max="100" inputmode="numeric" required><span class="hint">Morning, lying down.</span></label>
-          <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">For fitness ratings.</span></label>
+          <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">Rates your VO₂max and fitness age.</span></label>
           <label for="fSex">Sex<select id="fSex"><option value="m">Male</option><option value="f">Female</option></select><span class="hint">TRIMP curve and norms.</span></label>
           <label for="fWeight">Weight (kg)<input id="fWeight" type="number" min="30" max="200" step="0.1" inputmode="decimal"><span class="hint">Shows absolute VO₂ in L/min.</span></label>
+          <label for="fHeight">Height (cm)<input id="fHeight" type="number" min="120" max="230" step="1" inputmode="numeric"><span class="hint" id="bmiHint">With weight, gives your BMI.</span></label>
           <label for="fUnits">Units<select id="fUnits"><option value="km">Kilometres</option><option value="mi">Miles</option></select><span class="hint">Also used for Garmin CSV.</span></label>
         </div>
         <div class="foot"><span class="muted sm" id="setSaved"></span><button type="submit" class="primary">Save settings</button></div>
@@ -572,7 +579,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 6, at: '2026-10-05T23:12:18Z' };
+const BUILD = { v: 7, at: '2026-10-05T23:17:59Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -1075,7 +1082,12 @@ const VO2 = algo({
     'Daily VO₂max blends run estimates from the last 60 days with a 14-day half-life, weighted by confidence. Race-like efforts (BESTalg2) add a VDOT reading by inverse-variance weighting; a race fades out over 60 days.',
   ],
   formula: 'speed(HR) = a + b·HR      weighted fit with anchor (HRrest, 0)\nvVO₂max = speed(HRmax)\nVO₂max = −4.60 + 0.182258·v + 0.000104·v²     v in m/min\nday = Σ wᵢ·estᵢ / Σ wᵢ,  wᵢ = confᵢ · 0.5^(ageᵢ/14)\nfused = (day/σ_hr² + race/σ_race²) / (1/σ_hr² + 1/σ_race²),  σ_race = 2 + age/20',
-  inputs: 'Heart rate, distance, altitude; your max and resting heart rate.',
+  inputs: 'Heart rate, distance, altitude; your max and resting heart rate. Not weight, height or age — see below.',
+  notes: [
+    'Weight: VO₂max is already per kilogram, and running costs about the same oxygen per kilogram for everyone, so weight cancels out. Losing weight raises VO₂max because the same engine carries fewer kilograms — your runs then get faster at the same heart rate, and the estimate follows. Weight is only used to show absolute VO₂ in L/min.',
+    'Height: no effect. Formulas that guess VO₂max without exercise use BMI, but your actual heart rate and pace measure it directly and far more accurately.',
+    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg2), which does affect VO₂max.',
+  ],
   limits: 'Accuracy depends most on max and resting heart rate. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
   history: [
     ['VO2alg1', 1, 'Regressed Daniels’ curved oxygen cost directly on heart rate, anchored at (HRrest, 3.5 ml/kg/min). Read 3–8 ml/kg/min low on easy runs because measured VO₂ rises linearly with speed while Daniels’ curve bends.'],
@@ -1143,6 +1155,47 @@ const VO2 = algo({
     if (perf == null) return { v: vh, hr: vh, perf: null };
     const sp = 2.0 + pAge / 20, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
     return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
+  },
+});
+// ===== RATEalg2 — VO₂max rating for your age & sex, and fitness age =====
+// Cooper Institute norms (as used by Garmin): per age row, the VO2max where Fair, Good, Excellent, Superior begin.
+const NORMS = { m: [[20, 41.7, 45.4, 51.1, 55.4], [30, 40.5, 44.0, 48.3, 54.0], [40, 38.5, 42.4, 46.4, 52.5], [50, 35.6, 39.2, 43.4, 48.9], [60, 32.3, 35.5, 39.5, 45.7], [70, 29.4, 32.3, 36.7, 42.1]],
+  f: [[20, 36.1, 39.5, 43.9, 49.6], [30, 34.4, 37.8, 42.4, 47.4], [40, 33.0, 36.3, 39.7, 45.3], [50, 30.1, 33.0, 36.7, 41.1], [60, 27.5, 30.0, 33.0, 37.8], [70, 25.9, 28.1, 30.9, 36.7]] };
+const RATE = algo({
+  key: 'rating', id: 'RATEalg2', name: 'VO₂max rating & fitness age', since: 7,
+  summary: 'Where your VO₂max sits among people of your age and sex — Poor, Fair, Good, Excellent or Superior — and the age whose average VO₂max matches yours.',
+  steps: [
+    'Uses the Cooper Institute norms Garmin uses: per sex and age decade, the VO₂max where Fair (40th percentile), Good (60th), Excellent (80th) and Superior (95th) begin.',
+    'Between decades the boundaries are interpolated, so a birthday doesn’t make you jump a category.',
+    'Fitness age is the age at which the average (50th-percentile) VO₂max equals yours: the midpoint of the Fair and Good boundaries, followed across ages and extended past the table’s ends with its slope.',
+  ],
+  formula: 'boundary(age) = linear between the two nearest decade rows\nrating = highest boundary your VO₂max reaches\nfitness age: median(a) = (Fair(a) + Good(a)) / 2 = VO₂max, solved for a (20–90)',
+  inputs: 'VO₂max (VO2alg2), age and sex from your profile.',
+  limits: 'Norms come from US treadmill tests; they rank you against the general population, not other runners.',
+  history: [
+    ['RATEalg1', 1, 'Step lookup by age decade.'],
+    ['RATEalg2', 7, 'Interpolated between decades; adds fitness age and the gauge.'],
+  ],
+  live() { const S = st.S; return S.age ? `Rated as ${S.sex === 'f' ? 'female' : 'male'}, age ${S.age}.` : 'Add your age in Profile to get a rating.'; },
+  names: ['Poor', 'Fair', 'Good', 'Excellent', 'Superior'],
+  bounds(age, sex) {
+    const rows = NORMS[sex] || NORMS.m, a = clamp(age, 20, 70); let k = 0;
+    while (k < rows.length - 2 && a > rows[k + 1][0]) k++;
+    const r0 = rows[k], r1 = rows[k + 1], f = (a - r0[0]) / (r1[0] - r0[0]);
+    return [1, 2, 3, 4].map(i => r0[i] + (r1[i] - r0[i]) * f);
+  },
+  rate(v, age, sex) {
+    if (!v || !age) return null;
+    const b = RATE.bounds(age, sex); let k = 0; for (let i = 0; i < 4; i++) if (v >= b[i]) k = i + 1;
+    return { k, name: RATE.names[k], bounds: b };
+  },
+  fitnessAge(v, sex) {
+    if (!v) return null;
+    const med = a => { const b = RATE.bounds(a, sex); return (b[0] + b[1]) / 2; };
+    if (v >= med(20)) return Math.max(20, Math.round(20 - (v - med(20)) / ((med(20) - med(30)) / 10)));
+    if (v <= med(70)) return Math.min(90, Math.round(70 + (med(70) - v) / ((med(60) - med(70)) / 10)));
+    let lo = 20, hi = 70; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (med(m) > v) lo = m; else hi = m; }
+    return Math.round((lo + hi) / 2);
   },
 });
 // ===== HRMAXalg2 — max heart rate used when you haven't entered one =====
@@ -1363,7 +1416,7 @@ const EF = algo({
 const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
-const DEFAULT_SETTINGS = { hrMax: null, hrRest: 55, age: null, sex: 'm', units: 'km', weight: null };
+const DEFAULT_SETTINGS = { hrMax: null, hrRest: 55, age: null, sex: 'm', units: 'km', weight: null, height: null };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } };
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1525,15 +1578,21 @@ const fmtDate = (ms, o = { day: 'numeric', month: 'short' }) => new Date(ms).toL
 const f1 = x => x == null || !isFinite(x) ? '–' : x.toFixed(1);
 const f0 = x => x == null || !isFinite(x) ? '–' : Math.round(x).toLocaleString();
 
-/* ---------- VO2max norms (approx. Cooper Institute percentiles, as used by most watches) ---------- */
-const NORMS = { m: [[20, 41.7, 45.4, 51.1, 55.4], [30, 40.5, 44.0, 48.3, 54.0], [40, 38.5, 42.4, 46.4, 52.5], [50, 35.6, 39.2, 43.4, 48.9], [60, 32.3, 35.5, 39.5, 45.7], [70, 29.4, 32.3, 36.7, 42.1]],
-  f: [[20, 36.1, 39.5, 43.9, 49.6], [30, 34.4, 37.8, 42.4, 47.4], [40, 33.0, 36.3, 39.7, 45.3], [50, 30.1, 33.0, 36.7, 41.1], [60, 27.5, 30.0, 33.0, 37.8], [70, 25.9, 28.1, 30.9, 36.7]] };
-function vo2Category(v) {
-  if (!st.S.age) return null;
-  const rows = NORMS[st.S.sex] || NORMS.m; let row = rows[0]; for (const r of rows) if (st.S.age >= r[0]) row = r;
-  const names = ['Poor', 'Fair', 'Good', 'Excellent', 'Superior']; let k = 0; for (let i = 1; i <= 4; i++) if (v >= row[i]) k = i;
-  return { name: names[k], cls: k >= 3 ? 'good' : k === 2 ? 'acc' : k === 1 ? 'warn' : 'crit' };
+/* ---------- gauge: Garmin-style arc of bands with an arrow at your value ---------- */
+// bands: [[from, to, label, colour]], value; returns SVG markup. Bands outside the current one are dimmed.
+function gauge(o) {
+  const cx = 120, cy = 116, r = 92, sw = 16, g = 0.014, span = o.max - o.min;
+  const ang = v => Math.PI * (1 - (clamp(v, o.min, o.max) - o.min) / span), pt = (a, rr) => (cx + rr * Math.cos(a)).toFixed(1) + ',' + (cy - rr * Math.sin(a)).toFixed(1);
+  const cur = o.bands.findIndex(([f, t]) => o.value >= f && o.value < t), ci = cur < 0 ? (o.value < o.bands[0][0] ? 0 : o.bands.length - 1) : cur;
+  let s = o.bands.map(([f, t, lab, col], k) => `<path d="M${pt(ang(f) - (k ? g : 0), r)} A${r} ${r} 0 0 1 ${pt(ang(t) + (k < o.bands.length - 1 ? g : 0), r)}" style="stroke:${col}" stroke-width="${sw}" fill="none" opacity="${k === ci ? 1 : 0.4}"><title>${esc(lab)}: ${esc(o.fmt(f))}–${esc(o.fmt(t))}</title></path>`).join('');
+  // boundary values outside the arc; the arrow sits just inside it, pointing at your value
+  s += o.bands.slice(1).map(([f]) => { const a = ang(f), x = cx + (r + sw / 2 + 9) * Math.cos(a); return `<text class="g-tick" x="${x.toFixed(1)}" y="${(cy - (r + sw / 2 + 9) * Math.sin(a) + 3).toFixed(1)}" text-anchor="${x < cx - 20 ? 'end' : x > cx + 20 ? 'start' : 'middle'}">${esc(o.fmt(f))}</text>`; }).join('');
+  const a = ang(o.value);
+  s += `<path d="M${pt(a, r - sw / 2 - 1)} L${pt(a - 0.09, r - sw / 2 - 15)} L${pt(a + 0.09, r - sw / 2 - 15)} Z" fill="var(--ink)" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<text class="g-val" x="${cx}" y="${cy - 22}" text-anchor="middle">${esc(o.center)}</text><text class="g-lab" x="${cx}" y="${cy + 4}" text-anchor="middle">${esc(o.bands[ci][2])}</text>`;
+  return `<svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>`;
 }
+const ramp = (k, n) => n <= 1 ? 'var(--z3)' : `color-mix(in oklab, var(--z5) ${Math.round(k / (n - 1) * 100)}%, var(--z1))`;
 
 /* ---------- charts ---------- */
 function niceTicks(a, b, n) {
@@ -2033,7 +2092,7 @@ VO2max is on Daniels' VDOT scale. Load is Banister TRIMP. Write in ${lang}.`;
 }
 function aiAthlete() {
   const S = st.S, u = uName();
-  return `Athlete: ${S.sex === 'f' ? 'female' : 'male'}${S.age ? ', age ' + S.age : ''}, max HR ${Math.round(S.hrMaxEff)} (${S.hrMax ? 'entered' : 'auto'}), resting HR ${S.hrRest}${S.weight ? ', ' + S.weight + ' kg' : ''}. Units: ${u}. Today: ${new Date(st.asOf).toDateString()}.`;
+  return `Athlete: ${S.sex === 'f' ? 'female' : 'male'}${S.age ? ', age ' + S.age : ''}, max HR ${Math.round(S.hrMaxEff)} (${S.hrMax ? 'entered' : 'auto'}), resting HR ${S.hrRest}${S.weight ? ', ' + S.weight + ' kg' : ''}${S.height ? ', ' + S.height + ' cm' : ''}. Units: ${u}. Today: ${new Date(st.asOf).toDateString()}.`;
 }
 function aiRunLine(r, e) {
   return `${new Date(r.start).toDateString()} | ${r.name} | ${fmtDist(e.dist)} ${uName()} | ${fmtDur(e.mov)} | pace ${fmtPace(e.pace)} | GAP ${fmtPace(e.gapPace)} | avgHR ${e.avgHR ? Math.round(e.avgHR) : '-'} | maxHR ${e.maxHR ? Math.round(e.maxHR) : '-'} | load ${Math.round(e.load || 0)} | VO2 est ${e.est ? e.est.toFixed(1) : '-'} | HR drift ${e.dec != null ? e.dec.toFixed(1) + '%' : '-'} | ascent ${e.ascent != null ? Math.round(e.ascent) + ' m' : '-'}`;
@@ -2047,7 +2106,7 @@ function aiOverviewPrompt() {
   const recent = st.runs.map((r, i) => [r, st.res[i]]).slice(-12).reverse().map(([r, e]) => aiRunLine(r, e)).join('\n');
   const best = {}; st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) if (e.label !== 'Run' && (!best[e.label] || e.sec < best[e.label].sec)) best[e.label] = { sec: e.sec, t: r.start }; });
   return `${aiAthlete()}
-Current: VO2max ${D.vo2 ? D.vo2.toFixed(1) : 'unknown'} (4 weeks ago ${a4 && a4.vo2 ? a4.vo2.toFixed(1) : '-'}, 12 weeks ago ${a12 && a12.vo2 ? a12.vo2.toFixed(1) : '-'}; HR model ${D.vo2hr ? D.vo2hr.toFixed(1) : '-'}, race efforts ${D.vo2perf ? D.vo2perf.toFixed(1) : '-'}).
+Current: VO2max ${D.vo2 ? D.vo2.toFixed(1) : 'unknown'}${D.vo2 && st.S.age ? ` (rated ${RATE.rate(D.vo2, st.S.age, st.S.sex).name} for age and sex, fitness age ${RATE.fitnessAge(D.vo2, st.S.sex)})` : ''} (4 weeks ago ${a4 && a4.vo2 ? a4.vo2.toFixed(1) : '-'}, 12 weeks ago ${a12 && a12.vo2 ? a12.vo2.toFixed(1) : '-'}; HR model ${D.vo2hr ? D.vo2hr.toFixed(1) : '-'}, race efforts ${D.vo2perf ? D.vo2perf.toFixed(1) : '-'}).
 Endurance score ${D.end ? Math.round(D.end) + ' (' + tierOf(D.end) + ')' : '-'}. Fitness CTL ${Math.round(D.ctl)}, fatigue ATL ${Math.round(D.atl)}, form ${Math.round(D.tsb)}. Weekly running time ${fmtDur(D.H * 3600)} (42-day avg). Longest run in 6 weeks ${Math.round(D.L)} min. HR drift on 60+ min runs ${D.hasDec ? D.D.toFixed(1) + '%' : 'no data'}.
 Load: last 7 days ${Math.round(a7)} vs weekly average of last 4 weeks ${Math.round(c28 / 4)}.
 Intensity, last 4 weeks (time in HR zones): easy Z1-2 ${pc(z[0] + z[1])}, moderate Z3 ${pc(z[2])}, hard Z4-5 ${pc(z[3] + z[4])}.
@@ -2167,7 +2226,7 @@ function showAlgo(key) {
     <p>${esc(a.summary)}</p>${live ? `<p class="sub">${live}</p>` : ''}
     <ol class="algo-steps">${a.steps.map(s => `<li>${linkIds(esc(s))}</li>`).join('')}</ol>
     <div class="formula">${esc(a.formula)}</div>
-    <p class="sub" style="margin-top:12px"><b>Uses:</b> ${esc(a.inputs)}</p>
+    <p class="sub" style="margin-top:12px"><b>Uses:</b> ${esc(a.inputs)}</p>${a.notes ? `<ul class="algo-steps">${a.notes.map(n => `<li>${linkIds(esc(n))}</li>`).join('')}</ul>` : ''}
     <p class="sub"><b>Limits:</b> ${esc(a.limits)}</p>
     <details style="margin-top:6px"${a.history.length > 1 ? ' open' : ''}><summary>Version history</summary><ul class="algo-hist">${a.history.slice().reverse().map(([id, v, t]) => `<li><b>${esc(id)}</b> <span class="muted sm">app v${v}${id === a.id ? ' · current' : ''}</span><br>${esc(t)}</li>`).join('')}</ul></details>`);
 }
@@ -2225,20 +2284,23 @@ const head = (t, extra = '', key) => `<div class="ch"><h3>${key ? al(key, t) : t
 const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
 function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
 const WIDGETS = {
-  vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating and 4-week change', size: 'S', render(el) {
-    const D = lastDay(), ago = agoDay();
+  vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating for your age and fitness age', size: 'S', render(el) {
+    const D = lastDay(), ago = agoDay(), S = st.S;
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
-    const cat = vo2Category(D.vo2);
-    el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
-      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
-      <div class="sub">${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+    const rt = RATE.rate(D.vo2, S.age, S.sex), fa = S.age ? RATE.fitnessAge(D.vo2, S.sex) : null;
+    let g = `<div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>`;
+    if (rt) { const b = rt.bounds, lo = Math.floor(b[0] - (b[1] - b[0]) * 1.6), hi = Math.ceil(b[3] + (b[3] - b[2]) * 1.2);
+      g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),
+        bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ramp(k, 5)]) }); }
+    el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
+      ${rt ? `<span class="chip acc">${al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)}</span>` : `<span class="chip">Add age &amp; sex in Profile for a rating</span>`}
+      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
     if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
-    const pos = clamp((D.end - 2000) / 11000, 0, 1) * 100;
-    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tierOf(D.end)}</span>
-      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
+    const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ramp(k, TIERS.length)]);
+    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands })}
       ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
   status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
@@ -2265,10 +2327,9 @@ const WIDGETS = {
   acute: { name: 'Training load', desc: '7-day load against your optimal range', size: 'S', render(el) {
     const L = ACWR.compute(st.runs, st.res, st.asOf), lab = `<span class="label">${al('acwr', 'Training load')}</span>`;
     if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
-    const a = L.acute, c = L.chronic, s = L.status, max = Math.max(c * 1.8, a * 1.1), pc = x => clamp(x / max * 100, 0, 100);
-    el.innerHTML = lab + `<div class="big">${f0(a)}<small>7-day load</small></div><span class="chip ${s[1]}"><i></i>${s[0]} · ${L.ratio.toFixed(2)}×</span>
-      <div><div class="meter"><span class="opt" style="left:${pc(0.8 * c)}%;width:${pc(1.3 * c) - pc(0.8 * c)}%"></span><b style="left:${pc(a)}%"></b></div><div class="scale-l"><span>0</span><span>optimal ${f0(0.8 * c)}–${f0(1.3 * c)}</span><span>${f0(max)}</span></div></div>
-      <div class="sub">${s[2]}</div>`;
+    const bands = [[0, 0.8, 'Low', 'var(--warn)'], [0.8, 1.3, 'Optimal', 'var(--good)'], [1.3, 1.5, 'High', 'var(--warn)'], [1.5, 2, 'Very high', 'var(--crit)']];
+    el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands })
+      + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}<br>${L.status[2]}</div>`;
   } },
   ai: { name: 'AI coach', desc: 'A short Gemini read on what you do well and what you miss', size: 'L', always: true, render(el) { renderAICard(el); } },
   latest: { name: 'Latest workout', desc: 'Route, distance, pace and heart rate', size: 'M', render(el) {
@@ -2794,7 +2855,8 @@ function renderProfile() {
   } else $('#pCreate').onclick = () => showAuth();
   // settings
   const S = st.S;
-  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
+  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fHeight').value = S.height || '';
+  const bmi = S.weight && S.height ? S.weight / (S.height / 100) ** 2 : null; $('#bmiHint').textContent = bmi ? `BMI ${bmi.toFixed(1)}. Not used in VO₂max (see How it’s calculated).` : 'With weight, gives your BMI.'; $('#fUnits').value = S.units;
   $('#hrMaxHint').textContent = `Empty = ${Math.round(S.hrMaxEff)} bpm: ` + (st.ageMax && st.ageMax >= (st.detectedMax || 0) ? `age estimate (your runs peak at ${st.detectedMax || '–'}). A measured value is more accurate.` : st.detectedMax ? 'the highest 30-s average in your runs.' : 'default until runs or age are added.');
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
   renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
@@ -2802,7 +2864,7 @@ function renderProfile() {
 $('#setForm').addEventListener('submit', async ev => {
   ev.preventDefault();
   const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : null; };
-  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), units: $('#fUnits').value };
+  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), height: v('#fHeight'), units: $('#fUnits').value };
   Object.assign(st.S, settings);
   if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
   glyphCache.clear(); compute(); renderChrome(); renderProfile();

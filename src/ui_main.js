@@ -423,7 +423,8 @@ function renderProfile() {
   } else $('#pCreate').onclick = () => showAuth();
   // settings
   const S = st.S;
-  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
+  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fHeight').value = S.height || '';
+  const bmi = S.weight && S.height ? S.weight / (S.height / 100) ** 2 : null; $('#bmiHint').textContent = bmi ? `BMI ${bmi.toFixed(1)}. Not used in VO₂max (see How it’s calculated).` : 'With weight, gives your BMI.'; $('#fUnits').value = S.units;
   $('#hrMaxHint').textContent = `Empty = ${Math.round(S.hrMaxEff)} bpm: ` + (st.ageMax && st.ageMax >= (st.detectedMax || 0) ? `age estimate (your runs peak at ${st.detectedMax || '–'}). A measured value is more accurate.` : st.detectedMax ? 'the highest 30-s average in your runs.' : 'default until runs or age are added.');
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
   renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
@@ -431,7 +432,7 @@ function renderProfile() {
 $('#setForm').addEventListener('submit', async ev => {
   ev.preventDefault();
   const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : null; };
-  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), units: $('#fUnits').value };
+  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), height: v('#fHeight'), units: $('#fUnits').value };
   Object.assign(st.S, settings);
   if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
   glyphCache.clear(); compute(); renderChrome(); renderProfile();

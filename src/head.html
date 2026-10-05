@@ -176,6 +176,12 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
+/* gauge */
+.gauge { width: 100%; max-width: 260px; display: block; margin: 0 auto; overflow: visible; }
+.gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }
+.gauge .g-lab { font: 700 0.75rem var(--body); fill: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.gauge .g-tick { font: 0.625rem var(--mono); fill: var(--muted); }
+
 /* ---------- AI coach ---------- */
 .ai-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .ai-lines li { display: grid; grid-template-columns: 1.6em 1fr; gap: 6px; font-size: 0.9375rem; line-height: 1.4; }

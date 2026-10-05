@@ -9,7 +9,7 @@ function showAlgo(key) {
     <p>${esc(a.summary)}</p>${live ? `<p class="sub">${live}</p>` : ''}
     <ol class="algo-steps">${a.steps.map(s => `<li>${linkIds(esc(s))}</li>`).join('')}</ol>
     <div class="formula">${esc(a.formula)}</div>
-    <p class="sub" style="margin-top:12px"><b>Uses:</b> ${esc(a.inputs)}</p>
+    <p class="sub" style="margin-top:12px"><b>Uses:</b> ${esc(a.inputs)}</p>${a.notes ? `<ul class="algo-steps">${a.notes.map(n => `<li>${linkIds(esc(n))}</li>`).join('')}</ul>` : ''}
     <p class="sub"><b>Limits:</b> ${esc(a.limits)}</p>
     <details style="margin-top:6px"${a.history.length > 1 ? ' open' : ''}><summary>Version history</summary><ul class="algo-hist">${a.history.slice().reverse().map(([id, v, t]) => `<li><b>${esc(id)}</b> <span class="muted sm">app v${v}${id === a.id ? ' · current' : ''}</span><br>${esc(t)}</li>`).join('')}</ul></details>`);
 }

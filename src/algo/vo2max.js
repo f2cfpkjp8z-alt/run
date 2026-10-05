@@ -22,7 +22,12 @@ const VO2 = algo({
     'Daily VO₂max blends run estimates from the last 60 days with a 14-day half-life, weighted by confidence. Race-like efforts (BESTalg2) add a VDOT reading by inverse-variance weighting; a race fades out over 60 days.',
   ],
   formula: 'speed(HR) = a + b·HR      weighted fit with anchor (HRrest, 0)\nvVO₂max = speed(HRmax)\nVO₂max = −4.60 + 0.182258·v + 0.000104·v²     v in m/min\nday = Σ wᵢ·estᵢ / Σ wᵢ,  wᵢ = confᵢ · 0.5^(ageᵢ/14)\nfused = (day/σ_hr² + race/σ_race²) / (1/σ_hr² + 1/σ_race²),  σ_race = 2 + age/20',
-  inputs: 'Heart rate, distance, altitude; your max and resting heart rate.',
+  inputs: 'Heart rate, distance, altitude; your max and resting heart rate. Not weight, height or age — see below.',
+  notes: [
+    'Weight: VO₂max is already per kilogram, and running costs about the same oxygen per kilogram for everyone, so weight cancels out. Losing weight raises VO₂max because the same engine carries fewer kilograms — your runs then get faster at the same heart rate, and the estimate follows. Weight is only used to show absolute VO₂ in L/min.',
+    'Height: no effect. Formulas that guess VO₂max without exercise use BMI, but your actual heart rate and pace measure it directly and far more accurately.',
+    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg2), which does affect VO₂max.',
+  ],
   limits: 'Accuracy depends most on max and resting heart rate. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
   history: [
     ['VO2alg1', 1, 'Regressed Daniels’ curved oxygen cost directly on heart rate, anchored at (HRrest, 3.5 ml/kg/min). Read 3–8 ml/kg/min low on easy runs because measured VO₂ rises linearly with speed while Daniels’ curve bends.'],

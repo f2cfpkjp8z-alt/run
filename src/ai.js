@@ -41,7 +41,7 @@ VO2max is on Daniels' VDOT scale. Load is Banister TRIMP. Write in ${lang}.`;
 }
 function aiAthlete() {
   const S = st.S, u = uName();
-  return `Athlete: ${S.sex === 'f' ? 'female' : 'male'}${S.age ? ', age ' + S.age : ''}, max HR ${Math.round(S.hrMaxEff)} (${S.hrMax ? 'entered' : 'auto'}), resting HR ${S.hrRest}${S.weight ? ', ' + S.weight + ' kg' : ''}. Units: ${u}. Today: ${new Date(st.asOf).toDateString()}.`;
+  return `Athlete: ${S.sex === 'f' ? 'female' : 'male'}${S.age ? ', age ' + S.age : ''}, max HR ${Math.round(S.hrMaxEff)} (${S.hrMax ? 'entered' : 'auto'}), resting HR ${S.hrRest}${S.weight ? ', ' + S.weight + ' kg' : ''}${S.height ? ', ' + S.height + ' cm' : ''}. Units: ${u}. Today: ${new Date(st.asOf).toDateString()}.`;
 }
 function aiRunLine(r, e) {
   return `${new Date(r.start).toDateString()} | ${r.name} | ${fmtDist(e.dist)} ${uName()} | ${fmtDur(e.mov)} | pace ${fmtPace(e.pace)} | GAP ${fmtPace(e.gapPace)} | avgHR ${e.avgHR ? Math.round(e.avgHR) : '-'} | maxHR ${e.maxHR ? Math.round(e.maxHR) : '-'} | load ${Math.round(e.load || 0)} | VO2 est ${e.est ? e.est.toFixed(1) : '-'} | HR drift ${e.dec != null ? e.dec.toFixed(1) + '%' : '-'} | ascent ${e.ascent != null ? Math.round(e.ascent) + ' m' : '-'}`;
@@ -55,7 +55,7 @@ function aiOverviewPrompt() {
   const recent = st.runs.map((r, i) => [r, st.res[i]]).slice(-12).reverse().map(([r, e]) => aiRunLine(r, e)).join('\n');
   const best = {}; st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) if (e.label !== 'Run' && (!best[e.label] || e.sec < best[e.label].sec)) best[e.label] = { sec: e.sec, t: r.start }; });
   return `${aiAthlete()}
-Current: VO2max ${D.vo2 ? D.vo2.toFixed(1) : 'unknown'} (4 weeks ago ${a4 && a4.vo2 ? a4.vo2.toFixed(1) : '-'}, 12 weeks ago ${a12 && a12.vo2 ? a12.vo2.toFixed(1) : '-'}; HR model ${D.vo2hr ? D.vo2hr.toFixed(1) : '-'}, race efforts ${D.vo2perf ? D.vo2perf.toFixed(1) : '-'}).
+Current: VO2max ${D.vo2 ? D.vo2.toFixed(1) : 'unknown'}${D.vo2 && st.S.age ? ` (rated ${RATE.rate(D.vo2, st.S.age, st.S.sex).name} for age and sex, fitness age ${RATE.fitnessAge(D.vo2, st.S.sex)})` : ''} (4 weeks ago ${a4 && a4.vo2 ? a4.vo2.toFixed(1) : '-'}, 12 weeks ago ${a12 && a12.vo2 ? a12.vo2.toFixed(1) : '-'}; HR model ${D.vo2hr ? D.vo2hr.toFixed(1) : '-'}, race efforts ${D.vo2perf ? D.vo2perf.toFixed(1) : '-'}).
 Endurance score ${D.end ? Math.round(D.end) + ' (' + tierOf(D.end) + ')' : '-'}. Fitness CTL ${Math.round(D.ctl)}, fatigue ATL ${Math.round(D.atl)}, form ${Math.round(D.tsb)}. Weekly running time ${fmtDur(D.H * 3600)} (42-day avg). Longest run in 6 weeks ${Math.round(D.L)} min. HR drift on 60+ min runs ${D.hasDec ? D.D.toFixed(1) + '%' : 'no data'}.
 Load: last 7 days ${Math.round(a7)} vs weekly average of last 4 weeks ${Math.round(c28 / 4)}.
 Intensity, last 4 weeks (time in HR zones): easy Z1-2 ${pc(z[0] + z[1])}, moderate Z3 ${pc(z[2])}, hard Z4-5 ${pc(z[3] + z[4])}.
