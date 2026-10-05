@@ -267,8 +267,11 @@ function defaultName(ms) { const h = new Date(ms).getHours(); return (h < 11 ? '
 /* ---------- Physiology ---------- */
 // Minetti et al. (2002) energy cost of running vs gradient, J/kg/m; ratio to flat
 function costRatio(i) { i = clamp(i, -0.3, 0.3); return Math.max(0.45, (155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6) / 3.6); }
-// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. Shared by both VO2max models.
+// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. This defines the VDOT scale:
+// VO2max = vo2Cost(vVO2max), the speed a runner can hold for ~11 min. Both VO2max paths report on this scale.
 const vo2Cost = v => { const m = v * 60; return Math.max(3.5, -4.60 + 0.182258 * m + 0.000104 * m * m); };
+// Average %HRmax a runner typically holds in an all-out effort of this length (5K ~0.94, 10K ~0.92, HM ~0.88, M ~0.84).
+const raceHR = min => 0.81 + 0.16 * Math.exp(-min / 120);
 // Daniels & Gilbert running formula
 function vdotOf(distM, sec) {
   const t = sec / 60, v = distM / t;
@@ -306,24 +309,23 @@ function analyze(r, S, vo2ref) {
       const q = clamp(hrrOf(r.avgHR), 0, 1);
       out.load = r.dur / 60 * q * ka * Math.exp(kb * q);
       out.ef = v * 60 / r.avgHR;
-      if (q > 0.45 && q < 0.95 && v > 1.6) { out.est = 3.5 + (vo2Cost(v) - 3.5) / q; out.conf = 0.3; }
-      if (r.dist >= 3000 && r.avgHR / hrMax >= (r.dur < 1800 ? 0.88 : 0.85)) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
+      if (q > 0.45 && q < 0.95 && v > 1.6) { out.vmax = v / q; out.est = vo2Cost(out.vmax); out.conf = 0.3; }
+      if (r.dist >= 3000 && r.avgHR / hrMax >= raceHR(r.dur / 60) - 0.03) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
     } else out.load = loadNoHR(r.dur, v, vo2ref, ka, kb);
     return out;
   }
   const n = r.n, d = r.d, hr = r.hr, mv = r.mv;
-  const v = new Float32Array(n), g = new Float32Array(n), K = 3;
+  const v = new Float32Array(n), g = new Float32Array(n), veq = new Float32Array(n), K = 3;
   for (let i = 0; i < n; i++) { const a = Math.max(0, i - K), b = Math.min(n - 1, i + K); v[i] = b > a ? (d[b] - d[a]) / ((b - a) * DT) : 0; }
   const altS = r.hasAlt ? smooth(r.alt, 15) : null;
   if (altS) for (let i = 0; i < n; i++) { const a = Math.max(0, i - 8), b = Math.min(n - 1, i + 8), dd = d[b] - d[a]; g[i] = dd > 20 ? clamp((altS[b] - altS[a]) / dd, -0.3, 0.3) : 0; }
   const moving = i => mv[i] && v[i] > 0.8;
   let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0;
   const zones = [0, 0, 0, 0, 0];
-  const vo2 = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const rat = costRatio(g[i]); vo2[i] = vo2Cost(v[i] * rat);
+    veq[i] = v[i] * costRatio(g[i]); // grade-adjusted (flat-equivalent) speed
     if (!moving(i)) continue;
-    mov += DT; gapS += v[i] * rat * DT;
+    mov += DT; gapS += veq[i] * DT;
     if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
     if (hr[i] > 0) {
       hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
@@ -340,37 +342,46 @@ function analyze(r, S, vo2ref) {
   out.load = hn > n * 0.5 ? load : loadNoHR(mov, gapV, vo2ref, ka, kb);
   out.ef = out.avgHR ? gapV * 60 / out.avgHR : null;
 
-  // --- steady-state windows -> anchored HR–VO2 regression ---
+  // --- steady-state windows -> anchored heart-rate / speed regression ---
+  // Heart rate rises linearly with oxygen uptake (%HRR ≈ %VO2 reserve, Swain 1997), and measured running
+  // VO2 rises linearly with speed (ACSM; Léger & Mercier). So grade-adjusted speed is linear in HR, passing
+  // through (resting HR, 0). Extending the line to max HR gives the speed at VO2max (vVO2max), and
+  // VO2max = vo2Cost(vVO2max) on the same VDOT scale as race results. (Regressing Daniels' curved cost on HR
+  // directly would read 4–7 ml/kg/min low whenever the steady windows are at easy pace.)
   const W = 30, warm = 150, wins = [];
   if (r.hasHR) for (let s = Math.max(warm, W); s + W <= n; s += 15) {
-    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, so = 0, sg = 0;
+    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, se = 0, sg = 0;
     for (let i = s - W; i < s + W; i++) { if (!moving(i)) { ok = false; break; } }
     if (!ok) continue;
-    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; so += vo2[i]; sg += g[i]; }
+    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; se += veq[i]; sg += g[i]; }
     if (!ok) continue;
     for (let i = s - W; i < s; i++) pv += v[i];
     const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W;
     const h = sh / W, q = hrrOf(h);
     if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || q < 0.35 || q > 0.95) continue;
     const tMin = s * DT / 60;
-    wins.push([h, so / W, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]);
+    wins.push([h, se / W * 60, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]); // [bpm, grade-adjusted m/min, weight]
   }
   out.windows = wins; out.est = null; out.conf = 0;
   if (wins.length >= 6) {
     const fit = anchoredFit(wins, hrRest);
     if (fit && fit.b > 0) {
-      out.est = fit.a + fit.b * hrMax; out.fit = fit;
+      const vmax = (fit.a + fit.b * hrMax) / 60; // m/s
+      out.est = vo2Cost(vmax); out.vmax = vmax; out.fit = fit;
       const sw = wins.reduce((s, w) => s + w[2], 0);
-      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 6, 0.2, 1);
-      if (out.est < 20 || out.est > 90) { out.est = null; out.conf = 0; }
+      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 30, 0.2, 1);
+      if (out.est < 20 || out.est > 90) { out.est = null; out.vmax = null; out.conf = 0; }
     }
   }
   // --- aerobic decoupling (Pa:HR) ---
   out.dec = null;
   if (r.hasHR && mov >= 2400) {
     const idx = []; for (let i = 300; i < n; i++) if (moving(i) && hr[i] > 0) idx.push(i);
-    if (idx.length > 200) {
-      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += v[i] * costRatio(g[i]); sh += hr[i]; } return sv / sh; };
+    // only for steady runs: intervals or walk breaks make the halves incomparable
+    let m1 = 0, m2 = 0; for (const i of idx) { m1 += veq[i]; m2 += veq[i] * veq[i]; } m1 /= idx.length;
+    const cvRun = Math.sqrt(Math.max(0, m2 / idx.length - m1 * m1)) / m1;
+    if (idx.length > 200 && cvRun < 0.2) {
+      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += veq[i]; sh += hr[i]; } return sv / sh; };
       const e1 = ef(0, half), e2 = ef(half, idx.length); out.dec = (e1 - e2) / e1 * 100;
     }
   }
@@ -381,23 +392,25 @@ function analyze(r, S, vo2ref) {
   for (const [D, label] of EFFORTS) {
     if (dist < D) continue;
     let best = Infinity, bi = 0, bj = 0, i = 0;
-    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT; if (t < best) { best = t; bi = i; bj = j; } } }
+    // time scaled to exactly D (the window overshoots by up to one sample)
+    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT * D / (d[j] - d[i]); if (t < best) { best = t; bi = i; bj = j; } } }
     if (!isFinite(best)) continue;
     const c = prc[bj + 1] - prc[bi], ehr = c > (bj - bi) * 0.8 ? (pre[bj + 1] - pre[bi]) / c : null;
     const e = { D, label, sec: best, hr: ehr };
-    if (D >= 3000 && ehr && ehr / hrMax >= (best < 1800 ? 0.88 : 0.85)) e.vdot = vdotOf(D, best);
+    if (D >= 3000 && ehr && ehr / hrMax >= raceHR(best / 60) - 0.03) e.vdot = vdotOf(D, best); // race-like effort only
     out.efforts.push(e);
   }
   return out;
 }
-function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp((vo2Cost(v) - 3.5) / ((vo2ref || 45) - 3.5), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
+// Without HR: %HRR ≈ grade-adjusted speed / vVO2max (same linear model as above)
+function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp(v / vFor(vo2ref || 45), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
 
-// Weighted least squares of VO2 on HR with a physiological anchor (HRrest, 3.5 ml/kg/min),
+// Weighted least squares of grade-adjusted speed (m/min) on HR with a physiological anchor (HRrest, 0),
 // one Huber reweighting pass for robustness.
 function anchoredFit(wins, hrRest) {
   const solve = ws => {
     const sw0 = ws.reduce((s, w) => s + w[2], 0);
-    const pts = ws.concat([[hrRest, 3.5, Math.max(2, 0.15 * sw0)]]);
+    const pts = ws.concat([[hrRest, 0, Math.max(2, 0.15 * sw0)]]);
     let sw = 0, sx = 0, sy = 0; for (const [x, y, w] of pts) { sw += w; sx += w * x; sy += w * y; }
     const mx = sx / sw, my = sy / sw; let sxy = 0, sxx = 0;
     for (const [x, y, w] of pts) { sxy += w * (x - mx) * (y - my); sxx += w * (x - mx) ** 2; }
@@ -406,7 +419,7 @@ function anchoredFit(wins, hrRest) {
     return { a, b, sd: Math.sqrt(se / sw1) };
   };
   let f = solve(wins);
-  const c = Math.max(1.5, 1.345 * f.sd);
+  const c = Math.max(7, 1.345 * f.sd);
   const rw = wins.map(([x, y, w]) => { const r = Math.abs(y - f.a - f.b * x); return [x, y, w * (r <= c ? 1 : c / r)]; });
   f = solve(rw);
   return f;
@@ -422,18 +435,18 @@ function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x
 
 function fuseVO2(items, T) {
   // items: [{t, est, conf, vdots:[...]}] sorted by t
-  let hw = 0, hs = 0, perf = null;
+  let hw = 0, hs = 0, perf = null, pAge = 0;
   for (const it of items) {
     if (it.t > T + DAY) break;
     const age = (T - it.t) / DAY; if (age > 60) continue;
     if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; hs += w * it.est; }
-    for (const vd of it.vdots) if (perf == null || vd > perf) perf = vd;
+    for (const vd of it.vdots) if (perf == null || vd > perf) { perf = vd; pAge = Math.max(0, age); }
   }
   if (!hw && perf == null) return null;
   if (!hw) return { v: perf, hr: null, perf };
   const vh = hs / hw, sh = 2.5 / Math.sqrt(Math.min(hw, 4));
   if (perf == null) return { v: vh, hr: vh, perf: null };
-  const sp = 2.0, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
+  const sp = 2.0 + pAge / 20, wh = 1 / sh ** 2, wp = 1 / sp ** 2; // a race fades out smoothly over 60 days
   return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
 }
 
@@ -501,7 +514,7 @@ function makeSample(today) {
       const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
       const dla = new Float32Array(n), dlo = new Float32Array(n);
       let dist = 0, h = 70, drift = 0;
-      const fit = (VO2 - 3.5);
+      const vmax = vFor(VO2); // speed at VO2max
       for (let i = 0; i < n; i++) {
         const tm = i * DT / 60;
         let q = p;
@@ -511,11 +524,9 @@ function makeSample(today) {
         const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
         const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
         const rat = costRatio(slope);
-        const vTarget = vFor(3.5 + q * fit);
-        const vel = Math.max(1.2, vTarget / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
-        const vo2 = vo2Cost(vel * rat);
+        const vel = Math.max(1.2, q * vmax / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
         if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
-        const target = HRREST + clamp((vo2 - 3.5) / fit, 0, 1.05) * (HRMAX - HRREST) + drift;
+        const target = HRREST + clamp(vel * rat / vmax, 0, 1.05) * (HRMAX - HRREST) + drift;
         h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
         dist += vel * DT; d[i] = dist;
         { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));

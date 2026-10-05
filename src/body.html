@@ -83,21 +83,12 @@
   <div class="banner" id="banner" hidden></div>
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
-  <!-- OVERVIEW -->
+  <!-- OVERVIEW: customisable dashboard (ui_dash.js) -->
   <section class="view" id="v-overview" data-view="overview">
-    <div class="vh"><div><p class="eyebrow" id="hello"></p><h2>Current fitness</h2></div><p class="muted" id="asof"></p></div>
-    <div class="hero">
-      <div class="card tile" id="tVo2"></div>
-      <div class="card tile" id="tEnd"></div>
-      <div class="card tile" id="tLoad"></div>
-      <div class="card tile" id="tRace"></div>
-    </div>
-    <div class="grid-ov">
-      <div class="card" id="latest"></div>
-      <div class="card chart-card"><div class="ch"><h3>VO₂max</h3><span class="muted sm">Last 6 months</span></div><div class="plot" id="oVo2"></div></div>
-      <div class="card chart-card"><div class="ch"><h3>Weekly distance</h3><span class="muted sm" id="oWkCap"></span></div><div class="plot" id="oWeek"></div></div>
-      <div class="card"><div class="ch"><h3>What drives your endurance</h3></div><div class="bars" id="breakdown"></div></div>
-    </div>
+    <div class="vh"><div><p class="eyebrow" id="hello"></p><h2>Current fitness</h2><p class="muted sm" id="asof"></p></div>
+      <div class="btns"><button type="button" class="ghost" id="dashReset" hidden>Reset layout</button><button type="button" id="dashEdit">Customize</button></div></div>
+    <div class="dash" id="dash"></div>
+    <div id="dashAdd" style="margin-top:12px" hidden></div>
   </section>
 
   <!-- WORKOUTS -->
@@ -173,22 +164,26 @@
         </div>
         <div class="foot"><span class="muted sm" id="setSaved"></span><button type="submit" class="primary">Save settings</button></div>
       </form>
+      <div class="card" id="lookCard"></div>
+      <div class="card" id="aiCard"></div>
       <div class="card" id="storeCard"></div>
       <div class="card" id="dataCard"></div>
     </div>
     <div class="vh" style="margin-top:28px"><h2>How the numbers are made</h2></div>
     <div class="method">
       <div class="card">
-        <h3>VO₂max: anchored heart-rate regression</h3>
+        <h3>VO₂max: heart rate against speed</h3>
         <ol>
-          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude.</li>
-          <li>Oxygen cost of every sample uses the Daniels–Gilbert running curve, corrected for slope with Minetti’s gradient cost model.</li>
-          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve.</li>
-          <li>A weighted, outlier-resistant line runs through those windows plus one physiological anchor, resting heart rate ↔ 3.5 ml/kg/min. Extending it to max heart rate gives the run’s VO₂max.</li>
-          <li>Estimates are blended with a 14-day half-life by data quality, then fused with race-effort VDOT (hard efforts ≥85% HRmax) by inverse-variance weighting.</li>
+          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude; uphill and downhill are converted to flat-equivalent speed with Minetti’s cost-of-gradient model.</li>
+          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve. Windows after 45 minutes count less (cardiac drift).</li>
+          <li>Heart rate rises in step with oxygen use, and oxygen use rises in step with speed. So a weighted, outlier-resistant line runs through the windows and one anchor — resting heart rate at zero speed. Extending it to max heart rate gives your speed at VO₂max.</li>
+          <li>VO₂max is the Daniels–Gilbert oxygen cost of that speed, the same VDOT scale as race results and Garmin-style predictions.</li>
+          <li>Run estimates are blended with a 14-day half-life by data quality, then fused with race-like efforts (average HR near what an all-out effort of that length needs) by inverse-variance weighting; a race fades out over 60 days.</li>
         </ol>
-        <div class="formula">VO₂(HR) = a + b·HR   fitted with anchor (HRrest, 3.5)
-VO₂max  = a + b·HRmax</div>
+        <div class="formula">speed(HR) = b·(HR − HRrest)     weighted fit, 2-pass Huber
+vVO₂max   = speed(HRmax)
+VO₂max    = −4.60 + 0.182258·v + 0.000104·v²   (v in m/min)</div>
+        <p>Accuracy depends most on your max and resting heart rate. Without a measured max, the app uses the higher of your age estimate and your hardest run.</p>
       </div>
       <div class="card">
         <h3>Endurance score</h3>
@@ -204,7 +199,7 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
         <ul>
           <li><b>Training load</b> is Banister TRIMP. Runs without heart rate get an estimate from grade-adjusted pace.</li>
           <li><b>Fitness / fatigue</b> are 42-day and 7-day exponential averages; <b>form</b> is the difference.</li>
-          <li><b>Heart-rate drift</b> compares pace per heartbeat in the first and second half of a run.</li>
+          <li><b>Heart-rate drift</b> compares grade-adjusted pace per heartbeat in the first and second half of steady runs (interval sessions are skipped).</li>
           <li><b>Race times</b> invert the Daniels VDOT formula, with a penalty on longer races when volume or long runs are short.</li>
           <li>Every value is placed on the <b>date and time recorded in the workout file</b>, never the import date.</li>
         </ul>

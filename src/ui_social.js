@@ -158,7 +158,7 @@ async function renderShared(id) {
     if ($('#shPace')) {
       const pts = s.paceS.map((v, i) => [i * stp, numOr(v) || null]), pv = pts.filter(p => p[1]).map(p => p[1]).sort((a, b) => a - b);
       const lo = pv[Math.floor(pv.length * 0.02)], hi = pv[Math.floor(pv.length * 0.98)];
-      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
     }
     if ($('#shHr')) plot($('#shHr'), Object.assign({}, xo, { label: 'Heart rate', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: s.hrS.map((v, i) => [i * stp, numOr(v) || null]), fmt: v => Math.round(v) + ' bpm' }] }));
   } else if (s.type === 'profile') {
@@ -170,7 +170,7 @@ async function renderShared(id) {
       ${rec.length ? `<div class="card" style="margin-top:12px"><div class="ch"><h3>Recent workouts</h3></div><div class="scroll-x"><table class="tb"><thead><tr><th>Date</th><th>Workout</th><th class="n">Dist ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th></tr></thead><tbody>${rec.map(w =>
         `<tr><td>${numOr(w.start) ? fmtDate(+w.start, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td><td>${esc(w.name)}</td><td class="n">${fmtDist(numOr(w.dist))}</td><td class="n">${fmtDur(numOr(w.mov))}</td><td class="n">${numOr(w.avgHR) ? Math.round(w.avgHR) : '–'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}${foot}`;
     if ($('#shWeek')) { const pts = s.weeks.map(w => [numOr(w[0]), (numOr(w[1]) || 0) / U(), numOr(w[2]) || 0]).filter(p => p[0]);
-      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
   } else box.innerHTML = '<p class="empty">Unknown shared item.</p>';
 }
 

@@ -38,49 +38,64 @@ function timeTicks(x0, x1) {
   for (let t = d0; t <= x1; t += step * DAY) if (t >= x0) out.push(t);
   return { ticks: out, fmt: t => fmtDate(t) };
 }
-/* series: {name, color, pts:[[x,y,extra]], kind:'line'|'dots'|'bars'|'area', fmt, r(pt)} */
+/* series: {name, color, pts:[[x,y,extra]], kind:'line'|'dots'|'bars'|'area', fmt, r(pt)}
+   options: yFmt(v, decimals), minSpan (smallest y-range shown, so noise isn't magnified), zero, invert, xTime, … */
+let plotSeq = 0;
+const numFmt = (v, dec) => Math.abs(v) >= 1000 && dec === 0 ? v.toLocaleString() : v.toFixed(dec);
 function plot(el, o) {
   el.innerHTML = '';
-  const series = o.series.filter(s => s.pts.length);
+  const series = o.series.filter(s => s.pts.some(p => p[1] != null));
   if (!series.length) { el.innerHTML = `<p class="empty">${esc(o.empty || 'Not enough data yet.')}</p>`; return; }
-  const W = Math.max(260, el.clientWidth || 600), H = o.height || 210, m = { l: o.ml || 42, r: 12, t: 10, b: 24 };
+  const rem = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16; // text-size setting
+  const W = Math.max(260, el.clientWidth || 600), H = Math.round((o.height || 210) * Math.min(1.25, Math.max(1, rem)));
   let x0 = o.xMin ?? Infinity, x1 = o.xMax ?? -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const s of series) for (const p of s.pts) { if (o.xMin == null) x0 = Math.min(x0, p[0]); if (o.xMax == null) x1 = Math.max(x1, p[0]); if (p[1] != null) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } }
   if (o.zero) y0 = Math.min(0, y0);
-  const floorY = o.zero ? 0 : -Infinity;
   if (o.yMin != null) y0 = Math.min(y0, o.yMin); if (o.yMax != null) y1 = Math.max(y1, o.yMax);
-  if (x1 === x0) { x0 -= DAY; x1 += DAY; }
-  const padY = (y1 - y0) * 0.08 || 1; const yt = niceTicks(Math.max(floorY, o.zero ? y0 : y0 - padY), y1 + padY, o.yTicks || 4);
+  if (o.minSpan && y1 - y0 < o.minSpan) { const c = (y0 + y1) / 2, h = o.minSpan / 2; y0 = c - h; y1 = c + h; if (o.zero && y0 < 0) { y1 -= y0; y0 = 0; } }
+  if (x1 === x0) { x0 -= o.xTime === false ? 1 : DAY; x1 += o.xTime === false ? 1 : DAY; }
+  const padY = (y1 - y0) * 0.08 || 1;
+  const yt = niceTicks(o.zero ? Math.max(0, y0) : y0 - padY, y1 + padY, o.yTicks || 4);
   y0 = yt[0]; y1 = yt[yt.length - 1];
+  // decimals from the tick step, so neighbouring labels never print the same number (e.g. 29 · 29 · 29)
+  const step = yt.length > 1 ? yt[1] - yt[0] : 1, dec = Math.max(0, Math.min(4, Math.ceil(-Math.log10(step) - 1e-9)));
+  const yf = o.yFmt ? v => o.yFmt(v, dec) : v => numFmt(v, dec);
+  const labels = yt.map(v => String(yf(v)));
+  const cw = 6.9 * rem, m = { l: Math.max(o.ml || 30, Math.ceil(Math.max(...labels.map(t => t.length)) * cw) + 12), r: 12, t: 10, b: Math.round(24 * rem) };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const sx = x => m.l + (x - x0) / (x1 - x0) * iw;
   const sy = y => o.invert ? m.t + (y - y0) / (y1 - y0) * ih : m.t + ih - (y - y0) / (y1 - y0) * ih;
-  const yf = o.yFmt || (v => String(v));
-  let g = '';
-  yt.forEach(v => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${esc(yf(v))}</text>`; });
-  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt } : timeTicks(x0, x1);
-  const minGap = 46; let lastX = -1e9;
+  const cid = 'pc' + (++plotSeq);
+  let g = `<defs><clipPath id="${cid}"><rect x="${m.l - 6}" y="${m.t - 6}" width="${iw + 12}" height="${ih + 12}"/></clipPath></defs>`;
+  yt.forEach((v, k) => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4 * rem}" text-anchor="end">${esc(labels[k])}</text>`; });
+  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt || (v => String(v)) } : timeTicks(x0, x1);
+  const minGap = 46 * rem; let lastX = -1e9;
   xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
-  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${sy(o.invert ? y1 : y0)}" y2="${sy(o.invert ? y1 : y0)}"/>`;
+  const yBase = sy(o.invert ? y1 : y0);
+  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">`;
   for (const s of series) {
     if (s.kind === 'bars') {
-      const bw = Math.max(2, (s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length) - 2);
-      for (const p of s.pts) { const x = sx(p[0]) - bw / 2, y = sy(p[1]), yb = sy(Math.max(0, y0)); const h = Math.max(0, yb - y);
-        if (h > 0) g += `<path d="M${x},${yb}V${y + Math.min(3, h)}q0,-3 3,-3h${bw - 6}q3,0 3,3V${yb}Z" fill="${s.color}"/>`; }
+      const slot = s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length, bw = Math.max(2, Math.min(24, slot - 2));
+      for (const p of s.pts) { if (p[1] == null) continue;
+        const x = sx(p[0]) - bw / 2, y = sy(p[1]), yb = sy(Math.max(0, y0)), h = Math.max(0, yb - y), r = Math.min(4, bw / 2, h);
+        if (h > 0) g += `<path d="M${x},${yb}V${y + r}q0,${-r} ${r},${-r}h${bw - 2 * r}q${r},0 ${r},${r}V${yb}Z" fill="${s.color}"/>`; }
     } else if (s.kind === 'dots') {
-      for (const p of s.pts) g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="${s.r ? s.r(p) : 4}" fill="${s.color}" fill-opacity="${s.op ?? 0.55}" stroke="var(--surface)" stroke-width="1.5"/>`;
+      for (const p of s.pts) if (p[1] != null) g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="${s.r ? s.r(p) : 4}" fill="${s.color}" fill-opacity="${s.op ?? 0.55}" stroke="var(--surface)" stroke-width="1.5"/>`;
     } else {
-      let d = '', pen = false;
-      for (const p of s.pts) { if (p[1] == null) { pen = false; continue; } d += (pen ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1); pen = true; }
-      if (s.kind === 'area') { const yb = sy(o.invert ? y1 : y0); const pts = s.pts.filter(p => p[1] != null); g += `<path d="${d}L${sx(pts[pts.length - 1][0])},${yb}L${sx(pts[0][0])},${yb}Z" fill="${s.color}" fill-opacity=".12"/>`; }
-      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
+      // contiguous runs of non-null points; areas are filled per run so gaps stay empty
+      const runs = []; let cur = null;
+      for (const p of s.pts) { if (p[1] == null) { cur = null; continue; } if (!cur) runs.push(cur = []); cur.push(p); }
+      const path = rp => rp.map((p, k) => (k ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)).join('');
+      if (s.kind === 'area') for (const rp of runs) g += `<path d="${path(rp)}L${sx(rp[rp.length - 1][0]).toFixed(1)},${yBase}L${sx(rp[0][0]).toFixed(1)},${yBase}Z" fill="${s.color}" fill-opacity=".1"/>`;
+      g += `<path d="${runs.map(path).join('')}" fill="none" stroke="${s.color}" stroke-width="${s.w || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
       if (s.end !== false) { const lp = [...s.pts].reverse().find(p => p[1] != null); if (lp) g += `<circle cx="${sx(lp[0])}" cy="${sy(lp[1])}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; }
     }
   }
+  g += '</g>';
   if (o.extra) g += o.extra(sx, sy, { x0, x1, y0, y1, W, H, m });
   const leg = series.filter(s => !s.noLegend);
   const legend = leg.length > 1 ? `<div class="legend">${leg.map(s => `<span><i class="${s.kind === 'dots' ? 'dot' : ''}" style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
-  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || '')}">${g}<line class="xh" id="xh" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><g class="hl"></g><rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div>`;
+  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || '')}">${g}<line class="xh" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><g class="hl"></g><rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div>`;
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), xh = svg.querySelector('.xh'), hl = svg.querySelector('.hl');
   const scatter = series.every(s => s.kind === 'dots');
   const nearest = (pts, x) => { let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid][0] < x) lo = mid; else hi = mid; } return Math.abs(pts[lo][0] - x) <= Math.abs(pts[hi][0] - x) ? pts[lo] : pts[hi]; };
@@ -90,12 +105,12 @@ function plot(el, o) {
     const xv = x0 + (px - m.l) / iw * (x1 - x0);
     let rows = [], ax = null, dots = '';
     if (scatter) {
-      let best = null, bd = 1e9; for (const s of series) for (const p of s.pts) { const dd = Math.hypot(sx(p[0]) - px, sy(p[1]) - py); if (dd < bd) { bd = dd; best = [s, p]; } }
+      let best = null, bd = 1e9; for (const s of series) for (const p of s.pts) { if (p[1] == null) continue; const dd = Math.hypot(sx(p[0]) - px, sy(p[1]) - py); if (dd < bd) { bd = dd; best = [s, p]; } }
       if (!best || bd > 40) return hide();
-      ax = sx(best[1][0]); rows.push(best[0].tip ? best[0].tip(best[1]) : `<b>${esc(best[0].fmt ? best[0].fmt(best[1][1]) : best[1][1])}</b>`);
+      ax = sx(best[1][0]); rows.push(best[0].tip ? best[0].tip(best[1]) : `<b>${esc(best[0].fmt ? best[0].fmt(best[1][1], best[1]) : best[1][1])}</b>`);
       dots += `<circle cx="${ax}" cy="${sy(best[1][1])}" r="6" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
     } else {
-      let cands = series.map(s => [s, nearest(s.pts, xv)]);
+      const cands = series.map(s => [s, nearest(s.pts, xv)]);
       const tx = cands.reduce((b, c) => Math.abs(c[1][0] - xv) < Math.abs(b - xv) ? c[1][0] : b, cands[0][1][0]);
       ax = sx(tx); const head = o.tipX ? o.tipX(tx) : fmtDate(tx, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
       rows.push(`<div style="opacity:.75">${esc(head)}</div>`);
@@ -110,11 +125,10 @@ function plot(el, o) {
     }
     xh.setAttribute('x1', ax); xh.setAttribute('x2', ax); xh.setAttribute('visibility', scatter ? 'hidden' : 'visible'); hl.innerHTML = dots;
     tip.innerHTML = rows.join(''); tip.hidden = false;
-    const tw = tip.offsetWidth, cw = el.clientWidth, left = ax / k;
-    tip.style.left = Math.max(0, Math.min(cw - tw, left + 12 + tw > cw ? left - tw - 12 : left + 12)) + 'px';
+    const tw = tip.offsetWidth, cw2 = el.clientWidth, left = ax / k;
+    tip.style.left = Math.max(0, Math.min(cw2 - tw, left + 12 + tw > cw2 ? left - tw - 12 : left + 12)) + 'px';
     tip.style.top = (legend ? el.querySelector('.legend').offsetHeight : 0) + 4 + 'px';
   };
   const hide = () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); hl.innerHTML = ''; };
   svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move); svg.addEventListener('pointerleave', hide);
 }
-

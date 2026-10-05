@@ -1,162 +1,224 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a78d6"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<!doctype html><html lang="en" data-theme="volt" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0f13"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}body{margin:0;background:#0b0f13}img{max-width:100%}[hidden]{display:none!important}</style><script>try{var p=JSON.parse(localStorage.getItem("pp-ui"))||{},d=document.documentElement,t=p.theme||"volt";if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"volt":"daylight";d.dataset.theme=t;d.dataset.mode=t==="daylight"?"light":"dark";if(p.size)d.dataset.size=p.size;if(p.font)d.dataset.font=p.font}catch(e){}</script></head><body>
 <title>Pace &amp; Pulse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" id="font-sport" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: app shell — top bar with tabs (desktop) / bottom tab bar (phone); each tab is a view of summary tiles, charts and ledgers. */
-:root {
-  --bg: #f3f6f8; --surface: #ffffff; --sunk: #eaeff3; --ink: #0f1b26; --ink2: #44525f; --muted: #6c7a87; --line: #d9e0e6;
-  --accent: #2a78d6; --accent-ink: #1c5cab; --accent-soft: #dceafb; --s2: #eb6834; --hr: #e34948; --elev: #1baf7a;
-  --good: #0ca30c; --good-ink: #0a7a0a; --warn: #fab219; --warn-ink: #8a5c00; --crit: #d03b3b;
-  --z1: #86b6ef; --z2: #5598e7; --z3: #2a78d6; --z4: #1c5cab; --z5: #104281;
-  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
-  --body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --r: 12px; --bnav-h: 0px;
+/* Layout: app shell — top bar with pill tabs (desktop) / bottom tab bar (phone); each tab is a view of tiles, charts and ledgers.
+   Every colour is a token; themes swap tokens only. Font sizes are rem so the text-size setting scales them. */
+:root, :root[data-theme="volt"] {
+  --bg: #0b0f13; --surface: #131a21; --sunk: #1a222b; --raise: #1f2832; --ink: #eef3f6; --ink2: #b4c0cb; --muted: #84919e; --line: #26313c;
+  --accent: #c6f24e; --accent-ink: #d4f56e; --accent-soft: #232f14; --on-accent: #0b0f13;
+  --c1: #73a40a; --c2: #7e74e1; --hr: #e84d66; --elev: #00aa95;
+  --good: #0ca30c; --good-ink: #4fd04f; --warn: #fab219; --warn-ink: #fab219; --crit: #e5534b;
+  --z1: #426c00; --z2: #5e8b00; --z3: #7baa2b; --z4: #99ca50; --z5: #b9eb72;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0d1217; --surface: #151c23; --sunk: #1b232b; --ink: #edf2f6; --ink2: #b3c0cb; --muted: #8796a3; --line: #27313b;
-  --accent: #3987e5; --accent-ink: #86b6ef; --accent-soft: #17304d; --s2: #d95926; --hr: #e66767; --elev: #199e70;
-  --good-ink: #4fd04f; --warn-ink: #fab219;
-  --z1: #184f95; --z2: #1c5cab; --z3: #2a78d6; --z4: #5598e7; --z5: #9ec5f4; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #0d1217; --surface: #151c23; --sunk: #1b232b; --ink: #edf2f6; --ink2: #b3c0cb; --muted: #8796a3; --line: #27313b;
-  --accent: #3987e5; --accent-ink: #86b6ef; --accent-soft: #17304d; --s2: #d95926; --hr: #e66767; --elev: #199e70;
-  --good-ink: #4fd04f; --warn-ink: #fab219;
-  --z1: #184f95; --z2: #1c5cab; --z3: #2a78d6; --z4: #5598e7; --z5: #9ec5f4; color-scheme: dark; }
+:root[data-theme="ember"] {
+  --bg: #110c0a; --surface: #1b1512; --sunk: #241c18; --raise: #2b221d; --ink: #f6efe9; --ink2: #cfc1b6; --muted: #a08f83; --line: #362a24;
+  --accent: #ff8f3f; --accent-ink: #ffa766; --accent-soft: #3a2112; --on-accent: #1a0f08;
+  --c1: #dc701c; --c2: #3b93d5; --hr: #e84d66; --elev: #00aa95;
+  --z1: #9a3e00; --z2: #bb5d00; --z3: #dd7b2b; --z4: #ff9b50; --z5: #ffbb71;
+}
+:root[data-theme="glacier"] {
+  --bg: #08111c; --surface: #0f1a28; --sunk: #152335; --raise: #1a2a3e; --ink: #eaf3fb; --ink2: #aec2d4; --muted: #8299ad; --line: #22344a;
+  --accent: #4fd1f0; --accent-ink: #7fdff5; --accent-soft: #0f3040; --on-accent: #04121c;
+  --c1: #00a4c0; --c2: #da6438; --hr: #e84d66; --elev: #3fb27a;
+  --z1: #006c84; --z2: #008aa3; --z3: #2ba9c2; --z4: #54c9e3; --z5: #78eaff;
+}
+:root[data-theme="uv"] {
+  --bg: #0d0a15; --surface: #171222; --sunk: #1f182d; --raise: #251d36; --ink: #f1edf8; --ink2: #c5bbd8; --muted: #9488ab; --line: #30263f;
+  --accent: #b197ff; --accent-ink: #c4b0ff; --accent-soft: #2a2146; --on-accent: #120c20;
+  --c1: #9575e2; --c2: #c0851f; --hr: #e84d66; --elev: #00aa95;
+  --z1: #6646a8; --z2: #8264c8; --z3: #a083ea; --z4: #bfa2ff; --z5: #dfc3ff;
+}
+:root[data-theme="daylight"] {
+  --bg: #f3f5f0; --surface: #ffffff; --sunk: #e9ede4; --raise: #f7f9f5; --ink: #12170f; --ink2: #454f40; --muted: #687262; --line: #d8ddd2;
+  --accent: #3b7d16; --accent-ink: #2f6612; --accent-soft: #e1efd6; --on-accent: #ffffff;
+  --c1: #478416; --c2: #6b50c2; --hr: #c82d40; --elev: #00897d;
+  --good: #0ca30c; --good-ink: #006300; --warn: #fab219; --warn-ink: #8a5c00; --crit: #d03b3b;
+  --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
+  color-scheme: light;
+}
+:root { --display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif; --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; --r: 16px; --bnav-h: 0px; }
+:root[data-font="classic"] { --display: "Barlow Condensed", "Arial Narrow", sans-serif; --body: "Source Sans 3", system-ui, sans-serif; }
+:root[data-font="rounded"] { --display: Nunito, system-ui, sans-serif; --body: Nunito, system-ui, sans-serif; }
+:root[data-font="tech"] { --display: "Space Grotesk", system-ui, sans-serif; --body: "Space Grotesk", system-ui, sans-serif; }
+:root[data-font="readable"] { --display: "Atkinson Hyperlegible", system-ui, sans-serif; --body: "Atkinson Hyperlegible", system-ui, sans-serif; }
+:root[data-font="system"] { --display: system-ui, -apple-system, "Segoe UI", sans-serif; --body: system-ui, -apple-system, "Segoe UI", sans-serif; }
+:root[data-size="s"] { font-size: 90%; } :root[data-size="l"] { font-size: 112.5%; } :root[data-size="xl"] { font-size: 125%; }
 
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
-.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
-h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: .01em; margin: 0; text-wrap: balance; }
-h2 { font-size: 1.7rem; line-height: 1.1; }
-h3 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .07em; color: var(--ink2); font-weight: 600; }
+body { color: var(--ink); font: 400 0.9375rem/1.5 var(--body); -webkit-font-smoothing: antialiased;
+  background: radial-gradient(900px 500px at 0% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%), var(--bg); background-attachment: fixed; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.9rem; line-height: 1.05; }
+h3 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink2); font-weight: 600; }
 a { color: var(--accent-ink); }
-.muted { color: var(--muted); margin: 0; } .sm { font-size: 13px; }
-.eyebrow { margin: 0 0 2px; font: 600 12px/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--accent-ink); }
+.muted { color: var(--muted); margin: 0; } .sm { font-size: 0.8125rem; }
+.eyebrow { margin: 0 0 2px; font: 700 0.75rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .14em; color: var(--accent-ink); }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-button, .btn { font: 600 14px/1 var(--body); border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  padding: 10px 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; text-decoration: none; }
+button, .btn { font: 600 0.875rem/1 var(--body); border-radius: 999px; border: 1px solid var(--line); background: var(--raise); color: var(--ink);
+  padding: 10px 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; text-decoration: none; transition: border-color .15s, background .15s; }
 button:hover, .btn:hover { border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: default; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.primary:hover { filter: brightness(1.08); }
+.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.primary:hover { filter: brightness(1.07); }
 .ghost { background: transparent; }
 .danger { color: var(--crit); }
 .danger.armed { background: var(--crit); color: #fff; border-color: var(--crit); }
 .link { background: none; border: 0; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; padding: 8px 0; min-height: 0; }
 .wide { width: 100%; }
 #file, #folder { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-input, select, textarea { font: 15px var(--body); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 42px; width: 100%; }
-textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
+input, select, textarea { font: 0.9375rem var(--body); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 42px; width: 100%; }
+textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
 
 /* ---------- top bar & tabs ---------- */
-.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--surface) 90%, transparent);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-.top-in { display: flex; align-items: center; gap: 16px; min-height: 60px; }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.top-in { display: flex; align-items: center; gap: 16px; min-height: 64px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
-.brand-t { font: 700 1.45rem/1 var(--display); letter-spacing: .01em; }
-.brand small { display: block; font: 500 13px/1.3 var(--body); color: var(--muted); }
-.tabs { display: flex; gap: 2px; height: 60px; margin-right: auto; }
-.tabs a { display: flex; align-items: center; padding: 0 14px; color: var(--ink2); text-decoration: none; font-weight: 600; font-size: 15px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.tabs a:hover { color: var(--ink); }
-.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.brand rect { fill: var(--accent); } .brand path { stroke: var(--on-accent); }
+.brand-t { font: 700 1.5rem/1 var(--display); letter-spacing: .02em; text-transform: uppercase; }
+.brand small { display: block; font: 500 0.8125rem/1.3 var(--body); color: var(--muted); }
+.tabs { display: flex; gap: 4px; margin-right: auto; }
+.tabs a { display: flex; align-items: center; padding: 8px 14px; border-radius: 999px; color: var(--ink2); text-decoration: none; font-weight: 600; font-size: 0.9375rem; }
+.tabs a:hover { color: var(--ink); background: var(--sunk); }
+.tabs a[aria-current="page"] { color: var(--accent-ink); background: var(--accent-soft); }
 .top-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.avatar { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; background: var(--accent-soft); color: var(--accent-ink); font: 700 15px/1 var(--body); border: 1px solid transparent; }
-.avatar.guest { background: var(--sunk); color: var(--muted); }
+.avatar { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; padding: 0; background: var(--accent-soft); color: var(--accent-ink); font: 700 0.9375rem/1 var(--body); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.avatar.guest { background: var(--sunk); color: var(--muted); border-color: var(--line); }
 .menu-wrap { position: relative; }
-.menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); padding: 8px; z-index: 40; box-shadow: 0 12px 32px rgb(0 0 0 / .18); }
+.menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(300px, calc(100vw - 32px)); padding: 8px; z-index: 40; box-shadow: 0 16px 40px rgb(0 0 0 / .35); }
 .menu .who { padding: 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
-.menu .who b { display: block; } .menu .who span { color: var(--muted); font-size: 13px; }
-.menu button { width: 100%; justify-content: flex-start; border: 0; background: transparent; font-weight: 500; }
+.menu .who b { display: block; } .menu .who span { color: var(--muted); font-size: 0.8125rem; }
+.menu button { width: 100%; justify-content: flex-start; border: 0; background: transparent; font-weight: 500; border-radius: 10px; }
 .menu button:hover { background: var(--sunk); }
-.menu .lbl { font: 600 11px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 10px 10px 4px; }
 .bnav { display: none; }
 @media (max-width: 820px) {
-  :root { --bnav-h: 62px; }
+  :root { --bnav-h: 64px; }
   .tabs { display: none; }
   .hide-sm { display: none; }
   .bnav { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 11px/1 var(--body); }
+  .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 0.6875rem/1 var(--body); }
   .bnav a[aria-current="page"] { color: var(--accent-ink); }
-  .bnav svg { width: 22px; height: 22px; }
+  .bnav a[aria-current="page"] svg { background: var(--accent-soft); border-radius: 999px; }
+  .bnav svg { width: 40px; height: 26px; padding: 2px 9px; }
   .main { padding-bottom: calc(var(--bnav-h) + 24px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 .main { padding-block: 8px 48px; }
-.banner { margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); font-size: 14px; }
+.banner { margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); font-size: 0.875rem; }
 .banner .grow { flex: 1 1 260px; min-width: 0; }
-.banner.warn { background: color-mix(in srgb, var(--warn) 22%, var(--surface)); }
-.status { font-size: 13px; color: var(--ink2); min-height: 1.2em; margin-top: 8px; }
+.banner.warn { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.status { font-size: 0.8125rem; color: var(--ink2); min-height: 1.2em; margin-top: 8px; }
 .view { margin-top: 12px; }
 .vh { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 8px 0 14px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
-.ch { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-footer { color: var(--muted); font-size: 13px; padding-block: 28px 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; box-shadow: inset 0 1px 0 rgb(255 255 255 / .03); }
+.ch { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
+.ver { margin: 28px 0 0; text-align: center; font: 0.75rem var(--mono); color: var(--muted); }
 
 /* ---------- tiles ---------- */
 .hero { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
 .tile { display: flex; flex-direction: column; gap: 10px; }
-.tile .label { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
-.big { font: 700 3.5rem/0.9 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
-.big small { font: 500 14px/1 var(--body); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
-.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--body); padding: 5px 9px; border-radius: 999px; background: var(--sunk); color: var(--ink2); width: fit-content; white-space: nowrap; }
+.label { display: inline-flex; align-items: center; gap: 8px; font: 700 0.75rem/1 var(--body); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.label::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); flex: none; }
+.big { font: 700 3.6rem/0.9 var(--display); letter-spacing: -.01em; }
+.big small { font: 600 0.875rem/1 var(--body); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 0.75rem/1 var(--body); padding: 5px 10px; border-radius: 999px; background: var(--sunk); color: var(--ink2); width: fit-content; white-space: nowrap; }
 .chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
 .chip.good { color: var(--good-ink); } .chip.warn { color: var(--warn-ink); } .chip.crit { color: var(--crit); } .chip.acc { color: var(--accent-ink); }
-.sub { font-size: 13px; color: var(--ink2); } .sub .num { color: var(--ink); }
+.sub { font-size: 0.8125rem; color: var(--ink2); } .sub .num { color: var(--ink); }
 .delta-up { color: var(--good-ink); } .delta-down { color: var(--crit); }
 .scale { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--z1), var(--z3), var(--z5)); margin-top: 4px; }
 .scale b { position: absolute; top: -4px; width: 4px; height: 16px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); transform: translateX(-2px); }
-.scale-l { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
-.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; margin: 0; }
+.scale-l { display: flex; justify-content: space-between; font-size: 0.6875rem; color: var(--muted); margin-top: 4px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 0.875rem; margin: 0; }
 .kv dt { color: var(--ink2); } .kv dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.kv dd small { color: var(--muted); font-size: 12px; margin-left: 6px; }
-.grid-ov { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.kv dd small { color: var(--muted); font-size: 0.75rem; margin-left: 6px; }
 
 /* latest workout card */
 .latest { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-.latest .mini-map { aspect-ratio: 4 / 3; max-width: 100%; border-radius: 10px; overflow: hidden; background: var(--sunk); }
+.latest .mini-map { aspect-ratio: 4 / 3; max-width: 100%; border-radius: 12px; overflow: hidden; background: var(--sunk); }
 .latest .mini-map svg { width: 100%; height: 100%; display: block; }
+.latest .lt { margin: 0; font-weight: 700; font-size: 1.125rem; }
 @media (max-width: 520px) { .latest { grid-template-columns: 1fr; } }
 
+/* ---------- dashboard (customisable overview) ---------- */
+.dash { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-flow: row dense; }
+.w { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.w > .card { flex: 1; }
+.w-S { grid-column: span 1; } .w-M { grid-column: span 2; } .w-L { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .dash { grid-template-columns: repeat(2, minmax(0, 1fr)); } .w-M { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .dash { grid-template-columns: minmax(0, 1fr); } .w-S, .w-M { grid-column: 1 / -1; } }
+.w-ctl { display: none; position: absolute; inset: 8px 8px auto auto; z-index: 3; gap: 4px; padding: 4px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 6px 18px rgb(0 0 0 / .35); }
+.w-ctl button { min-height: 32px; min-width: 32px; padding: 0 9px; font-size: 0.8125rem; border: 0; background: var(--sunk); }
+.w-ctl button.on { background: var(--accent); color: var(--on-accent); }
+.dash.editing .w-ctl { display: flex; }
+.dash.editing .w > .card { outline: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -2px; }
+.add-list { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); margin-top: 10px; }
+.add-list button { justify-content: flex-start; text-align: left; border-radius: 12px; padding: 10px 12px; min-height: 56px; }
+.add-list b { display: block; } .add-list span span { display: block; font-weight: 400; font-size: 0.75rem; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+.cal { display: grid; grid-template-columns: auto repeat(var(--wk), minmax(0, 1fr)); gap: 3px; align-items: center; font-size: 0.6875rem; color: var(--muted); }
+.cal i { display: block; aspect-ratio: 1; border-radius: 3px; background: var(--sunk); max-height: 22px; }
+.cal-leg { display: flex; align-items: center; gap: 4px; justify-content: flex-end; font-size: 0.6875rem; color: var(--muted); margin-top: 8px; }
+.cal-leg i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.meter { position: relative; height: 10px; border-radius: 5px; background: var(--sunk); margin: 8px 0 4px; overflow: hidden; }
+.meter .opt { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--good) 30%, transparent); }
+.meter b { position: absolute; top: -2px; width: 4px; height: 14px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); }
+.wkbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 64px; margin-top: 6px; }
+.wkbars div { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; font-size: 0.6875rem; color: var(--muted); }
+.wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
+.wkbars .today { color: var(--ink); font-weight: 700; }
+
+/* ---------- AI coach ---------- */
+.ai-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ai-lines li { display: grid; grid-template-columns: 1.6em 1fr; gap: 6px; font-size: 0.9375rem; line-height: 1.4; }
+.ai-meta { font-size: 0.75rem; color: var(--muted); }
+.ai-busy { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ---------- charts ---------- */
-.seg { display: inline-flex; background: var(--sunk); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
 .seg button { border: 0; background: transparent; min-height: 32px; padding: 6px 12px; color: var(--ink2); }
-.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--raise); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .25); }
 .seg-wide { display: flex; } .seg-wide button { flex: 1; }
 .charts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
 .chart-card h3 { margin-bottom: 2px; }
-.chart-card .cap { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.chart-card .cap { font-size: 0.8125rem; color: var(--muted); margin: 0 0 8px; }
 .plot { position: relative; width: 100%; }
 .plot svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
-.plot .ax { fill: var(--muted); font: 11px var(--mono); }
+.plot .ax { fill: var(--muted); font: 0.6875rem var(--mono); font-variant-numeric: tabular-nums; }
 .plot .grid { stroke: var(--line); stroke-width: 1; }
-.plot .base { stroke: var(--ink2); stroke-width: 1; opacity: .5; }
+.plot .base { stroke: var(--muted); stroke-width: 1; opacity: .6; }
+.plot .fitlab { font: 600 0.8125rem var(--mono); fill: var(--ink); }
 .plot .xh { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 3; }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink2); margin-bottom: 6px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--ink2); margin-bottom: 6px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
-.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 6px 18px rgb(0 0 0 / .2); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
 .tip b { font-weight: 700; } .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-.empty { color: var(--muted); font-size: 14px; padding: 24px 0; text-align: center; margin: 0; }
+.empty { color: var(--muted); font-size: 0.875rem; padding: 24px 0; text-align: center; margin: 0; }
 
 /* ---------- bars / tables ---------- */
 .two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 .bars { display: grid; gap: 12px; }
-.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 14px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 0.875rem; }
 .bar-row .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; }
-.bar-row .track i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
-.bar-row .v { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink2); font-size: 13px; }
-.bar-row .hint { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin-top: -2px; }
-table.tb { width: 100%; border-collapse: collapse; font-size: 14px; }
-table.tb th { text-align: left; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.bar-row .track i { display: block; height: 100%; border-radius: 4px; background: var(--c1); }
+.bar-row .v { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink2); font-size: 0.8125rem; }
+.bar-row .hint { grid-column: 1 / -1; font-size: 0.75rem; color: var(--muted); margin-top: -2px; }
+table.tb { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+table.tb th { text-align: left; font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 table.tb td { padding: 9px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
-table.tb td.n, table.tb th.n { text-align: right; } table.tb td.n { font-family: var(--mono); font-size: 13px; }
-table.tb tr.pb td:first-child { font-weight: 700; }
+table.tb td.n, table.tb th.n { text-align: right; } table.tb td.n { font-family: var(--mono); font-size: 0.8125rem; }
 table.tb .barcell { position: relative; } table.tb .barcell i { position: absolute; left: 0; top: 25%; bottom: 25%; background: var(--accent-soft); border-radius: 3px; z-index: 0; } table.tb .barcell span { position: relative; }
 .scroll-x { overflow-x: auto; }
 
@@ -164,19 +226,19 @@ table.tb .barcell { position: relative; } table.tb .barcell i { position: absolu
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .toolbar input { flex: 1 1 220px; width: auto; } .toolbar select { width: auto; flex: 0 1 auto; }
 .ledger-card { padding: 4px 8px 8px; }
-.ledger-head, .row { display: grid; grid-template-columns: 44px 104px minmax(0, 1.5fr) repeat(6, minmax(0, .8fr)); gap: 10px; align-items: center; padding: 10px 10px; }
-.ledger-head { font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); }
+.ledger-head, .row { display: grid; grid-template-columns: 44px 7rem minmax(0, 1.5fr) repeat(6, minmax(0, .8fr)); gap: 10px; align-items: center; padding: 10px; }
+.ledger-head { font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); border-bottom: 1px solid var(--line); }
 .ledger-head span:nth-child(n+4), .row .m { text-align: right; }
 .row { width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; text-align: left; font: inherit; min-height: 0; cursor: pointer; color: var(--ink); }
 a.row { text-decoration: none; }
 .row:hover { background: var(--sunk); border-color: var(--line); }
-.row .glyph { width: 40px; height: 40px; border-radius: 8px; background: var(--sunk); display: grid; place-items: center; }
+.row .glyph { width: 40px; height: 40px; border-radius: 10px; background: var(--sunk); display: grid; place-items: center; }
 .row .glyph svg { width: 34px; height: 34px; }
-.row .d { font-size: 13px; color: var(--ink2); line-height: 1.3; } .row .d span { display: block; color: var(--muted); font-size: 12px; }
+.row .d { font-size: 0.8125rem; color: var(--ink2); line-height: 1.3; } .row .d span { display: block; color: var(--muted); font-size: 0.75rem; }
 .row .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .nm small { font-weight: 500; color: var(--muted); margin-left: 6px; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
-.row .m { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; }
-.row .m em { display: none; font-style: normal; font-family: var(--body); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.row .nm small { font-weight: 500; color: var(--muted); margin-left: 6px; font-size: 0.6875rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
+.row .m { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 0.875rem; }
+.row .m em { display: none; font-style: normal; font-family: var(--body); color: var(--muted); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .06em; }
 .more { margin: 12px auto 0; display: flex; }
 @media (max-width: 820px) {
   .ledger-head { display: none; }
@@ -191,123 +253,119 @@ a.row { text-decoration: none; }
 /* ---------- workout detail ---------- */
 .back { margin-bottom: 8px; }
 .wd-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
-.wd-head h2 { font-size: 2rem; }
-.wd-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.wd-head h2 { font-size: 2.2rem; }
+.wd-head p { margin: 4px 0 0; color: var(--muted); font-size: 0.875rem; }
 .stats { display: grid; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .stat { padding: 11px 13px; box-shadow: inset -1px -1px 0 var(--line); }
-.stat span { display: block; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.stat b { font: 600 1.4rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
-.stat b small { font: 500 12px var(--body); color: var(--muted); margin-left: 3px; }
+.stat span { display: block; font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.stat b { font: 700 1.5rem/1.2 var(--display); }
+.stat b small { font: 500 0.75rem var(--body); color: var(--muted); margin-left: 3px; }
 .wd-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
 .span2 { grid-column: 1 / -1; }
 
 /* map */
-.map { position: relative; width: 100%; height: clamp(260px, 52vw, 460px); border-radius: 10px; overflow: hidden; background: var(--sunk); touch-action: none; cursor: grab; user-select: none; }
+.map { position: relative; width: 100%; height: clamp(260px, 52vw, 460px); border-radius: 12px; overflow: hidden; background: var(--sunk); touch-action: none; cursor: grab; user-select: none; }
 .map.no-tiles { background-color: var(--sunk); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
 .map .tiles { position: absolute; inset: 0; }
-.map .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
-:root[data-theme="dark"] .map .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
+.map .tiles img, .smap .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+:root[data-mode="dark"] .map .tiles img, :root[data-mode="dark"] .smap .tiles img { filter: brightness(.7) contrast(1.1) saturate(.5); }
 .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map svg text { font: 600 0.5625rem var(--mono); fill: var(--ink); }
 .map .ctrl { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; z-index: 3; }
-.map .ctrl button { width: 36px; height: 36px; min-height: 0; padding: 0; font-size: 18px; box-shadow: 0 2px 6px rgb(0 0 0 / .15); }
-.map .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; z-index: 3; color: var(--ink2); }
+.map .ctrl button { width: 36px; height: 36px; min-height: 0; padding: 0; font-size: 1.125rem; border-radius: 10px; box-shadow: 0 2px 6px rgb(0 0 0 / .25); }
+.map .attr, .smap .attr { position: absolute; right: 0; bottom: 0; font-size: 0.6875rem; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; z-index: 3; color: var(--ink2); }
 .map .tip { z-index: 4; }
 .map-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
-.ramp { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.ramp { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--muted); }
 .ramp i { width: 120px; height: 8px; border-radius: 4px; display: inline-block; }
 
 /* ---------- records ---------- */
 .rec-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
-.rec .label { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
-.rec .val { font: 700 2.2rem/1.1 var(--display); margin-top: 8px; font-variant-numeric: tabular-nums; }
-.rec .val small { font: 500 13px var(--body); color: var(--muted); margin-left: 4px; }
-.rec p { margin: 4px 0 0; font-size: 13px; color: var(--ink2); }
+.rec .val { font: 700 2.3rem/1.1 var(--display); margin-top: 8px; }
+.rec .val small { font: 500 0.8125rem var(--body); color: var(--muted); margin-left: 4px; }
+.rec p { margin: 4px 0 0; font-size: 0.8125rem; color: var(--ink2); }
 .rec a { color: inherit; }
 
 /* ---------- profile ---------- */
 .form { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top: 12px; }
-.form label, .form1 label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink2); }
-.form .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.form label, .form1 label { display: grid; gap: 6px; font-size: 0.8125rem; font-weight: 600; color: var(--ink2); }
+.form .hint, .form1 .hint { font-weight: 400; color: var(--muted); font-size: 0.75rem; }
 .foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
 .pc-head { display: flex; gap: 14px; align-items: center; }
-.pc-head .avatar { width: 56px; height: 56px; font-size: 20px; flex: none; cursor: default; }
-.pc-head h3 { text-transform: none; letter-spacing: 0; font-size: 1.5rem; color: var(--ink); }
-.pc-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.pc-head .avatar { width: 56px; height: 56px; font-size: 1.25rem; flex: none; cursor: default; }
+.pc-head h3 { text-transform: none; letter-spacing: 0; font-size: 1.6rem; color: var(--ink); }
+.pc-head p { margin: 2px 0 0; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
 .pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
-.pc-stats div { background: var(--sunk); border-radius: 9px; padding: 10px; }
-.pc-stats b { display: block; font: 600 1.3rem/1.1 var(--display); } .pc-stats span { font-size: 12px; color: var(--muted); }
+.pc-stats div { background: var(--sunk); border-radius: 12px; padding: 10px; }
+.pc-stats b { display: block; font: 700 1.35rem/1.1 var(--display); } .pc-stats span { font-size: 0.75rem; color: var(--muted); }
 .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.radio { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.radio { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
 .radio input { width: auto; min-height: 0; margin-top: 3px; accent-color: var(--accent); }
-.radio b { display: block; } .radio span { font-size: 13px; color: var(--muted); }
+.radio b { display: block; } .radio span { font-size: 0.8125rem; color: var(--muted); }
 .radio:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 .stack { display: grid; gap: 10px; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.swatches button { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px; border-radius: 12px; min-height: 0; background: var(--sw-bg); color: var(--sw-ink); border: 2px solid transparent; }
+.swatches button[aria-pressed="true"] { border-color: var(--accent); }
+.swatches button i { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--sw-acc); }
 .method { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
-.method p, .method li { font-size: 14px; color: var(--ink2); max-width: 65ch; }
+.method p, .method li { font-size: 0.875rem; color: var(--ink2); max-width: 65ch; }
 .method ol, .method ul { padding-left: 1.2em; margin: 8px 0 0; }
-.formula { font: 12px/1.6 var(--mono); background: var(--sunk); border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: pre; color: var(--ink); margin-top: 8px; }
-details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink2); }
+.formula { font: 0.75rem/1.6 var(--mono); background: var(--sunk); border-radius: 10px; padding: 10px 12px; overflow-x: auto; white-space: pre; color: var(--ink); margin-top: 8px; }
+details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color: var(--ink2); }
 
 /* ---------- auth ---------- */
 .auth { min-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
-.auth-side { background: var(--accent); color: #fff; padding: 48px clamp(16px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 32px;
-  background-image: repeating-linear-gradient(90deg, transparent 0 46px, rgb(255 255 255 / .07) 46px 48px); }
-.auth-side .brand { color: #fff; } .auth-side .brand h1 { font-size: 2.4rem; line-height: 1; } .auth-side .brand small { color: rgb(255 255 255 / .8); font-size: 15px; }
-.auth-points { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 16px; max-width: 40ch; }
-.auth-points li { padding-left: 18px; border-left: 3px solid rgb(255 255 255 / .5); }
+.auth-side { background: var(--surface); color: var(--ink); padding: 48px clamp(16px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 32px; border-right: 1px solid var(--line);
+  background-image: radial-gradient(600px 400px at 20% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), repeating-linear-gradient(90deg, transparent 0 46px, color-mix(in srgb, var(--accent) 9%, transparent) 46px 48px); }
+.auth-side .brand h1 { font-size: 2.6rem; line-height: 1; text-transform: uppercase; } .auth-side .brand small { font-size: 0.9375rem; }
+.auth-points { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 1rem; max-width: 40ch; color: var(--ink2); }
+.auth-points li { padding-left: 16px; border-left: 3px solid var(--accent); }
+.auth-points b { color: var(--ink); }
 .auth-main { display: grid; place-items: center; padding: 32px 16px; }
 .auth-card { width: min(440px, 100%); display: grid; gap: 14px; padding: 24px; }
-.auth-card h2 { font-size: 1.6rem; }
+.auth-card h2 { font-size: 1.7rem; }
 #authLocal, #authFire, #profilePick { display: grid; gap: 12px; }
-.auth-side .brand rect { fill: rgb(255 255 255 / .18); }
-.auth-note { margin: 0; padding: 10px 12px; border-radius: 9px; background: var(--accent-soft); font-size: 14px; }
+.auth-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 0.875rem; }
 .form1 { display: grid; gap: 12px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .opt { font-weight: 400; color: var(--muted); }
-.form-err { margin: 0; color: var(--crit); font-size: 13px; }
-.fine { margin: 0; font-size: 12px; color: var(--muted); }
+.form-err { margin: 0; color: var(--crit); font-size: 0.8125rem; }
+.fine { margin: 0; font-size: 0.75rem; color: var(--muted); }
 .plist { display: grid; gap: 8px; margin-top: 10px; }
-.plist button { justify-content: flex-start; gap: 12px; padding: 10px 12px; min-height: 56px; text-align: left; }
-.plist .avatar { width: 36px; height: 36px; font-size: 13px; flex: none; }
-.plist b { display: block; } .plist span span { font-weight: 400; font-size: 13px; color: var(--muted); }
-.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin-top: 14px; }
+.plist button { justify-content: flex-start; gap: 12px; padding: 10px 12px; min-height: 56px; text-align: left; border-radius: 12px; }
+.plist .avatar { width: 36px; height: 36px; font-size: 0.8125rem; flex: none; }
+.plist b { display: block; } .plist span span { font-weight: 400; font-size: 0.8125rem; color: var(--muted); }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.8125rem; margin-top: 14px; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-@media (max-width: 820px) { .auth { grid-template-columns: 1fr; } .auth-side { padding-block: 28px; gap: 18px; } .auth-points { font-size: 14px; } }
+@media (max-width: 820px) { .auth { grid-template-columns: 1fr; } .auth-side { padding-block: 28px; gap: 18px; border-right: 0; border-bottom: 1px solid var(--line); } .auth-points { font-size: 0.875rem; } }
 
-.drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 22%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
-@media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
 /* ---------- share, dialog, feed ---------- */
-.chart-card { position: relative; }
-.share-btn { min-height: 32px; padding: 6px 10px; font-size: 13px; gap: 6px; }
-.chart-card > .share-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
-.share-btn svg { width: 15px; height: 15px; }
-.dlg { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
-.dlg::backdrop { background: rgb(0 0 0 / .45); }
-.dlg h2 { font-size: 1.5rem; margin-bottom: 6px; }
-.dlg p { margin: 0 0 12px; font-size: 14px; color: var(--ink2); }
-.dlg .x { position: absolute; right: 10px; top: 10px; width: 36px; min-height: 36px; padding: 0; border: 0; font-size: 20px; background: transparent; }
-.dlg .chk { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 6px 0; }
+.share-btn { min-height: 32px; padding: 6px 12px; font-size: 0.8125rem; gap: 6px; }
+.dlg { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; color: var(--ink); box-shadow: 0 24px 64px rgb(0 0 0 / .5); }
+.dlg::backdrop { background: rgb(0 0 0 / .55); }
+.dlg h2 { font-size: 1.6rem; margin-bottom: 6px; }
+.dlg p { margin: 0 0 12px; font-size: 0.875rem; color: var(--ink2); }
+.dlg .x { position: absolute; right: 10px; top: 10px; width: 36px; min-height: 36px; padding: 0; border: 0; font-size: 1.25rem; background: transparent; }
+.dlg .chk { display: flex; gap: 10px; align-items: center; font-size: 0.875rem; padding: 6px 0; }
 .dlg .chk input { width: auto; min-height: 0; accent-color: var(--accent); }
-.linkrow { display: flex; gap: 8px; } .linkrow input { flex: 1; min-width: 0; font: 13px var(--mono); }
-.dlg img { width: 100%; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px; }
+.linkrow { display: flex; gap: 8px; } .linkrow input { flex: 1; min-width: 0; font: 0.8125rem var(--mono); }
+.dlg img { width: 100%; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 12px; }
 .feed { display: grid; gap: 12px; max-width: 680px; }
 .post { display: grid; gap: 12px; }
 .post-h { display: flex; gap: 12px; align-items: center; }
 .post-h .avatar { flex: none; cursor: default; }
-.post-h .who { flex: 1; min-width: 0; } .post-h .who b { display: block; } .post-h .who span { font-size: 13px; color: var(--muted); }
-.post h3 { text-transform: none; letter-spacing: 0; font-size: 1.35rem; color: var(--ink); }
+.post-h .who { flex: 1; min-width: 0; } .post-h .who b { display: block; } .post-h .who span { font-size: 0.8125rem; color: var(--muted); }
+.post h3 { text-transform: none; letter-spacing: 0; font-size: 1.45rem; color: var(--ink); }
 .post-stats { display: flex; gap: 22px; flex-wrap: wrap; }
-.post-stats span { display: block; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.post-stats b { font: 600 1.35rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
-.smap { position: relative; width: 100%; height: clamp(200px, 45vw, 320px); border-radius: 10px; overflow: hidden; background: var(--sunk); }
-.smap .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+.post-stats span { display: block; font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.post-stats b { font: 700 1.45rem/1.2 var(--display); }
+.smap { position: relative; width: 100%; height: clamp(200px, 45vw, 320px); border-radius: 12px; overflow: hidden; background: var(--sunk); }
 .smap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-:root[data-theme="dark"] .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
-.smap .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; color: var(--ink2); }
-.shared-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
-.ver { margin: 24px 0 0; text-align: center; font: 12px var(--mono); color: var(--muted); }
+.shared-img { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+
+.drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 20%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>
 <!-- ============ AUTH SCREEN ============ -->
@@ -395,21 +453,12 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
   <div class="banner" id="banner" hidden></div>
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
-  <!-- OVERVIEW -->
+  <!-- OVERVIEW: customisable dashboard (ui_dash.js) -->
   <section class="view" id="v-overview" data-view="overview">
-    <div class="vh"><div><p class="eyebrow" id="hello"></p><h2>Current fitness</h2></div><p class="muted" id="asof"></p></div>
-    <div class="hero">
-      <div class="card tile" id="tVo2"></div>
-      <div class="card tile" id="tEnd"></div>
-      <div class="card tile" id="tLoad"></div>
-      <div class="card tile" id="tRace"></div>
-    </div>
-    <div class="grid-ov">
-      <div class="card" id="latest"></div>
-      <div class="card chart-card"><div class="ch"><h3>VO₂max</h3><span class="muted sm">Last 6 months</span></div><div class="plot" id="oVo2"></div></div>
-      <div class="card chart-card"><div class="ch"><h3>Weekly distance</h3><span class="muted sm" id="oWkCap"></span></div><div class="plot" id="oWeek"></div></div>
-      <div class="card"><div class="ch"><h3>What drives your endurance</h3></div><div class="bars" id="breakdown"></div></div>
-    </div>
+    <div class="vh"><div><p class="eyebrow" id="hello"></p><h2>Current fitness</h2><p class="muted sm" id="asof"></p></div>
+      <div class="btns"><button type="button" class="ghost" id="dashReset" hidden>Reset layout</button><button type="button" id="dashEdit">Customize</button></div></div>
+    <div class="dash" id="dash"></div>
+    <div id="dashAdd" style="margin-top:12px" hidden></div>
   </section>
 
   <!-- WORKOUTS -->
@@ -485,22 +534,26 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
         </div>
         <div class="foot"><span class="muted sm" id="setSaved"></span><button type="submit" class="primary">Save settings</button></div>
       </form>
+      <div class="card" id="lookCard"></div>
+      <div class="card" id="aiCard"></div>
       <div class="card" id="storeCard"></div>
       <div class="card" id="dataCard"></div>
     </div>
     <div class="vh" style="margin-top:28px"><h2>How the numbers are made</h2></div>
     <div class="method">
       <div class="card">
-        <h3>VO₂max: anchored heart-rate regression</h3>
+        <h3>VO₂max: heart rate against speed</h3>
         <ol>
-          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude.</li>
-          <li>Oxygen cost of every sample uses the Daniels–Gilbert running curve, corrected for slope with Minetti’s gradient cost model.</li>
-          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve.</li>
-          <li>A weighted, outlier-resistant line runs through those windows plus one physiological anchor, resting heart rate ↔ 3.5 ml/kg/min. Extending it to max heart rate gives the run’s VO₂max.</li>
-          <li>Estimates are blended with a 14-day half-life by data quality, then fused with race-effort VDOT (hard efforts ≥85% HRmax) by inverse-variance weighting.</li>
+          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude; uphill and downhill are converted to flat-equivalent speed with Minetti’s cost-of-gradient model.</li>
+          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve. Windows after 45 minutes count less (cardiac drift).</li>
+          <li>Heart rate rises in step with oxygen use, and oxygen use rises in step with speed. So a weighted, outlier-resistant line runs through the windows and one anchor — resting heart rate at zero speed. Extending it to max heart rate gives your speed at VO₂max.</li>
+          <li>VO₂max is the Daniels–Gilbert oxygen cost of that speed, the same VDOT scale as race results and Garmin-style predictions.</li>
+          <li>Run estimates are blended with a 14-day half-life by data quality, then fused with race-like efforts (average HR near what an all-out effort of that length needs) by inverse-variance weighting; a race fades out over 60 days.</li>
         </ol>
-        <div class="formula">VO₂(HR) = a + b·HR   fitted with anchor (HRrest, 3.5)
-VO₂max  = a + b·HRmax</div>
+        <div class="formula">speed(HR) = b·(HR − HRrest)     weighted fit, 2-pass Huber
+vVO₂max   = speed(HRmax)
+VO₂max    = −4.60 + 0.182258·v + 0.000104·v²   (v in m/min)</div>
+        <p>Accuracy depends most on your max and resting heart rate. Without a measured max, the app uses the higher of your age estimate and your hardest run.</p>
       </div>
       <div class="card">
         <h3>Endurance score</h3>
@@ -516,7 +569,7 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
         <ul>
           <li><b>Training load</b> is Banister TRIMP. Runs without heart rate get an estimate from grade-adjusted pace.</li>
           <li><b>Fitness / fatigue</b> are 42-day and 7-day exponential averages; <b>form</b> is the difference.</li>
-          <li><b>Heart-rate drift</b> compares pace per heartbeat in the first and second half of a run.</li>
+          <li><b>Heart-rate drift</b> compares grade-adjusted pace per heartbeat in the first and second half of steady runs (interval sessions are skipped).</li>
           <li><b>Race times</b> invert the Daniels VDOT formula, with a penalty on longer races when volume or long runs are short.</li>
           <li>Every value is placed on the <b>date and time recorded in the workout file</b>, never the import date.</li>
         </ul>
@@ -541,7 +594,7 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 3, at: '2026-10-05T22:25:58Z' };
+const BUILD = { v: 4, at: '2026-10-05T23:03:26Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -811,8 +864,11 @@ function defaultName(ms) { const h = new Date(ms).getHours(); return (h < 11 ? '
 /* ---------- Physiology ---------- */
 // Minetti et al. (2002) energy cost of running vs gradient, J/kg/m; ratio to flat
 function costRatio(i) { i = clamp(i, -0.3, 0.3); return Math.max(0.45, (155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6) / 3.6); }
-// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. Shared by both VO2max models.
+// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. This defines the VDOT scale:
+// VO2max = vo2Cost(vVO2max), the speed a runner can hold for ~11 min. Both VO2max paths report on this scale.
 const vo2Cost = v => { const m = v * 60; return Math.max(3.5, -4.60 + 0.182258 * m + 0.000104 * m * m); };
+// Average %HRmax a runner typically holds in an all-out effort of this length (5K ~0.94, 10K ~0.92, HM ~0.88, M ~0.84).
+const raceHR = min => 0.81 + 0.16 * Math.exp(-min / 120);
 // Daniels & Gilbert running formula
 function vdotOf(distM, sec) {
   const t = sec / 60, v = distM / t;
@@ -850,24 +906,23 @@ function analyze(r, S, vo2ref) {
       const q = clamp(hrrOf(r.avgHR), 0, 1);
       out.load = r.dur / 60 * q * ka * Math.exp(kb * q);
       out.ef = v * 60 / r.avgHR;
-      if (q > 0.45 && q < 0.95 && v > 1.6) { out.est = 3.5 + (vo2Cost(v) - 3.5) / q; out.conf = 0.3; }
-      if (r.dist >= 3000 && r.avgHR / hrMax >= (r.dur < 1800 ? 0.88 : 0.85)) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
+      if (q > 0.45 && q < 0.95 && v > 1.6) { out.vmax = v / q; out.est = vo2Cost(out.vmax); out.conf = 0.3; }
+      if (r.dist >= 3000 && r.avgHR / hrMax >= raceHR(r.dur / 60) - 0.03) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
     } else out.load = loadNoHR(r.dur, v, vo2ref, ka, kb);
     return out;
   }
   const n = r.n, d = r.d, hr = r.hr, mv = r.mv;
-  const v = new Float32Array(n), g = new Float32Array(n), K = 3;
+  const v = new Float32Array(n), g = new Float32Array(n), veq = new Float32Array(n), K = 3;
   for (let i = 0; i < n; i++) { const a = Math.max(0, i - K), b = Math.min(n - 1, i + K); v[i] = b > a ? (d[b] - d[a]) / ((b - a) * DT) : 0; }
   const altS = r.hasAlt ? smooth(r.alt, 15) : null;
   if (altS) for (let i = 0; i < n; i++) { const a = Math.max(0, i - 8), b = Math.min(n - 1, i + 8), dd = d[b] - d[a]; g[i] = dd > 20 ? clamp((altS[b] - altS[a]) / dd, -0.3, 0.3) : 0; }
   const moving = i => mv[i] && v[i] > 0.8;
   let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0;
   const zones = [0, 0, 0, 0, 0];
-  const vo2 = new Float32Array(n);
   for (let i = 0; i < n; i++) {
-    const rat = costRatio(g[i]); vo2[i] = vo2Cost(v[i] * rat);
+    veq[i] = v[i] * costRatio(g[i]); // grade-adjusted (flat-equivalent) speed
     if (!moving(i)) continue;
-    mov += DT; gapS += v[i] * rat * DT;
+    mov += DT; gapS += veq[i] * DT;
     if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
     if (hr[i] > 0) {
       hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
@@ -884,37 +939,46 @@ function analyze(r, S, vo2ref) {
   out.load = hn > n * 0.5 ? load : loadNoHR(mov, gapV, vo2ref, ka, kb);
   out.ef = out.avgHR ? gapV * 60 / out.avgHR : null;
 
-  // --- steady-state windows -> anchored HR–VO2 regression ---
+  // --- steady-state windows -> anchored heart-rate / speed regression ---
+  // Heart rate rises linearly with oxygen uptake (%HRR ≈ %VO2 reserve, Swain 1997), and measured running
+  // VO2 rises linearly with speed (ACSM; Léger & Mercier). So grade-adjusted speed is linear in HR, passing
+  // through (resting HR, 0). Extending the line to max HR gives the speed at VO2max (vVO2max), and
+  // VO2max = vo2Cost(vVO2max) on the same VDOT scale as race results. (Regressing Daniels' curved cost on HR
+  // directly would read 4–7 ml/kg/min low whenever the steady windows are at easy pace.)
   const W = 30, warm = 150, wins = [];
   if (r.hasHR) for (let s = Math.max(warm, W); s + W <= n; s += 15) {
-    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, so = 0, sg = 0;
+    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, se = 0, sg = 0;
     for (let i = s - W; i < s + W; i++) { if (!moving(i)) { ok = false; break; } }
     if (!ok) continue;
-    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; so += vo2[i]; sg += g[i]; }
+    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; se += veq[i]; sg += g[i]; }
     if (!ok) continue;
     for (let i = s - W; i < s; i++) pv += v[i];
     const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W;
     const h = sh / W, q = hrrOf(h);
     if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || q < 0.35 || q > 0.95) continue;
     const tMin = s * DT / 60;
-    wins.push([h, so / W, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]);
+    wins.push([h, se / W * 60, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]); // [bpm, grade-adjusted m/min, weight]
   }
   out.windows = wins; out.est = null; out.conf = 0;
   if (wins.length >= 6) {
     const fit = anchoredFit(wins, hrRest);
     if (fit && fit.b > 0) {
-      out.est = fit.a + fit.b * hrMax; out.fit = fit;
+      const vmax = (fit.a + fit.b * hrMax) / 60; // m/s
+      out.est = vo2Cost(vmax); out.vmax = vmax; out.fit = fit;
       const sw = wins.reduce((s, w) => s + w[2], 0);
-      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 6, 0.2, 1);
-      if (out.est < 20 || out.est > 90) { out.est = null; out.conf = 0; }
+      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 30, 0.2, 1);
+      if (out.est < 20 || out.est > 90) { out.est = null; out.vmax = null; out.conf = 0; }
     }
   }
   // --- aerobic decoupling (Pa:HR) ---
   out.dec = null;
   if (r.hasHR && mov >= 2400) {
     const idx = []; for (let i = 300; i < n; i++) if (moving(i) && hr[i] > 0) idx.push(i);
-    if (idx.length > 200) {
-      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += v[i] * costRatio(g[i]); sh += hr[i]; } return sv / sh; };
+    // only for steady runs: intervals or walk breaks make the halves incomparable
+    let m1 = 0, m2 = 0; for (const i of idx) { m1 += veq[i]; m2 += veq[i] * veq[i]; } m1 /= idx.length;
+    const cvRun = Math.sqrt(Math.max(0, m2 / idx.length - m1 * m1)) / m1;
+    if (idx.length > 200 && cvRun < 0.2) {
+      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += veq[i]; sh += hr[i]; } return sv / sh; };
       const e1 = ef(0, half), e2 = ef(half, idx.length); out.dec = (e1 - e2) / e1 * 100;
     }
   }
@@ -925,23 +989,25 @@ function analyze(r, S, vo2ref) {
   for (const [D, label] of EFFORTS) {
     if (dist < D) continue;
     let best = Infinity, bi = 0, bj = 0, i = 0;
-    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT; if (t < best) { best = t; bi = i; bj = j; } } }
+    // time scaled to exactly D (the window overshoots by up to one sample)
+    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT * D / (d[j] - d[i]); if (t < best) { best = t; bi = i; bj = j; } } }
     if (!isFinite(best)) continue;
     const c = prc[bj + 1] - prc[bi], ehr = c > (bj - bi) * 0.8 ? (pre[bj + 1] - pre[bi]) / c : null;
     const e = { D, label, sec: best, hr: ehr };
-    if (D >= 3000 && ehr && ehr / hrMax >= (best < 1800 ? 0.88 : 0.85)) e.vdot = vdotOf(D, best);
+    if (D >= 3000 && ehr && ehr / hrMax >= raceHR(best / 60) - 0.03) e.vdot = vdotOf(D, best); // race-like effort only
     out.efforts.push(e);
   }
   return out;
 }
-function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp((vo2Cost(v) - 3.5) / ((vo2ref || 45) - 3.5), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
+// Without HR: %HRR ≈ grade-adjusted speed / vVO2max (same linear model as above)
+function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp(v / vFor(vo2ref || 45), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
 
-// Weighted least squares of VO2 on HR with a physiological anchor (HRrest, 3.5 ml/kg/min),
+// Weighted least squares of grade-adjusted speed (m/min) on HR with a physiological anchor (HRrest, 0),
 // one Huber reweighting pass for robustness.
 function anchoredFit(wins, hrRest) {
   const solve = ws => {
     const sw0 = ws.reduce((s, w) => s + w[2], 0);
-    const pts = ws.concat([[hrRest, 3.5, Math.max(2, 0.15 * sw0)]]);
+    const pts = ws.concat([[hrRest, 0, Math.max(2, 0.15 * sw0)]]);
     let sw = 0, sx = 0, sy = 0; for (const [x, y, w] of pts) { sw += w; sx += w * x; sy += w * y; }
     const mx = sx / sw, my = sy / sw; let sxy = 0, sxx = 0;
     for (const [x, y, w] of pts) { sxy += w * (x - mx) * (y - my); sxx += w * (x - mx) ** 2; }
@@ -950,7 +1016,7 @@ function anchoredFit(wins, hrRest) {
     return { a, b, sd: Math.sqrt(se / sw1) };
   };
   let f = solve(wins);
-  const c = Math.max(1.5, 1.345 * f.sd);
+  const c = Math.max(7, 1.345 * f.sd);
   const rw = wins.map(([x, y, w]) => { const r = Math.abs(y - f.a - f.b * x); return [x, y, w * (r <= c ? 1 : c / r)]; });
   f = solve(rw);
   return f;
@@ -966,18 +1032,18 @@ function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x
 
 function fuseVO2(items, T) {
   // items: [{t, est, conf, vdots:[...]}] sorted by t
-  let hw = 0, hs = 0, perf = null;
+  let hw = 0, hs = 0, perf = null, pAge = 0;
   for (const it of items) {
     if (it.t > T + DAY) break;
     const age = (T - it.t) / DAY; if (age > 60) continue;
     if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; hs += w * it.est; }
-    for (const vd of it.vdots) if (perf == null || vd > perf) perf = vd;
+    for (const vd of it.vdots) if (perf == null || vd > perf) { perf = vd; pAge = Math.max(0, age); }
   }
   if (!hw && perf == null) return null;
   if (!hw) return { v: perf, hr: null, perf };
   const vh = hs / hw, sh = 2.5 / Math.sqrt(Math.min(hw, 4));
   if (perf == null) return { v: vh, hr: vh, perf: null };
-  const sp = 2.0, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
+  const sp = 2.0 + pAge / 20, wh = 1 / sh ** 2, wp = 1 / sp ** 2; // a race fades out smoothly over 60 days
   return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
 }
 
@@ -1045,7 +1111,7 @@ function makeSample(today) {
       const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
       const dla = new Float32Array(n), dlo = new Float32Array(n);
       let dist = 0, h = 70, drift = 0;
-      const fit = (VO2 - 3.5);
+      const vmax = vFor(VO2); // speed at VO2max
       for (let i = 0; i < n; i++) {
         const tm = i * DT / 60;
         let q = p;
@@ -1055,11 +1121,9 @@ function makeSample(today) {
         const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
         const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
         const rat = costRatio(slope);
-        const vTarget = vFor(3.5 + q * fit);
-        const vel = Math.max(1.2, vTarget / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
-        const vo2 = vo2Cost(vel * rat);
+        const vel = Math.max(1.2, q * vmax / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
         if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
-        const target = HRREST + clamp((vo2 - 3.5) / fit, 0, 1.05) * (HRMAX - HRREST) + drift;
+        const target = HRREST + clamp(vel * rat / vmax, 0, 1.05) * (HRMAX - HRREST) + drift;
         h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
         dist += vel * DT; d[i] = dist;
         { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));
@@ -1298,49 +1362,64 @@ function timeTicks(x0, x1) {
   for (let t = d0; t <= x1; t += step * DAY) if (t >= x0) out.push(t);
   return { ticks: out, fmt: t => fmtDate(t) };
 }
-/* series: {name, color, pts:[[x,y,extra]], kind:'line'|'dots'|'bars'|'area', fmt, r(pt)} */
+/* series: {name, color, pts:[[x,y,extra]], kind:'line'|'dots'|'bars'|'area', fmt, r(pt)}
+   options: yFmt(v, decimals), minSpan (smallest y-range shown, so noise isn't magnified), zero, invert, xTime, … */
+let plotSeq = 0;
+const numFmt = (v, dec) => Math.abs(v) >= 1000 && dec === 0 ? v.toLocaleString() : v.toFixed(dec);
 function plot(el, o) {
   el.innerHTML = '';
-  const series = o.series.filter(s => s.pts.length);
+  const series = o.series.filter(s => s.pts.some(p => p[1] != null));
   if (!series.length) { el.innerHTML = `<p class="empty">${esc(o.empty || 'Not enough data yet.')}</p>`; return; }
-  const W = Math.max(260, el.clientWidth || 600), H = o.height || 210, m = { l: o.ml || 42, r: 12, t: 10, b: 24 };
+  const rem = (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16; // text-size setting
+  const W = Math.max(260, el.clientWidth || 600), H = Math.round((o.height || 210) * Math.min(1.25, Math.max(1, rem)));
   let x0 = o.xMin ?? Infinity, x1 = o.xMax ?? -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const s of series) for (const p of s.pts) { if (o.xMin == null) x0 = Math.min(x0, p[0]); if (o.xMax == null) x1 = Math.max(x1, p[0]); if (p[1] != null) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); } }
   if (o.zero) y0 = Math.min(0, y0);
-  const floorY = o.zero ? 0 : -Infinity;
   if (o.yMin != null) y0 = Math.min(y0, o.yMin); if (o.yMax != null) y1 = Math.max(y1, o.yMax);
-  if (x1 === x0) { x0 -= DAY; x1 += DAY; }
-  const padY = (y1 - y0) * 0.08 || 1; const yt = niceTicks(Math.max(floorY, o.zero ? y0 : y0 - padY), y1 + padY, o.yTicks || 4);
+  if (o.minSpan && y1 - y0 < o.minSpan) { const c = (y0 + y1) / 2, h = o.minSpan / 2; y0 = c - h; y1 = c + h; if (o.zero && y0 < 0) { y1 -= y0; y0 = 0; } }
+  if (x1 === x0) { x0 -= o.xTime === false ? 1 : DAY; x1 += o.xTime === false ? 1 : DAY; }
+  const padY = (y1 - y0) * 0.08 || 1;
+  const yt = niceTicks(o.zero ? Math.max(0, y0) : y0 - padY, y1 + padY, o.yTicks || 4);
   y0 = yt[0]; y1 = yt[yt.length - 1];
+  // decimals from the tick step, so neighbouring labels never print the same number (e.g. 29 · 29 · 29)
+  const step = yt.length > 1 ? yt[1] - yt[0] : 1, dec = Math.max(0, Math.min(4, Math.ceil(-Math.log10(step) - 1e-9)));
+  const yf = o.yFmt ? v => o.yFmt(v, dec) : v => numFmt(v, dec);
+  const labels = yt.map(v => String(yf(v)));
+  const cw = 6.9 * rem, m = { l: Math.max(o.ml || 30, Math.ceil(Math.max(...labels.map(t => t.length)) * cw) + 12), r: 12, t: 10, b: Math.round(24 * rem) };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const sx = x => m.l + (x - x0) / (x1 - x0) * iw;
   const sy = y => o.invert ? m.t + (y - y0) / (y1 - y0) * ih : m.t + ih - (y - y0) / (y1 - y0) * ih;
-  const yf = o.yFmt || (v => String(v));
-  let g = '';
-  yt.forEach(v => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${esc(yf(v))}</text>`; });
-  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt } : timeTicks(x0, x1);
-  const minGap = 46; let lastX = -1e9;
+  const cid = 'pc' + (++plotSeq);
+  let g = `<defs><clipPath id="${cid}"><rect x="${m.l - 6}" y="${m.t - 6}" width="${iw + 12}" height="${ih + 12}"/></clipPath></defs>`;
+  yt.forEach((v, k) => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4 * rem}" text-anchor="end">${esc(labels[k])}</text>`; });
+  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt || (v => String(v)) } : timeTicks(x0, x1);
+  const minGap = 46 * rem; let lastX = -1e9;
   xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
-  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${sy(o.invert ? y1 : y0)}" y2="${sy(o.invert ? y1 : y0)}"/>`;
+  const yBase = sy(o.invert ? y1 : y0);
+  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">`;
   for (const s of series) {
     if (s.kind === 'bars') {
-      const bw = Math.max(2, (s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length) - 2);
-      for (const p of s.pts) { const x = sx(p[0]) - bw / 2, y = sy(p[1]), yb = sy(Math.max(0, y0)); const h = Math.max(0, yb - y);
-        if (h > 0) g += `<path d="M${x},${yb}V${y + Math.min(3, h)}q0,-3 3,-3h${bw - 6}q3,0 3,3V${yb}Z" fill="${s.color}"/>`; }
+      const slot = s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length, bw = Math.max(2, Math.min(24, slot - 2));
+      for (const p of s.pts) { if (p[1] == null) continue;
+        const x = sx(p[0]) - bw / 2, y = sy(p[1]), yb = sy(Math.max(0, y0)), h = Math.max(0, yb - y), r = Math.min(4, bw / 2, h);
+        if (h > 0) g += `<path d="M${x},${yb}V${y + r}q0,${-r} ${r},${-r}h${bw - 2 * r}q${r},0 ${r},${r}V${yb}Z" fill="${s.color}"/>`; }
     } else if (s.kind === 'dots') {
-      for (const p of s.pts) g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="${s.r ? s.r(p) : 4}" fill="${s.color}" fill-opacity="${s.op ?? 0.55}" stroke="var(--surface)" stroke-width="1.5"/>`;
+      for (const p of s.pts) if (p[1] != null) g += `<circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="${s.r ? s.r(p) : 4}" fill="${s.color}" fill-opacity="${s.op ?? 0.55}" stroke="var(--surface)" stroke-width="1.5"/>`;
     } else {
-      let d = '', pen = false;
-      for (const p of s.pts) { if (p[1] == null) { pen = false; continue; } d += (pen ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1); pen = true; }
-      if (s.kind === 'area') { const yb = sy(o.invert ? y1 : y0); const pts = s.pts.filter(p => p[1] != null); g += `<path d="${d}L${sx(pts[pts.length - 1][0])},${yb}L${sx(pts[0][0])},${yb}Z" fill="${s.color}" fill-opacity=".12"/>`; }
-      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
+      // contiguous runs of non-null points; areas are filled per run so gaps stay empty
+      const runs = []; let cur = null;
+      for (const p of s.pts) { if (p[1] == null) { cur = null; continue; } if (!cur) runs.push(cur = []); cur.push(p); }
+      const path = rp => rp.map((p, k) => (k ? 'L' : 'M') + sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)).join('');
+      if (s.kind === 'area') for (const rp of runs) g += `<path d="${path(rp)}L${sx(rp[rp.length - 1][0]).toFixed(1)},${yBase}L${sx(rp[0][0]).toFixed(1)},${yBase}Z" fill="${s.color}" fill-opacity=".1"/>`;
+      g += `<path d="${runs.map(path).join('')}" fill="none" stroke="${s.color}" stroke-width="${s.w || 2}" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ''}/>`;
       if (s.end !== false) { const lp = [...s.pts].reverse().find(p => p[1] != null); if (lp) g += `<circle cx="${sx(lp[0])}" cy="${sy(lp[1])}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; }
     }
   }
+  g += '</g>';
   if (o.extra) g += o.extra(sx, sy, { x0, x1, y0, y1, W, H, m });
   const leg = series.filter(s => !s.noLegend);
   const legend = leg.length > 1 ? `<div class="legend">${leg.map(s => `<span><i class="${s.kind === 'dots' ? 'dot' : ''}" style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
-  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || '')}">${g}<line class="xh" id="xh" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><g class="hl"></g><rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div>`;
+  el.innerHTML = legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || '')}">${g}<line class="xh" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><g class="hl"></g><rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div>`;
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), xh = svg.querySelector('.xh'), hl = svg.querySelector('.hl');
   const scatter = series.every(s => s.kind === 'dots');
   const nearest = (pts, x) => { let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pts[mid][0] < x) lo = mid; else hi = mid; } return Math.abs(pts[lo][0] - x) <= Math.abs(pts[hi][0] - x) ? pts[lo] : pts[hi]; };
@@ -1350,12 +1429,12 @@ function plot(el, o) {
     const xv = x0 + (px - m.l) / iw * (x1 - x0);
     let rows = [], ax = null, dots = '';
     if (scatter) {
-      let best = null, bd = 1e9; for (const s of series) for (const p of s.pts) { const dd = Math.hypot(sx(p[0]) - px, sy(p[1]) - py); if (dd < bd) { bd = dd; best = [s, p]; } }
+      let best = null, bd = 1e9; for (const s of series) for (const p of s.pts) { if (p[1] == null) continue; const dd = Math.hypot(sx(p[0]) - px, sy(p[1]) - py); if (dd < bd) { bd = dd; best = [s, p]; } }
       if (!best || bd > 40) return hide();
-      ax = sx(best[1][0]); rows.push(best[0].tip ? best[0].tip(best[1]) : `<b>${esc(best[0].fmt ? best[0].fmt(best[1][1]) : best[1][1])}</b>`);
+      ax = sx(best[1][0]); rows.push(best[0].tip ? best[0].tip(best[1]) : `<b>${esc(best[0].fmt ? best[0].fmt(best[1][1], best[1]) : best[1][1])}</b>`);
       dots += `<circle cx="${ax}" cy="${sy(best[1][1])}" r="6" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
     } else {
-      let cands = series.map(s => [s, nearest(s.pts, xv)]);
+      const cands = series.map(s => [s, nearest(s.pts, xv)]);
       const tx = cands.reduce((b, c) => Math.abs(c[1][0] - xv) < Math.abs(b - xv) ? c[1][0] : b, cands[0][1][0]);
       ax = sx(tx); const head = o.tipX ? o.tipX(tx) : fmtDate(tx, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
       rows.push(`<div style="opacity:.75">${esc(head)}</div>`);
@@ -1370,14 +1449,53 @@ function plot(el, o) {
     }
     xh.setAttribute('x1', ax); xh.setAttribute('x2', ax); xh.setAttribute('visibility', scatter ? 'hidden' : 'visible'); hl.innerHTML = dots;
     tip.innerHTML = rows.join(''); tip.hidden = false;
-    const tw = tip.offsetWidth, cw = el.clientWidth, left = ax / k;
-    tip.style.left = Math.max(0, Math.min(cw - tw, left + 12 + tw > cw ? left - tw - 12 : left + 12)) + 'px';
+    const tw = tip.offsetWidth, cw2 = el.clientWidth, left = ax / k;
+    tip.style.left = Math.max(0, Math.min(cw2 - tw, left + 12 + tw > cw2 ? left - tw - 12 : left + 12)) + 'px';
     tip.style.top = (legend ? el.querySelector('.legend').offsetHeight : 0) + 4 + 'px';
   };
   const hide = () => { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); hl.innerHTML = ''; };
   svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move); svg.addEventListener('pointerleave', hide);
 }
-
+// ===== APPEARANCE: theme, font style, text size — stored per device, applied before first paint =====
+// [id, name, mode, page background, accent] — colour tokens live in head.html under :root[data-theme=…]
+const THEMES = [
+  ['volt', 'Volt', 'dark', '#0b0f13', '#c6f24e'],
+  ['ember', 'Ember', 'dark', '#110c0a', '#ff8f3f'],
+  ['glacier', 'Glacier', 'dark', '#08111c', '#4fd1f0'],
+  ['uv', 'Ultraviolet', 'dark', '#0d0a15', '#b197ff'],
+  ['daylight', 'Daylight', 'light', '#f3f5f0', '#3b7d16'],
+  ['auto', 'Match device', 'auto', null, null],
+];
+// font stacks live in head.html under :root[data-font=…]; this only loads the web fonts on demand
+const FONTS = {
+  sport: ['Sport', 'family=Saira+Condensed:wght@500;600;700&family=Manrope:wght@400;500;600;700'],
+  classic: ['Classic', 'family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700'],
+  rounded: ['Rounded', 'family=Nunito:wght@400;600;700;800'],
+  tech: ['Technical', 'family=Space+Grotesk:wght@400;500;600;700'],
+  readable: ['Easy to read', 'family=Atkinson+Hyperlegible:wght@400;700'],
+  system: ['System', null],
+};
+const SIZES = [['s', 'Small'], ['m', 'Default'], ['l', 'Large'], ['xl', 'Extra large']];
+function uiPrefs() { return Object.assign({ theme: 'volt', font: 'sport', size: 'm' }, lsGet('pp-ui', {})); }
+function applyUI(p = uiPrefs()) {
+  const root = document.documentElement;
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  let t = THEMES.find(x => x[0] === p.theme) || THEMES[0];
+  if (t[0] === 'auto') t = dark ? THEMES[0] : THEMES[4];
+  const font = FONTS[p.font] ? p.font : 'sport', size = SIZES.some(x => x[0] === p.size) ? p.size : 'm';
+  if (FONTS[font][1] && !document.getElementById('font-' + font)) {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'font-' + font;
+    l.href = 'https://fonts.googleapis.com/css2?' + FONTS[font][1] + '&display=swap'; document.head.appendChild(l);
+  }
+  Object.assign(root.dataset, { theme: t[0], mode: t[2], font, size });
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
+  meta.content = t[3];
+}
+function setUI(patch) { const p = Object.assign(uiPrefs(), patch); lsSet('pp-ui', p); applyUI(p); }
+applyUI();
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (uiPrefs().theme === 'auto') applyUI(); });
+// ===== END APPEARANCE =====
 // ===== ONLINE: save account online, share links, feed =====
 // Loaded before ui_main.js; everything here runs at call time, after ui_main's helpers exist.
 const ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 4.8 8 2l3 2.8M3 8v6h10V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1538,7 +1656,7 @@ async function renderShared(id) {
     if ($('#shPace')) {
       const pts = s.paceS.map((v, i) => [i * stp, numOr(v) || null]), pv = pts.filter(p => p[1]).map(p => p[1]).sort((a, b) => a - b);
       const lo = pv[Math.floor(pv.length * 0.02)], hi = pv[Math.floor(pv.length * 0.98)];
-      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
     }
     if ($('#shHr')) plot($('#shHr'), Object.assign({}, xo, { label: 'Heart rate', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: s.hrS.map((v, i) => [i * stp, numOr(v) || null]), fmt: v => Math.round(v) + ' bpm' }] }));
   } else if (s.type === 'profile') {
@@ -1550,7 +1668,7 @@ async function renderShared(id) {
       ${rec.length ? `<div class="card" style="margin-top:12px"><div class="ch"><h3>Recent workouts</h3></div><div class="scroll-x"><table class="tb"><thead><tr><th>Date</th><th>Workout</th><th class="n">Dist ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th></tr></thead><tbody>${rec.map(w =>
         `<tr><td>${numOr(w.start) ? fmtDate(+w.start, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td><td>${esc(w.name)}</td><td class="n">${fmtDist(numOr(w.dist))}</td><td class="n">${fmtDur(numOr(w.mov))}</td><td class="n">${numOr(w.avgHR) ? Math.round(w.avgHR) : '–'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}${foot}`;
     if ($('#shWeek')) { const pts = s.weeks.map(w => [numOr(w[0]), (numOr(w[1]) || 0) / U(), numOr(w[2]) || 0]).filter(p => p[0]);
-      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
   } else box.innerHTML = '<p class="empty">Unknown shared item.</p>';
 }
 
@@ -1679,6 +1797,364 @@ function initSocial() {
   $('#goLocal').onclick = () => useBackend('local');
 }
 // ===== END ONLINE =====
+// ===== AI COACH (Google Gemini) — the API key stays on this device; data is sent only when the runner asks =====
+const AI_DEFAULT_MODEL = 'gemini-2.5-flash';
+const AI_API = 'https://generativelanguage.googleapis.com/v1beta/';
+function aiCfg() { return Object.assign({ key: '', model: AI_DEFAULT_MODEL }, lsGet('pp-ai', {})); }
+const aiPid = () => st.user ? st.user.id : 'guest';
+function aiCache() { const c = lsGet('pp-ai-cache', {}); return c[aiPid()] || { overview: null, w: {} }; }
+function aiCacheSet(fn) { const all = lsGet('pp-ai-cache', {}), c = all[aiPid()] || { overview: null, w: {} }; fn(c);
+  const ids = Object.keys(c.w); if (ids.length > 40) ids.sort((a, b) => c.w[a].at - c.w[b].at).slice(0, ids.length - 40).forEach(k => delete c.w[k]);
+  all[aiPid()] = c; lsSet('pp-ai-cache', all); }
+
+async function gemini(prompt, system) {
+  const c = aiCfg(); if (!c.key) throw new Error('Add a Gemini API key in Profile → AI coach first.');
+  const model = c.model.replace(/^models\//, '');
+  const gen = { temperature: 0.4, maxOutputTokens: 2048 };
+  if (/^gemini-2\.5-flash/.test(model)) gen.thinkingConfig = { thinkingBudget: 0 }; // short answers don't need thinking tokens
+  const r = await fetch(AI_API + 'models/' + encodeURIComponent(model) + ':generateContent', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': c.key },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: gen }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || 'Gemini answered with error ' + r.status + '.');
+  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+  const text = parts.filter(p => !p.thought).map(p => p.text || '').join('').trim();
+  if (!text) throw new Error(j.promptFeedback && j.promptFeedback.blockReason ? 'Gemini declined to answer (' + j.promptFeedback.blockReason + ').' : 'Gemini returned no text. Try again.');
+  return text;
+}
+async function geminiModels(key) {
+  const r = await fetch(AI_API + 'models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || 'Key check failed (' + r.status + ').');
+  return (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent') && /gemini/.test(m.name) && !/embed|tts|image|audio|live|vision/.test(m.name))
+    .map(m => m.name.replace(/^models\//, '')).sort((a, b) => (/flash/.test(b) - /flash/.test(a)) || b.localeCompare(a));
+}
+
+/* ---------- what the coach sees: numbers the app already computed ---------- */
+function aiSystem(lines) {
+  let lang = navigator.language || 'en'; try { lang = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang) || lang; } catch (e) { }
+  return `You are a concise, encouraging running coach. You review numbers that the app "Pace & Pulse" computed from the runner's Garmin files.
+Reply with ${lines} short lines at most (use 5 only if there is a lot that matters). Each line: one emoji, then one plain sentence of at most 110 characters.
+Cover what they did well, what is missing or risky, and one concrete next step. Quote the numbers that matter. No heading, no preamble, no markdown, no medical diagnosis.
+VO2max is on Daniels' VDOT scale. Load is Banister TRIMP. Write in ${lang}.`;
+}
+function aiAthlete() {
+  const S = st.S, u = uName();
+  return `Athlete: ${S.sex === 'f' ? 'female' : 'male'}${S.age ? ', age ' + S.age : ''}, max HR ${Math.round(S.hrMaxEff)} (${S.hrMax ? 'entered' : 'auto'}), resting HR ${S.hrRest}${S.weight ? ', ' + S.weight + ' kg' : ''}. Units: ${u}. Today: ${new Date(st.asOf).toDateString()}.`;
+}
+function aiRunLine(r, e) {
+  return `${new Date(r.start).toDateString()} | ${r.name} | ${fmtDist(e.dist)} ${uName()} | ${fmtDur(e.mov)} | pace ${fmtPace(e.pace)} | GAP ${fmtPace(e.gapPace)} | avgHR ${e.avgHR ? Math.round(e.avgHR) : '-'} | maxHR ${e.maxHR ? Math.round(e.maxHR) : '-'} | load ${Math.round(e.load || 0)} | VO2 est ${e.est ? e.est.toFixed(1) : '-'} | HR drift ${e.dec != null ? e.dec.toFixed(1) + '%' : '-'} | ascent ${e.ascent != null ? Math.round(e.ascent) + ' m' : '-'}`;
+}
+function aiOverviewPrompt() {
+  const D = lastDay(), a4 = dayAt(D.t - 28 * DAY), a12 = dayAt(D.t - 84 * DAY), T = dayStart(st.asOf) + DAY;
+  let a7 = 0, c28 = 0; const z = [0, 0, 0, 0, 0];
+  st.runs.forEach((r, i) => { const e = st.res[i]; if (r.start >= T - 7 * DAY) a7 += e.load || 0; if (r.start >= T - 28 * DAY) { c28 += e.load || 0; if (e.zones) e.zones.forEach((s, k) => z[k] += s); } });
+  const zt = z.reduce((x, y) => x + y, 0), pc = x => zt ? Math.round(x / zt * 100) + '%' : '-';
+  const wk = weekly().slice(-8).map(w => `${fmtDate(w[0] - 3.5 * DAY)}: ${w[1].toFixed(1)} (${w[2]} runs)`).join('; ');
+  const recent = st.runs.map((r, i) => [r, st.res[i]]).slice(-12).reverse().map(([r, e]) => aiRunLine(r, e)).join('\n');
+  const best = {}; st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) if (e.label !== 'Run' && (!best[e.label] || e.sec < best[e.label].sec)) best[e.label] = { sec: e.sec, t: r.start }; });
+  return `${aiAthlete()}
+Current: VO2max ${D.vo2 ? D.vo2.toFixed(1) : 'unknown'} (4 weeks ago ${a4 && a4.vo2 ? a4.vo2.toFixed(1) : '-'}, 12 weeks ago ${a12 && a12.vo2 ? a12.vo2.toFixed(1) : '-'}; HR model ${D.vo2hr ? D.vo2hr.toFixed(1) : '-'}, race efforts ${D.vo2perf ? D.vo2perf.toFixed(1) : '-'}).
+Endurance score ${D.end ? Math.round(D.end) + ' (' + tierOf(D.end) + ')' : '-'}. Fitness CTL ${Math.round(D.ctl)}, fatigue ATL ${Math.round(D.atl)}, form ${Math.round(D.tsb)}. Weekly running time ${fmtDur(D.H * 3600)} (42-day avg). Longest run in 6 weeks ${Math.round(D.L)} min. HR drift on 60+ min runs ${D.hasDec ? D.D.toFixed(1) + '%' : 'no data'}.
+Load: last 7 days ${Math.round(a7)} vs weekly average of last 4 weeks ${Math.round(c28 / 4)}.
+Intensity, last 4 weeks (time in HR zones): easy Z1-2 ${pc(z[0] + z[1])}, moderate Z3 ${pc(z[2])}, hard Z4-5 ${pc(z[3] + z[4])}.
+Weekly distance (${uName()}), oldest first: ${wk}.
+Race predictions: ${D.vo2 ? racePreds(D).map(([n, t]) => n + ' ' + fmtDur(t)).join(', ') : '-'}.
+Best efforts: ${Object.entries(best).map(([l, b]) => `${l} ${fmtDur(b.sec)} (${new Date(b.t).toDateString()})`).join(', ') || '-'}.
+Recent workouts, newest first:
+${recent}
+
+Give your read on this runner's training.`;
+}
+function aiWorkoutPrompt(r, e) {
+  const sp = r.summary ? [] : splitsOf(r, U()), D = dayAt(r.start);
+  const splits = sp.map((s, k) => `${k + 1}: ${fmtPace(s.sec / (s.len / 1000))}${s.hr ? ' @' + Math.round(s.hr) : ''}${s.elev != null ? ' ' + (s.elev >= 0 ? '+' : '') + Math.round(s.elev) + 'm' : ''}`).join(', ');
+  const zt = e.zones ? e.zones.reduce((a, b) => a + b, 0) : 0;
+  return `${aiAthlete()}
+Fitness that day: VO2max ${D && D.vo2 ? D.vo2.toFixed(1) : '-'}, CTL ${D ? Math.round(D.ctl) : '-'}, form ${D ? Math.round(D.tsb) : '-'}.
+Workout: ${aiRunLine(r, e)}
+${e.zones ? 'Time in zones Z1-Z5: ' + e.zones.map(s => Math.round(s / zt * 100) + '%').join(' / ') : 'No heart rate.'}
+${splits ? 'Splits per ' + uName() + ' (pace @HR, elevation): ' + splits : ''}
+${e.efforts.length ? 'Best efforts in this run: ' + e.efforts.map(x => x.label + ' ' + fmtDur(x.sec)).join(', ') : ''}
+Recent workouts before it:
+${st.runs.map((x, i) => [x, st.res[i]]).filter(([x]) => x.start < r.start && x.start > r.start - 21 * DAY).slice(-6).reverse().map(([x, y]) => aiRunLine(x, y)).join('\n') || 'none'}
+
+Give your read on this one workout: execution, pacing, effort and what it means for training.`;
+}
+function aiLines(text, max = 5) {
+  return text.split(/\n+/).map(l => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').replace(/\*\*|__|`/g, '').replace(/^#+\s*/, '').trim()).filter(Boolean).slice(0, max);
+}
+function aiList(text) {
+  return `<ul class="ai-lines">${aiLines(text).map(l => { const m = l.match(/^(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}]*)\s*(.*)$/u);
+    return `<li><span aria-hidden="true">${m ? m[1] : '•'}</span><span>${esc(m ? m[2] : l)}</span></li>`; }).join('')}</ul>`;
+}
+const aiAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : fmtDate(t, { day: 'numeric', month: 'short' }); };
+const aiSig = () => st.runs.length + ':' + (st.runs.length ? st.runs[st.runs.length - 1].id : '') + ':' + st.S.hrMaxEff + ':' + st.S.hrRest;
+
+/* ---------- overview card ---------- */
+function renderAICard(el, busy, err) {
+  const c = aiCfg(), cache = aiCache().overview;
+  const hd = head('AI coach', c.key ? `<span class="muted sm">Google Gemini</span>` : '');
+  if (!c.key) {
+    el.innerHTML = hd + `<p class="sub" style="margin:0 0 12px">Get a short read on your training — what you do well, what you’re missing and what to do next — from Google Gemini.</p><div class="btns"><button type="button" class="primary" data-ai="setup">Set up AI coach</button></div>`;
+  } else if (!st.runs.length) {
+    el.innerHTML = hd + '<p class="empty">Import workouts to get a read on your training.</p>';
+  } else {
+    const stale = cache && cache.sig !== aiSig();
+    el.innerHTML = hd + (busy ? `<p class="sub"><span class="ai-busy"></span> Reading your training…</p>` : cache ? aiList(cache.text) : `<p class="sub" style="margin:0">Ask for a short read on your last weeks of training.</p>`)
+      + (err ? `<p class="form-err" style="margin-top:10px">${esc(err)}</p>` : '')
+      + `<div class="foot" style="justify-content:space-between;margin-top:12px"><span class="ai-meta">${cache ? `Updated ${aiAgo(cache.at)} · ${esc(cache.model)}${stale ? ' · new data since' : ''}` : 'Your stats and recent workouts are sent to Google when you ask.'}</span>
+        <button type="button" class="${cache && !stale ? '' : 'primary'}" data-ai="ask"${busy ? ' disabled' : ''}>${cache ? 'Ask again' : 'Ask coach'}</button></div>`;
+  }
+  const s = el.querySelector('[data-ai="setup"]'); if (s) s.onclick = gotoAISettings;
+  const a = el.querySelector('[data-ai="ask"]'); if (a) a.onclick = async () => {
+    renderAICard(el, true);
+    try { const text = await gemini(aiOverviewPrompt(), aiSystem(4)); aiCacheSet(x => x.overview = { text, at: Date.now(), sig: aiSig(), model: aiCfg().model }); renderAICard(el); }
+    catch (e) { renderAICard(el, false, e.message); }
+  };
+}
+function gotoAISettings() { location.hash = '#profile'; setTimeout(() => { const c = $('#aiCard'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); const k = $('#aiKey'); if (k) k.focus({ preventScroll: true }); } }, 120); }
+
+/* ---------- per-workout opinion ---------- */
+function renderWorkoutAI(box, r, e, run) {
+  const c = aiCfg(), cached = aiCache().w[r.id];
+  if (!c.key) { if (!run) { box.hidden = true; return; } box.hidden = false; box.innerHTML = head('AI opinion') + `<p class="sub" style="margin:0 0 12px">Add a Gemini API key to get a short opinion on this workout.</p><button type="button" class="primary" id="wAiSet">Set up AI coach</button>`; $('#wAiSet').onclick = gotoAISettings; return; }
+  if (!run && !cached) { box.hidden = true; return; }
+  box.hidden = false;
+  const draw = (busy, err) => {
+    const cc = aiCache().w[r.id];
+    box.innerHTML = head('AI opinion', '<span class="muted sm">Google Gemini</span>') + (busy ? '<p class="sub"><span class="ai-busy"></span> Looking at this run…</p>' : cc ? aiList(cc.text) : '')
+      + (err ? `<p class="form-err" style="margin-top:10px">${esc(err)}</p>` : '')
+      + (cc && !busy ? `<div class="foot" style="justify-content:space-between;margin-top:10px"><span class="ai-meta">${aiAgo(cc.at)} · ${esc(cc.model)}</span><button type="button" id="wAiAgain">Ask again</button></div>` : '');
+    const ag = $('#wAiAgain'); if (ag) ag.onclick = ask;
+  };
+  const ask = async () => {
+    draw(true);
+    try { const text = await gemini(aiWorkoutPrompt(r, e), aiSystem(4)); aiCacheSet(x => x.w[r.id] = { text, at: Date.now(), model: aiCfg().model }); draw(); }
+    catch (err) { draw(false, err.message); }
+  };
+  if (run && !cached) ask(); else draw();
+}
+
+/* ---------- settings card ---------- */
+function renderAISettings() {
+  const c = aiCfg(), el = $('#aiCard');
+  el.innerHTML = `<div class="ch"><h3>AI coach</h3><span class="chip ${c.key ? 'good' : ''}"><i></i>${c.key ? 'Gemini key saved' : 'Not set up'}</span></div>
+    <p class="sub" style="margin:0 0 12px">Uses Google Gemini. Create a free API key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and paste it here.</p>
+    <form class="form1" id="aiForm" autocomplete="off">
+      <label for="aiKey">Gemini API key<div class="linkrow"><input id="aiKey" type="password" spellcheck="false" placeholder="AIza…" value="${esc(c.key)}"><button type="button" id="aiShow">Show</button></div></label>
+      <label for="aiModel">Model<select id="aiModel">${[...new Set([c.model, AI_DEFAULT_MODEL, 'gemini-2.5-flash-lite', 'gemini-2.5-pro'])].map(m => `<option${m === c.model ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select><span class="hint">“Check key” lists the models your key can use. Flash models are fast and free-tier friendly.</span></label>
+      <p class="form-err" id="aiErr" hidden></p>
+      <div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="aiCheck">Check key</button>${c.key ? '<button type="button" class="danger" id="aiDel">Remove key</button>' : ''}</div>
+    </form>
+    <p class="fine" style="margin-top:12px">The key is stored only in this browser. When you ask for an opinion, your settings, computed stats and recent workout summaries (no GPS routes) are sent to Google.</p>`;
+  const msg = (t, ok) => { const e = $('#aiErr'); e.textContent = t; e.hidden = !t; e.style.color = ok ? 'var(--good-ink)' : ''; };
+  $('#aiShow').onclick = () => { const k = $('#aiKey'); k.type = k.type === 'password' ? 'text' : 'password'; $('#aiShow').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
+  $('#aiForm').onsubmit = ev => { ev.preventDefault(); lsSet('pp-ai', { key: $('#aiKey').value.trim(), model: $('#aiModel').value }); renderAISettings(); msg('Saved.', true); };
+  $('#aiCheck').onclick = async () => {
+    const key = $('#aiKey').value.trim(); if (!key) { msg('Paste a key first.'); return; }
+    msg('Checking…', true);
+    try { const ms = await geminiModels(key); if (!ms.length) throw new Error('This key has no Gemini text models.');
+      const cur = $('#aiModel').value, pick = ms.includes(cur) ? cur : ms.find(m => /^gemini-[\d.]+-flash$/.test(m)) || ms[0];
+      $('#aiModel').innerHTML = ms.map(m => `<option${m === pick ? ' selected' : ''}>${esc(m)}</option>`).join('');
+      lsSet('pp-ai', { key, model: pick }); msg(`Key works. ${ms.length} models available; using ${pick}.`, true);
+    } catch (e) { msg(e.message); }
+  };
+  if ($('#aiDel')) $('#aiDel').onclick = () => { lsSet('pp-ai', { key: '', model: aiCfg().model }); renderAISettings(); };
+}
+// ===== END AI COACH =====
+// ===== OVERVIEW DASHBOARD: Garmin-style cards the runner can add, remove, resize and reorder =====
+// Layout is saved in the profile settings as ["id:size", …] (Firestore can't store nested arrays).
+
+/* ---------- chart builders, shared by the dashboard and Trends ---------- */
+const lastDay = () => st.days[st.days.length - 1];
+const rangeOf = days => { const xMax = lastDay().t, xMin = days ? Math.max(st.days[0].t, xMax - days * DAY) : st.days[0].t; return { xMin, xMax, inR: t => t >= xMin - DAY && t <= xMax + DAY }; };
+function vo2Chart(el, days, withRuns, height) {
+  const { xMin, xMax, inR } = rangeOf(days), series = [];
+  if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
+    pts: st.runs.map((r, i) => [r.start, st.res[i].est, st.res[i].conf, r.name]).filter(p => p[1] && inR(p[0])) });
+  series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--c1'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
+  plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series });
+}
+function weekChart(el, weeks, height) {
+  const xMax = lastDay().t, all = weekly(), wpts = weeks ? all.filter(p => p[0] >= xMax - weeks * 7 * DAY) : all;
+  plot(el, { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMax - 7 * DAY, xMax: xMax + 3.5 * DAY, zero: true, height,
+    series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''} · ${fmtDur(p[3])}` }],
+    tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
+}
+function loadChart(el, days, height) {
+  const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
+  plot(el, { label: 'Fitness and fatigue', xMin, xMax, zero: true, height, series: [
+    { name: 'Fitness (42-day)', kind: 'line', color: css('--c1'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
+    { name: 'Fatigue (7-day)', kind: 'line', color: css('--c2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+}
+function endChart(el, days, height) {
+  const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
+  plot(el, { label: 'Endurance score over time', xMin, xMax, height, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--c1'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }],
+    extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
+}
+function efChart(el, days, height) {
+  const { xMin, xMax, inR } = rangeOf(days), pts = [];
+  st.runs.forEach((r, i) => { const e = st.res[i]; if (e.ef && !r.summary && inR(r.start)) pts.push([r.start, e.ef, 0, r.name]); });
+  const roll = pts.map(p => { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); return [p[0], w[w.length >> 1]]; });
+  plot(el, { label: 'Aerobic efficiency', xMin, xMax, height, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--c1'), pts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
+    { name: '28-day median', kind: 'line', color: css('--c1'), w: 2.5, pts: roll, fmt: v => v.toFixed(2) + ' m/beat' }] });
+}
+
+/* ---------- widgets ---------- */
+const head = (t, extra = '') => `<div class="ch"><h3>${t}</h3>${extra}</div>`;
+const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
+function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
+const WIDGETS = {
+  vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating and 4-week change', size: 'S', render(el) {
+    const D = lastDay(), ago = agoDay();
+    if (!D.vo2) { el.innerHTML = `<span class="label">VO₂max</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
+    const cat = vo2Category(D.vo2);
+    el.innerHTML = `<span class="label">VO₂max</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
+      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
+      <div class="sub">${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+  } },
+  end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
+    const D = lastDay(), ago = agoDay();
+    if (!D.end) { el.innerHTML = `<span class="label">Endurance score</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
+    const pos = clamp((D.end - 2000) / 11000, 0, 1) * 100;
+    el.innerHTML = `<span class="label">Endurance score</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tierOf(D.end)}</span>
+      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
+      ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
+  } },
+  status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
+    const D = lastDay(), tsb = D.tsb, s = tsb > 5 ? ['Fresh', 'good'] : tsb > -10 ? ['Balanced', 'acc'] : tsb > -25 ? ['Building', 'warn'] : ['Overreaching', 'crit'];
+    el.innerHTML = `<span class="label">Training status</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${s[1]}"><i></i>${s[0]}</span>
+      <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
+  } },
+  race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
+    const D = lastDay();
+    if (!D.vo2) { el.innerHTML = `<span class="label">Race predictions</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
+    el.innerHTML = `<span class="label">Race predictions</span><dl class="kv">${racePreds(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
+  } },
+  week: { name: 'This week', desc: 'Distance, time and runs, Monday to Sunday', size: 'S', render(el) {
+    const now = st.asOf, d0 = (() => { const d = new Date(dayStart(now)); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; })();
+    const per = Array.from({ length: 7 }, () => 0); let dist = 0, time = 0, n = 0, prev = 0;
+    st.runs.forEach((r, i) => { const e = st.res[i];
+      if (r.start >= d0 && r.start < d0 + 7 * DAY) { const k = Math.round((dayStart(r.start) - d0) / DAY); per[clamp(k, 0, 6)] += e.dist || 0; dist += e.dist || 0; time += e.mov || 0; n++; }
+      else if (r.start >= d0 - 7 * DAY && r.start < d0) prev += e.dist || 0; });
+    const mx = Math.max(...per, 1), today = clamp(Math.round((dayStart(now) - d0) / DAY), 0, 6), dl = prev ? (dist - prev) / U() : null;
+    el.innerHTML = `<span class="label">This week</span><div class="big">${fmtDist(dist)}<small>${uName()}</small></div>
+      <div class="sub">${n} run${n === 1 ? '' : 's'} · ${fmtDur(time)}${dl != null ? ` · <span class="${dl >= 0 ? 'delta-up' : 'delta-down'}">${dl >= 0 ? '+' : '−'}${Math.abs(dl).toFixed(1)}</span> vs last week` : ''}</div>
+      <div class="wkbars">${per.map((v, k) => `<div class="${k === today ? 'today' : ''}" title="${fmtDist(v)} ${uName()}"><i style="height:${v ? Math.max(4, v / mx * 46) : 2}px;${v ? '' : 'background:var(--line)'}"></i>${'MTWTFSS'[k]}</div>`).join('')}</div>`;
+  } },
+  acute: { name: 'Training load', desc: '7-day load against your optimal range', size: 'S', render(el) {
+    const T = dayStart(st.asOf) + DAY; let a = 0, c = 0;
+    st.runs.forEach((r, i) => { const L = st.res[i].load || 0; if (r.start >= T - 7 * DAY && r.start < T) a += L; if (r.start >= T - 28 * DAY && r.start < T) c += L; });
+    c /= 4;
+    if (!c) { el.innerHTML = `<span class="label">Training load</span><p class="sub">Needs a few weeks of workouts.</p>`; return; }
+    const ratio = a / c, max = Math.max(c * 1.8, a * 1.1), pc = x => clamp(x / max * 100, 0, 100);
+    const s = ratio < 0.8 ? ['Low', 'warn', 'Below your usual — fitness can slip if this lasts.'] : ratio <= 1.3 ? ['Optimal', 'good', 'In your productive range.'] : ratio <= 1.5 ? ['High', 'warn', 'Above usual. Keep easy days easy.'] : ['Very high', 'crit', 'Sharp jump — injury risk rises. Ease off.'];
+    el.innerHTML = `<span class="label">Training load</span><div class="big">${f0(a)}<small>7-day load</small></div><span class="chip ${s[1]}"><i></i>${s[0]} · ${ratio.toFixed(2)}×</span>
+      <div><div class="meter"><span class="opt" style="left:${pc(0.8 * c)}%;width:${pc(1.3 * c) - pc(0.8 * c)}%"></span><b style="left:${pc(a)}%"></b></div><div class="scale-l"><span>0</span><span>optimal ${f0(0.8 * c)}–${f0(1.3 * c)}</span><span>${f0(max)}</span></div></div>
+      <div class="sub">${s[2]}</div>`;
+  } },
+  ai: { name: 'AI coach', desc: 'A short Gemini read on what you do well and what you miss', size: 'L', always: true, render(el) { renderAICard(el); } },
+  latest: { name: 'Latest workout', desc: 'Route, distance, pace and heart rate', size: 'M', render(el) {
+    const li = st.runs.length - 1, r = st.runs[li], e = st.res[li], g = routeGlyph(r, 300, 18);
+    el.innerHTML = head('Latest workout', `<a href="#w-${esc(r.id)}" class="sm">Open details →</a>`) + `<div class="latest">${g ? `<a class="mini-map" href="#w-${esc(r.id)}" aria-label="Open route"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"><path d="${g}" fill="none" stroke="var(--surface)" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg></a>` : ''}
+      <div><p class="lt">${esc(r.name)}</p><p class="muted sm" style="margin-bottom:12px">${new Date(r.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+      <dl class="kv"><dt>Distance</dt><dd>${fmtDist(e.dist)} ${uName()}</dd><dt>Time</dt><dd>${fmtDur(e.mov)}</dd><dt>Pace</dt><dd>${fmtPace(e.pace)}/${uName()}</dd><dt>Avg HR</dt><dd>${e.avgHR ? Math.round(e.avgHR) + ' bpm' : '–'}</dd><dt>VO₂max est.</dt><dd>${e.est ? f1(e.est) : '–'}</dd><dt>Load</dt><dd>${f0(e.load)}</dd></dl></div></div>`;
+  } },
+  vo2chart: { name: 'VO₂max trend', desc: 'Last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('VO₂max', '<span class="muted sm">Last 6 months</span>') + '<div class="plot"></div>'; vo2Chart(el.querySelector('.plot'), 182, false, 200); } },
+  weekchart: { name: 'Weekly distance', desc: 'Last 16 weeks', size: 'M', chart: true, render(el) { el.innerHTML = head('Weekly distance', `<span class="muted sm">Last 16 weeks, ${uName()}</span>`) + '<div class="plot"></div>'; weekChart(el.querySelector('.plot'), 16, 200); } },
+  loadchart: { name: 'Fitness & fatigue', desc: '42-day and 7-day load, last 12 weeks', size: 'M', chart: true, render(el) { el.innerHTML = head('Fitness &amp; fatigue', '<span class="muted sm">Last 12 weeks</span>') + '<div class="plot"></div>'; loadChart(el.querySelector('.plot'), 84, 200); } },
+  endchart: { name: 'Endurance trend', desc: 'Endurance score, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Endurance score', '<span class="muted sm">Last 6 months</span>') + '<div class="plot"></div>'; endChart(el.querySelector('.plot'), 182, 200); } },
+  efchart: { name: 'Aerobic efficiency', desc: 'Metres per heartbeat, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Aerobic efficiency', '<span class="muted sm">m per beat</span>') + '<div class="plot"></div>'; efChart(el.querySelector('.plot'), 182, 200); } },
+  calendar: { name: 'Activity calendar', desc: 'Every run of the last 16 weeks', size: 'M', render(el) {
+    const W = 16, end = dayStart(st.asOf), endMon = end - ((new Date(end).getDay() + 6) % 7) * DAY, start = endMon - (W - 1) * 7 * DAY, per = new Map();
+    st.runs.forEach((r, i) => { const k = dayStart(r.start); if (k >= start) per.set(k, (per.get(k) || 0) + (st.res[i].dist || 0)); });
+    const vals = [...per.values()].sort((a, b) => a - b), q = p => vals[Math.min(vals.length - 1, Math.floor(vals.length * p))] || 1;
+    const cuts = [q(0.25), q(0.5), q(0.75), q(0.9)], lvl = v => 1 + cuts.filter(c => v > c).length;
+    let cells = '';
+    for (let dow = 0; dow < 7; dow++) {
+      cells += `<span>${dow % 2 ? '' : 'MTWTFSS'[dow]}</span>`;
+      for (let w = 0; w < W; w++) { const t = dayStart(start + (w * 7 + dow) * DAY + DAY / 2), v = per.get(t);
+        cells += t > end ? '<i style="visibility:hidden"></i>' : `<i title="${fmtDate(t, { weekday: 'short', day: 'numeric', month: 'short' })}: ${v ? fmtDist(v) + ' ' + uName() : 'rest'}"${v ? ` style="background:var(--z${lvl(v)})"` : ''}></i>`; }
+    }
+    const days = per.size, km = vals.reduce((a, b) => a + b, 0);
+    el.innerHTML = head('Activity calendar', `<span class="muted sm">${days} run days · ${fmtDist(km)} ${uName()}</span>`) + `<div class="cal" style="--wk:${W}">${cells}</div>
+      <div class="cal-leg">Less <i style="background:var(--sunk)"></i><i style="background:var(--z1)"></i><i style="background:var(--z2)"></i><i style="background:var(--z3)"></i><i style="background:var(--z4)"></i><i style="background:var(--z5)"></i> More</div>`;
+  } },
+  zones: { name: 'Intensity mix', desc: 'Time in heart-rate zones, last 4 weeks', size: 'M', render(el) {
+    const T = dayStart(st.asOf) + DAY, z = [0, 0, 0, 0, 0];
+    st.runs.forEach((r, i) => { const e = st.res[i]; if (r.start >= T - 28 * DAY && e.zones) e.zones.forEach((s, k) => z[k] += s); });
+    const tot = z.reduce((a, b) => a + b, 0);
+    if (!tot) { el.innerHTML = head('Intensity mix') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
+    const pc = x => Math.round(x / tot * 100), easy = pc(z[0] + z[1]), mod = pc(z[2]), hard = pc(z[3] + z[4]);
+    const verdict = easy >= 75 ? 'close to the 80/20 balance most coaches aim for' : mod > 25 ? 'a lot of moderate “grey zone” running — make easy days easier' : 'less easy running than the usual 80% target';
+    const lab = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO₂max'];
+    el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>') + `<p class="sub" style="margin:0 0 12px"><b>${easy}%</b> easy · <b>${mod}%</b> moderate · <b>${hard}%</b> hard — ${verdict}.</p>
+      <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('')}</div>`;
+  } },
+  drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
+  records: { name: 'Personal bests', desc: 'Fastest 5K, 10K, half and marathon', size: 'M', render(el) {
+    const best = {}; st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) if (e.label !== 'Run' && e.label !== '1 km' && (!best[e.label] || e.sec < best[e.label].e.sec)) best[e.label] = { e, r }; });
+    const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
+    el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
+  } },
+};
+const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'zones:M', 'drivers:M'];
+function racePreds(D) { const k = Math.sqrt(fVol(D.H) * gLong(D.L)); return RACES.map(([dist, name, pen]) => [name, predictTime(dist, D.vo2) * (1 + pen * (1 - k)), dist]); }
+function dashCfg() {
+  const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
+  return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));
+}
+function saveDash(cfg) {
+  st.S.dash = cfg.map(([id, s]) => id + ':' + s);
+  if (st.user) st.backend.updateProfile({ settings: { dash: st.S.dash } }).then(u => { if (u) st.user = u; }).catch(e => setStatus('Could not save the layout: ' + e.message));
+}
+function renderBreakdown(D, box) {
+  if (!D || !D.vo2) { box.innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }
+  const items = [
+    ['Aerobic ceiling', `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
+    ['Training volume', `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
+    ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
+    ['Durability', D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
+  ];
+  box.innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
+}
+
+function renderOverview() {
+  const u = st.user;
+  $('#hello').textContent = u ? `Hi, ${u.name.split(' ')[0]}` : 'Sample athlete';
+  $('#asof').textContent = st.runs.length ? (Date.now() - st.asOf > DAY ? 'As of your last workout, ' : 'Today, ') + fmtDate(st.asOf, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const cfg = dashCfg(), box = $('#dash'), edit = !!st.dashEdit;
+  $('#dashEdit').textContent = edit ? 'Done' : 'Customize'; $('#dashEdit').classList.toggle('primary', edit); $('#dashReset').hidden = !edit;
+  box.classList.toggle('editing', edit);
+  box.innerHTML = cfg.map(([id, size], k) => `<div class="w w-${size}" data-k="${k}">
+    <div class="w-ctl" role="group" aria-label="${esc(WIDGETS[id].name)} card"><button type="button" data-a="up" aria-label="Move earlier"${k ? '' : ' disabled'}>↑</button><button type="button" data-a="down" aria-label="Move later"${k < cfg.length - 1 ? '' : ' disabled'}>↓</button>${['S', 'M', 'L'].map(s => `<button type="button" data-a="size" data-s="${s}" class="${s === size ? 'on' : ''}" aria-label="Size ${s}">${s}</button>`).join('')}<button type="button" data-a="del" aria-label="Remove card">✕</button></div>
+    <div class="card ${WIDGETS[id].chart ? 'chart-card' : 'tile'}" data-w="${id}"></div></div>`).join('');
+  cfg.forEach(([id, size], k) => {
+    const el = box.querySelector(`.w[data-k="${k}"] .card`), w = WIDGETS[id];
+    if (!st.runs.length && !w.always) { el.innerHTML = (w.size === 'S' ? `<span class="label">${w.name}</span>` : head(w.name)) + '<p class="empty">Import workouts to see this</p>'; return; }
+    try { w.render(el, size); } catch (e) { console.warn(id, e); el.innerHTML = head(w.name) + '<p class="empty">Could not draw this card.</p>'; }
+  });
+  box.querySelectorAll('.w-ctl button').forEach(b => b.onclick = () => {
+    const k = +b.closest('.w').dataset.k, c = dashCfg(), a = b.dataset.a;
+    if (a === 'up' && k > 0) [c[k - 1], c[k]] = [c[k], c[k - 1]];
+    else if (a === 'down' && k < c.length - 1) [c[k + 1], c[k]] = [c[k], c[k + 1]];
+    else if (a === 'size') c[k][1] = b.dataset.s;
+    else if (a === 'del') c.splice(k, 1);
+    saveDash(c); renderOverview();
+  });
+  const add = $('#dashAdd'), used = new Set(cfg.map(c => c[0])), free = Object.keys(WIDGETS).filter(id => !used.has(id));
+  add.hidden = !edit;
+  add.innerHTML = edit ? `<div class="card"><div class="ch"><h3>Add cards</h3><span class="muted sm">${free.length ? 'Tap a card to add it at the end' : 'Every card is on your overview'}</span></div>
+    <div class="add-list">${free.map(id => `<button type="button" data-id="${id}"><span><b>+ ${WIDGETS[id].name}</b><span>${WIDGETS[id].desc}</span></span></button>`).join('')}</div></div>` : '';
+  add.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { const c = dashCfg(); c.push([b.dataset.id, WIDGETS[b.dataset.id].size]); saveDash(c); renderOverview(); });
+}
+function initDash() {
+  $('#dashEdit').onclick = () => { st.dashEdit = !st.dashEdit; renderOverview(); addChartShare(); };
+  $('#dashReset').onclick = () => { saveDash(DASH_DEFAULT.map(x => x.split(':'))); renderOverview(); addChartShare(); };
+}
+// ===== END DASHBOARD =====
 // ===== APP =====
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1703,10 +2179,12 @@ $('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}">
 /* ---------- compute ---------- */
 function compute() {
   const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
-  const peaks = runs.map(r => r.hrPeak || 0).filter(x => x > 0);
-  const tanaka = S.age ? 208 - 0.7 * S.age : 190;
-  st.detectedMax = peaks.length ? Math.round(Math.max(...peaks)) : null;
-  S.hrMaxEff = S.hrMax || st.detectedMax || tanaka;
+  // highest 30-s HR across runs; a lone value far above the next-highest is treated as an optical-sensor spike
+  const peaks = runs.map(r => r.hrPeak || 0).filter(x => x > 0).sort((a, b) => b - a);
+  st.detectedMax = peaks.length ? Math.round(peaks.length >= 3 && peaks[0] - peaks[1] > 12 ? peaks[1] : peaks[0]) : null;
+  st.ageMax = S.age ? Math.round(208 - 0.7 * S.age) : null; // Tanaka 2001
+  // like Garmin: the age estimate until a workout goes higher; most training never reaches true max
+  S.hrMaxEff = S.hrMax || Math.max(st.detectedMax || 0, st.ageMax || 0) || 190;
   S.hrRest = S.hrRest || 55;
   if (!runs.length) { st.res = []; st.days = []; return; }
   const last = runs[runs.length - 1].start;
@@ -1883,7 +2361,7 @@ function mapView(el, r, mode) {
     if (d) segs += `<path d="${d}" stroke="${ramp[cur]}"/>`;
     halo = `<path d="${P.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('')}" stroke="var(--surface)" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
     let marks = ''; const total = r.d[n - 1] - r.d[0], every = total / unit > 30 ? 5 : 1;
-    if (z >= 13) for (let km = every; km * unit < total; km += every) { const p = P.find(q => r.d[q[2]] - r.d[0] >= km * unit); if (p) marks += `<g transform="translate(${p[0]},${p[1]})"><circle r="8" fill="var(--surface)" stroke="var(--ink2)" stroke-width="1.2"/><text text-anchor="middle" y="3.5" style="font:600 9px var(--mono);fill:var(--ink)">${km}</text></g>`; }
+    if (z >= 13) for (let km = every; km * unit < total; km += every) { const p = P.find(q => r.d[q[2]] - r.d[0] >= km * unit); if (p) marks += `<g transform="translate(${p[0]},${p[1]})"><circle r="8" fill="var(--surface)" stroke="var(--ink2)" stroke-width="1.2"/><text text-anchor="middle" y="3.5">${km}</text></g>`; }
     const s = P[0], e = P[P.length - 1];
     svg.innerHTML = halo + `<g fill="none" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${segs}</g>` + marks +
       `<circle cx="${e[0]}" cy="${e[1]}" r="7" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="7" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/><g class="hl"></g>`;
@@ -1909,62 +2387,11 @@ function mapView(el, r, mode) {
   return { lo, hi };
 }
 
-/* ---------- overview ---------- */
-function renderOverview() {
-  const u = st.user;
-  $('#hello').textContent = u ? `Hi, ${u.name.split(' ')[0]}` : 'Sample athlete';
-  if (!st.runs.length) { ['#tVo2', '#tEnd', '#tLoad', '#tRace'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see this</p>'); $('#latest').innerHTML = '<p class="empty">No workouts yet</p>'; ['#oVo2', '#oWeek', '#breakdown'].forEach(s => $(s).innerHTML = ''); $('#asof').textContent = ''; return; }
-  const days = st.days, D = days[days.length - 1], ago = dayAt(D.t - 28 * DAY);
-  $('#asof').textContent = (Date.now() - st.asOf > DAY ? 'As of your last workout, ' : 'Today, ') + fmtDate(st.asOf, { day: 'numeric', month: 'long', year: 'numeric' });
-  if (D.vo2) {
-    const cat = vo2Category(D.vo2), dv = ago && ago.vo2 && ago !== D ? D.vo2 - ago.vo2 : null;
-    $('#tVo2').innerHTML = `<span class="label">VO₂max</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
-      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
-      <div class="sub">${dv != null ? `<span class="${dv >= 0.05 ? 'delta-up' : dv <= -0.05 ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(1)}</span> in 4 weeks</span><br>` : ''}
-      Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
-  } else $('#tVo2').innerHTML = `<span class="label">VO₂max</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`;
-  if (D.end) {
-    const tier = tierOf(D.end), pos = clamp((D.end - 2000) / 11000, 0, 1) * 100, de = ago && ago.end && ago !== D ? D.end - ago.end : null;
-    $('#tEnd').innerHTML = `<span class="label">Endurance score</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tier}</span>
-      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
-      ${de != null ? `<div class="sub"><span class="${de > 20 ? 'delta-up' : de < -20 ? 'delta-down' : ''}">${de >= 0 ? '▲' : '▼'} <span class="num">${f0(Math.abs(de))}</span> in 4 weeks</span></div>` : ''}`;
-  } else $('#tEnd').innerHTML = `<span class="label">Endurance score</span><p class="sub">Appears once a VO₂max estimate exists.</p>`;
-  const tsb = D.tsb, state = tsb > 5 ? ['Fresh', 'good'] : tsb > -10 ? ['Balanced', 'acc'] : tsb > -25 ? ['Building', 'warn'] : ['Overreaching', 'crit'];
-  $('#tLoad').innerHTML = `<span class="label">Training status</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${state[1]}"><i></i>${state[0]}</span>
-    <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
-  if (D.vo2) {
-    const k = Math.sqrt(fVol(D.H) * gLong(D.L));
-    $('#tRace').innerHTML = `<span class="label">Race predictions</span><dl class="kv">${RACES.map(([dist, name, pen]) => { const t = predictTime(dist, D.vo2) * (1 + pen * (1 - k)); return `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`; }).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
-  } else $('#tRace').innerHTML = `<span class="label">Race predictions</span><p class="sub">Appear once a VO₂max estimate exists.</p>`;
-  // latest workout
-  const li = st.runs.length - 1, r = st.runs[li], e = st.res[li], g = routeGlyph(r, 300, 18);
-  $('#latest').innerHTML = `<div class="ch"><h3>Latest workout</h3><a href="#w-${esc(r.id)}" class="sm">Open details →</a></div>
-    <div class="latest">${g ? `<a class="mini-map" href="#w-${esc(r.id)}" aria-label="Open route"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"><path d="${g}" fill="none" stroke="var(--surface)" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg></a>` : ''}
-    <div><p style="margin:0;font-weight:700;font-size:18px">${esc(r.name)}</p><p class="muted sm" style="margin-bottom:12px">${new Date(r.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-    <dl class="kv"><dt>Distance</dt><dd>${fmtDist(e.dist)} ${uName()}</dd><dt>Time</dt><dd>${fmtDur(e.mov)}</dd><dt>Pace</dt><dd>${fmtPace(e.pace)}/${uName()}</dd><dt>Avg HR</dt><dd>${e.avgHR ? Math.round(e.avgHR) + ' bpm' : '–'}</dd><dt>VO₂max est.</dt><dd>${e.est ? f1(e.est) : '–'}</dd><dt>Load</dt><dd>${f0(e.load)}</dd></dl></div></div>`;
-  const xMax = D.t, xMin = Math.max(days[0].t, xMax - 182 * DAY), inR = t => t >= xMin - DAY && t <= xMax + DAY;
-  plot($('#oVo2'), { label: 'VO2max, last 6 months', xMin, xMax, height: 200, series: [{ name: 'VO₂max', kind: 'area', color: css('--accent'), pts: days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
-  const wpts = weekly().filter(p => p[0] >= xMax - 16 * 7 * DAY);
-  $('#oWkCap').textContent = `Last 16 weeks, ${uName()}`;
-  plot($('#oWeek'), { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMin, xMax: xMax + 3 * DAY, zero: true, height: 200, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
-  renderBreakdown(D);
-}
 function weekly() {
   const wk = new Map();
   st.runs.forEach((r, i) => { const d = new Date(dayStart(r.start)); const k = d.getTime() - ((d.getDay() + 6) % 7) * DAY; const w = wk.get(k) || { d: 0, n: 0, t: 0 }; w.d += st.res[i].dist || 0; w.t += st.res[i].mov || 0; w.n++; wk.set(k, w); });
   return [...wk.entries()].sort((a, b) => a[0] - b[0]).map(([k, w]) => [k + 3.5 * DAY, w.d / U(), w.n, w.t]);
 }
-function renderBreakdown(D) {
-  if (!D || !D.vo2) { $('#breakdown').innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }
-  const items = [
-    ['Aerobic ceiling', `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
-    ['Training volume', `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
-    ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
-    ['Durability', D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
-  ];
-  $('#breakdown').innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
-}
-
 /* ---------- workouts ledger ---------- */
 function renderLedger() {
   const years = [...new Set(st.runs.map(r => new Date(r.start).getFullYear()))].sort((a, b) => b - a);
@@ -2000,6 +2427,7 @@ function renderWorkout(id) {
   let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
     <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
     <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
+    <button type="button" id="aiW">✨ AI opinion</button>
     ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
@@ -2007,6 +2435,7 @@ function renderWorkout(id) {
     ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–')}
     ${stat('Load (TRIMP)', f0(e.load))}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat')}
     ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
+  h += `<div class="card" id="wAI" style="margin-top:12px" hidden></div>`;
   if (r.summary) h += `<p class="sub" style="margin-top:12px">This workout came from the activity list CSV, so only totals are known. Import its .fit file for the map, charts and splits.</p>`;
   else {
     h += `<div class="wd-grid">
@@ -2016,13 +2445,15 @@ function renderWorkout(id) {
       <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
       <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
       ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
-      <div class="card chart-card"><h3>How this run’s VO₂max was found</h3><p class="cap">Each dot is a steady 60-s window. The line runs from your resting point to max HR; where it ends is the estimate.</p><div class="plot" id="dFit"></div></div>
+      <div class="card chart-card"><h3>How this run’s VO₂max was found</h3><p class="cap">Each dot is a steady 60-s window: heart rate against grade-adjusted speed. The line runs from your resting heart rate to max HR; the speed it reaches is your speed at VO₂max.</p><div class="plot" id="dFit"></div></div>
       <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
       <div class="card"><div class="ch"><h3>Time in heart-rate zones</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
       ${e.efforts.length ? `<div class="card"><div class="ch"><h3>Best efforts in this run</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
     </div>`;
   }
   box.innerHTML = h;
+  renderWorkoutAI($('#wAI'), r, e, false);
+  $('#aiW').onclick = () => { renderWorkoutAI($('#wAI'), r, e, true); $('#wAI').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
   if ($('#shareW')) { $('#shareW').onclick = () => shareWorkout(r, e); $('#pubW').onclick = () => publishDlg(r, e); }
   const del = $('#delW'); if (del) del.onclick = async () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Tap again to delete'; return; }
@@ -2047,21 +2478,21 @@ function drawWorkout(r, e, S) {
   const tf = v => fmtDur(v * 60), pv = pace.filter(p => p[1] != null).map(p => p[1]).sort((a, b) => a - b);
   const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
   const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
-  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
   const hrr = q => S.hrRest + q * (S.hrMaxEff - S.hrRest);
-  plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
+  plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', minSpan: 20, series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
     empty: 'No heart-rate data in this file.',
     extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
-  if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }], yFmt: v => Math.round(v) }));
+  if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', minSpan: 20, series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }] }));
   if (e.fit && e.windows.length) {
-    const a = e.fit.a, b = e.fit.b;
-    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est + 3, height: 220, label: 'Heart rate versus oxygen cost',
-      series: [{ name: 'Steady window', kind: 'dots', color: css('--accent'), pts: e.windows.map(w => [w[0], w[1], w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ml/kg/min` }],
-      yFmt: v => v.toFixed(0),
-      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(a + b * S.hrRest)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
-        <circle cx="${sx(S.hrRest)}" cy="${sy(3.5)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(3.5) - 6}">rest ${S.hrRest}</text>
-        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
-        <text x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end" style="font:600 13px var(--mono);fill:var(--ink)">${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
+    // y in km/h (or mph): the regression is linear in speed; the line ends at max HR = speed at VO2max
+    const a = e.fit.a, b = e.fit.b, k = 60 / U(), sp = v => v * k, uh = st.S.units === 'mi' ? 'mph' : 'km/h', vmx = (a + b * S.hrMaxEff) * k;
+    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: vmx * 1.08, height: 230, label: 'Grade-adjusted speed versus heart rate',
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], sp(w[1]), w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ${uh} · ${fmtPace(3600 / p[1] * 1000 / U())}/${uName()}` }],
+      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(vmx)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="${sx(S.hrRest)}" cy="${sy(0)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(0) - 6}">rest ${S.hrRest}</text>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(vmx)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
+        <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(vmx) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} · ${fmtPace(1000 / e.vmax)}/${uName()}</text>` });
   } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
   const sp2 = splitsOf(r, U());
   if (sp2.length) {
@@ -2086,29 +2517,17 @@ function renderTrends() {
   const days = st.days;
   if (!days.length) { ['#cVo2', '#cEnd', '#cLoad', '#cWeek', '#cEf', '#cDec'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see trends.</p>'); $('#monthly').innerHTML = ''; return; }
   const xMax = days[days.length - 1].t, xMin = st.range ? Math.max(days[0].t, xMax - st.range * DAY) : days[0].t;
-  const inR = t => t >= xMin - DAY && t <= xMax + DAY, dd = days.filter(d => inR(d.t));
-  const runPts = [], efPts = [], decPts = [];
-  st.runs.forEach((r, i) => { const e = st.res[i]; if (!inR(r.start)) return;
-    if (e.est) runPts.push([r.start, e.est, e.conf, r.name]);
-    if (e.ef && !r.summary) efPts.push([r.start, e.ef, 0, r.name]);
-    if (e.dec != null) decPts.push([r.start, clamp(e.dec, -5, 25), Math.min(1, e.mov / 7200), r.name]); });
-  const roll = pts => { const out = []; for (const p of pts) { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); out.push([p[0], w[w.length >> 1]]); } return out; };
-  plot($('#cVo2'), { label: 'VO2max over time', xMin, xMax, series: [
-    { name: 'Run estimate', kind: 'dots', color: css('--accent'), pts: runPts, r: p => 3 + 3 * p[2], op: 0.35, fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
-    { name: 'Blended VO₂max', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
-  plot($('#cEnd'), { label: 'Endurance score over time', xMin, xMax, series: [{ name: 'Endurance score', kind: 'area', color: css('--accent'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }], yFmt: v => v >= 1000 ? (v / 1000) + 'k' : v,
-    extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
-  plot($('#cLoad'), { label: 'Fitness and fatigue', xMin, xMax, zero: true, series: [
-    { name: 'Fitness (42-day)', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
-    { name: 'Fatigue (7-day)', kind: 'line', color: css('--s2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+  const inR = t => t >= xMin - DAY && t <= xMax + DAY, decPts = [];
+  st.runs.forEach((r, i) => { const e = st.res[i]; if (inR(r.start) && e.dec != null) decPts.push([r.start, clamp(e.dec, -5, 25), Math.min(1, e.mov / 7200), r.name]); });
+  vo2Chart($('#cVo2'), st.range, true);
+  endChart($('#cEnd'), st.range);
+  loadChart($('#cLoad'), st.range);
   $('#capWeek').textContent = `Total running distance per week, ${uName()}.`;
-  plot($('#cWeek'), { label: 'Weekly distance', xMin, xMax: xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: weekly().filter(p => inR(p[0])), fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
-  plot($('#cEf'), { label: 'Aerobic efficiency', xMin, xMax, empty: 'Needs runs with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--accent'), pts: efPts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
-    { name: '28-day median', kind: 'line', color: css('--accent'), w: 2.5, pts: roll(efPts), fmt: v => v.toFixed(2) }], yFmt: v => v.toFixed(2) });
-  plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, empty: 'Needs runs of 40+ minutes with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--s2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: v => v + '%',
-    extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5%</text>` : '' });
+  weekChart($('#cWeek'), st.range ? Math.ceil(st.range / 7) : 0);
+  efChart($('#cEf'), st.range);
+  plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, minSpan: 6, empty: 'Needs steady runs of 40+ minutes with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--c2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: (v, d) => v.toFixed(d) + '%',
+    extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5% target</text>` : '' });
   // monthly
   const mon = new Map();
   st.runs.forEach((r, i) => { const dt = new Date(r.start), k = dt.getFullYear() * 12 + dt.getMonth(); const m = mon.get(k) || { n: 0, d: 0, t: 0, hs: 0, hc: 0, l: 0 }; const e = st.res[i];
@@ -2116,7 +2535,7 @@ function renderTrends() {
   const ks = [...mon.keys()].sort((a, b) => b - a), dmax = Math.max(...ks.map(k => mon.get(k).d));
   $('#monthly').innerHTML = `<table class="tb"><thead><tr><th>Month</th><th class="n">Runs</th><th class="n">Distance ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th><th class="n">Load</th><th class="n">VO₂max</th><th class="n">Endurance</th></tr></thead><tbody>${ks.map(k => {
     const m = mon.get(k), y = Math.floor(k / 12), mo = k % 12, endT = Math.min(new Date(y, mo + 1, 0).getTime(), st.asOf), D = dayAt(endT);
-    return `<tr><td>${new Date(y, mo, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</td><td class="n">${m.n}</td><td class="n barcell"><i style="width:${m.d / dmax * 100}%"></i><span>${fmtDist(m.d)}</span></td><td class="n">${fmtDur(m.t)}</td><td class="n">${m.hc ? Math.round(m.hs / m.hc) : '–'}</td><td class="n">${f0(m.l)}</td><td class="n">${D && D.vo2 ? f1(D.vo2) : '–'}</td><td class="n">${D && D.end ? f0(D.end) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+    return `<tr><td>${new Date(y, mo, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</td><td class="n">${m.n}</td><td class="n barcell"><i style="width:${dmax ? m.d / dmax * 100 : 0}%"></i><span>${fmtDist(m.d)}</span></td><td class="n">${fmtDur(m.t)}</td><td class="n">${m.hc ? Math.round(m.hs / m.hc) : '–'}</td><td class="n">${f0(m.l)}</td><td class="n">${D && D.vo2 ? f1(D.vo2) : '–'}</td><td class="n">${D && D.end ? f0(D.end) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
 }
 function syncRange() { $$('#range button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.d === st.range))); }
 $$('#range button').forEach(b => b.onclick = () => { st.range = +b.dataset.d; lsSet('pp-range', st.range); syncRange(); renderTrends(); });
@@ -2166,9 +2585,9 @@ function renderProfile() {
   // settings
   const S = st.S;
   $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
-  $('#hrMaxHint').textContent = st.detectedMax ? `Empty = ${st.detectedMax} bpm, the highest 30-s average in your runs.` : 'Empty = detect from your runs.';
+  $('#hrMaxHint').textContent = `Empty = ${Math.round(S.hrMaxEff)} bpm: ` + (st.ageMax && st.ageMax >= (st.detectedMax || 0) ? `age estimate (your runs peak at ${st.detectedMax || '–'}). A measured value is more accurate.` : st.detectedMax ? 'the highest 30-s average in your runs.' : 'default until runs or age are added.');
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
-  renderStorage(); renderDataCard();
+  renderStorage(); renderDataCard(); renderLook(); renderAISettings();
 }
 $('#setForm').addEventListener('submit', async ev => {
   ev.preventDefault();
@@ -2256,6 +2675,21 @@ function renderDataCard() {
   arm('#delAcct', 'Tap again to delete profile', async () => { await st.backend.deleteAccount(); st.user = null; setStatus(''); showAuth('Profile deleted.'); });
 }
 
+/* ---------- appearance ---------- */
+function renderLook() {
+  const p = uiPrefs();
+  $('#lookCard').innerHTML = `<div class="ch"><h3>Appearance</h3><span class="muted sm">Saved on this device</span></div>
+    <div class="stack"><span class="sm" style="font-weight:600;color:var(--ink2)">Theme</span>
+    <div class="swatches">${THEMES.map(([id, name, mode, bg, acc]) => { const a = id === 'auto';
+      return `<button type="button" data-th="${id}" aria-pressed="${p.theme === id}" style="--sw-bg:${a ? 'linear-gradient(135deg,#0b0f13 50%,#f3f5f0 50%)' : bg};--sw-ink:${mode === 'light' ? '#12170f' : '#eef3f6'};--sw-acc:${a ? 'linear-gradient(90deg,#c6f24e 50%,#3b7d16 50%)' : acc}"><i></i>${name}</button>`; }).join('')}</div>
+    <label for="lkFont" class="sm" style="font-weight:600;color:var(--ink2);display:grid;gap:6px">Font style<select id="lkFont">${Object.entries(FONTS).map(([id, [n]]) => `<option value="${id}"${p.font === id ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+    <span class="sm" style="font-weight:600;color:var(--ink2)">Text size</span>
+    <div class="seg seg-wide" role="group" aria-label="Text size">${SIZES.map(([id, n]) => `<button type="button" data-sz="${id}" aria-pressed="${p.size === id}">${n}</button>`).join('')}</div></div>`;
+  $$('#lookCard [data-th]').forEach(b => b.onclick = () => { setUI({ theme: b.dataset.th }); renderLook(); });
+  $('#lkFont').onchange = ev => { setUI({ font: ev.target.value }); renderLook(); };
+  $$('#lookCard [data-sz]').forEach(b => b.onclick = () => { setUI({ size: b.dataset.sz }); renderLook(); });
+}
+
 /* ---------- import ---------- */
 const setStatus = t => { $('#status').textContent = t; };
 async function importFiles(files) {
@@ -2297,10 +2731,11 @@ addEventListener('dragover', ev => ev.preventDefault());
 addEventListener('drop', ev => { ev.preventDefault(); dragN = 0; $('#drop').hidden = true; const fs = [...(ev.dataTransfer?.files || [])]; if (fs.length) importFiles(fs); });
 
 /* ---------- resize / theme ---------- */
-let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends'].includes(st.view)) renderView(); }, 200); });
+let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends', 'workout'].includes(st.view)) renderView(); }, 200); });
 const repaint = () => { if (!$('#shell').hidden) renderView(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', repaint);
-new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-size', 'data-font'] });
+document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => { clearTimeout(rz); rz = setTimeout(repaint, 150); });
 
 /* ---------- boot ---------- */
 async function boot() {
@@ -2313,6 +2748,6 @@ async function boot() {
   else { renderChrome(); route(); }
 }
 if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
-initSocial();
+initSocial(); initDash();
 boot();
 </script></body></html>
