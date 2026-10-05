@@ -22,7 +22,9 @@ function gauge(o) {
   s += `<text class="g-val" x="${cx}" y="${cy - 22}" text-anchor="middle">${esc(o.center)}</text><text class="g-lab" x="${cx}" y="${cy + 4}" text-anchor="middle">${esc(o.bands[ci][2])}</text>`;
   return `<svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>`;
 }
-const ramp = (k, n) => n <= 1 ? 'var(--z3)' : `color-mix(in oklab, var(--z5) ${Math.round(k / (n - 1) * 100)}%, var(--z1))`;
+// Garmin-style rating colours: poor red → fair orange → good green → excellent blue → superior purple
+const RATING_COLS = { 5: ['--rt1', '--rt2', '--rt4', '--rt6', '--rt7'], 7: ['--rt1', '--rt2', '--rt3', '--rt4', '--rt5', '--rt6', '--rt7'] };
+const ratingCol = (k, n) => `var(${(RATING_COLS[n] || RATING_COLS[7])[k]})`;
 
 /* ---------- charts ---------- */
 function niceTicks(a, b, n) {

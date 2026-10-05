@@ -284,7 +284,7 @@ function renderWorkout(id) {
       <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
       <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
       ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
-      <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: heart rate against grade-adjusted speed. The line runs from your resting heart rate to max HR; the speed it reaches is your speed at VO₂max.</p><div class="plot" id="dFit"></div></div>
+      <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: its oxygen cost (from grade-adjusted pace) against heart rate. The dashed line is the median estimate; where it meets your max HR is this run’s VO₂max.</p><div class="plot" id="dFit"></div></div>
       <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
       <div class="card"><div class="ch"><h3>${al('zones', 'Time in heart-rate zones')}</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
       ${e.efforts.length ? `<div class="card"><div class="ch"><h3>${al('best', 'Best efforts in this run')}</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
@@ -323,15 +323,14 @@ function drawWorkout(r, e, S) {
     empty: 'No heart-rate data in this file.',
     extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
   if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', minSpan: 20, series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }] }));
-  if (e.fit && e.windows.length) {
-    // y in km/h (or mph): the regression is linear in speed; the line ends at max HR = speed at VO2max
-    const a = e.fit.a, b = e.fit.b, k = 60 / U(), sp = v => v * k, uh = st.S.units === 'mi' ? 'mph' : 'km/h', vmx = (a + b * S.hrMaxEff) * k;
-    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: vmx * 1.08, height: 230, label: 'Grade-adjusted speed versus heart rate',
-      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], sp(w[1]), w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ${uh} · ${fmtPace(3600 / p[1] * 1000 / U())}/${uName()}` }],
-      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(vmx)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
-        <circle cx="${sx(S.hrRest)}" cy="${sy(0)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(0) - 6}">rest ${S.hrRest}</text>
-        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(vmx)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
-        <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(vmx) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} · ${fmtPace(1000 / e.vmax)}/${uName()}</text>` });
+  if (e.est && e.windows.length) {
+    // VO2alg3: each window's oxygen cost against heart rate; the Swain line runs from 37% of max HR (zero) to max HR (= VO₂max)
+    const x0 = 0.37 * S.hrMaxEff, at = h => e.est * (h / S.hrMaxEff - 0.37) / 0.64;
+    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: Math.min(x0, ...e.windows.map(w => w[0])) - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est * 1.08, height: 230, label: 'Oxygen cost versus heart rate',
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
+      extra: (sx, sy) => `<line x1="${sx(x0)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
+        <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
   } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
   const sp2 = splitsOf(r, U());
   if (sp2.length) {

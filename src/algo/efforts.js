@@ -7,7 +7,7 @@ const BEST = algo({
   summary: 'Your fastest 1 km, 5 km, 10 km, half and full marathon inside any run, and which of them count as race-like for VO₂max.',
   steps: [
     'A sliding window over the run finds the shortest elapsed time covering each distance; the time is scaled to the exact distance.',
-    'An effort of 3 km or more counts as race-like when its average heart rate is within 3 points of what an all-out effort of that length needs; its VDOT then feeds VO₂max (VO2alg2).',
+    'An effort of 3 km or more counts as race-like when its average heart rate is within 3 points of what an all-out effort of that length needs; it then feeds VO₂max (VO2alg3). Its Daniels VDOT is also shown for runners who use Daniels’ tables.',
   ],
   formula: 'time = Δt · D / Δd   (window just covering D)\nrace-like if avgHR/HRmax ≥ 0.81 + 0.16·e^(−min/120) − 0.03\nVDOT (Daniels & Gilbert) = VO₂(v) / (0.8 + 0.1894·e^(−0.0128 t) + 0.2990·e^(−0.1933 t))',
   inputs: 'Distance, time, heart rate.',

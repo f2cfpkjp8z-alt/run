@@ -3,6 +3,20 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v8 — 2026-10-05
+  VO2alg2 → VO2alg3. Why: on 7 real Garmin files that Garmin rates ~48, VO2alg2 gave ~32. VO2alg2 reported on
+    Daniels' VDOT (race-performance) scale, which sits far below lab and Garmin values for most recreational
+    runners. VO2alg3 uses the Garmin/Firstbeat approach: ACSM oxygen cost of grade-adjusted pace ÷ share of
+    VO₂max from %HRmax (Swain: %HRmax = 0.64·%VO₂max + 37), weighted median of steady windows per run, and the weighted 70th percentile across recent runs (errors from heat, fatigue and drift only push estimates low, so a hot or tired day no longer drags the daily value down).
+    Same files now give 44–48 with max HR 197–200. Resting HR is no longer used for VO₂max; max HR matters most.
+  RACEalg1 → RACEalg2. Why: predictions must use the same scale as VO₂max, otherwise a Garmin-level VO₂max
+    would predict impossible times. Race-like efforts feed VO₂max on the same scale too.
+  LOADalg1 → LOADalg2: the estimate for runs without heart rate uses the new speed-at-VO₂max scale.
+  Sample athlete regenerated with the VO2alg3 physiology. VO₂max, endurance score and race predictions all
+    change for every profile.
+  Gauges use Garmin's colours: Poor red, Fair orange, Good green, Excellent blue, Superior purple (and the
+    same family for endurance tiers and load: low blue, optimal green, high orange, very high red).
+
 v7 — 2026-10-05
   Garmin-style gauges with an arrow at your value: VO₂max (Poor → Superior for your age and sex), Endurance
     score (Recreational → Elite) and Training load (Low / Optimal / High / Very high).

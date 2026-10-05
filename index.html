@@ -40,6 +40,8 @@
   --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
   color-scheme: light;
 }
+:root { --rt1: #e5484d; --rt2: #f2994a; --rt3: #e3b341; --rt4: #3fb950; --rt5: #2bb3a3; --rt6: #3b82f6; --rt7: #a371f7; } /* Garmin-style rating colours (always shown with a label) */
+:root[data-theme="daylight"] { --rt1: #cf2e32; --rt2: #d9731f; --rt3: #b98a00; --rt4: #1f8a3a; --rt5: #11867a; --rt6: #2563c9; --rt7: #7c4dd1; }
 :root { --display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif; --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace; --r: 16px; --bnav-h: 0px; }
 :root[data-font="classic"] { --display: "Barlow Condensed", "Arial Narrow", sans-serif; --body: "Source Sans 3", system-ui, sans-serif; }
@@ -579,7 +581,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 7, at: '2026-10-05T23:17:59Z' };
+const BUILD = { v: 8, at: '2026-10-05T23:28:22Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -881,7 +883,7 @@ function analyze(r, S, vo2ref) {
       const q = clamp(hrrOf(r.avgHR), 0, 1);
       out.load = LOAD.trimp(r.dur, q, S.sex);
       out.ef = EF.of(v, r.avgHR);
-      Object.assign(out, VO2.fromSummary(v, q));
+      Object.assign(out, VO2.fromSummary(v, r.avgHR, hrMax));
       const e = BEST.summaryEffort(r, hrMax); if (e) out.efforts.push(e);
     } else out.load = LOAD.noHR(r.dur, v, vo2ref, S.sex);
     return out;
@@ -912,7 +914,7 @@ function analyze(r, S, vo2ref) {
     gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
   out.load = hn > n * 0.5 ? load : LOAD.noHR(mov, gapV, vo2ref, S.sex);
   out.ef = EF.of(gapV, out.avgHR);
-  Object.assign(out, VO2.fromRun({ n, hr, v, veq, g, moving, hrrOf, hrRest, hrMax, hasHR: r.hasHR }));
+  Object.assign(out, VO2.fromRun({ n, hr, v, veq, g, moving, hrMax, hasHR: r.hasHR }));
   out.dec = DRIFT.of({ n, hr, veq, moving, mov, hasHR: r.hasHR });
   out.efforts = BEST.efforts(d, hr, n, dist, hrMax);
   return out;
@@ -923,7 +925,7 @@ function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x
 
 function buildTimeline(runs, res, asOf) {
   // runs sorted by start; res[i] analysis
-  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => e.vdot) }));
+  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => VO2.fromRace(e.D, e.sec)) })); // race-like efforts on the VO2alg3 scale
   const d0 = dayStart(runs[0].start), dEnd = dayStart(asOf);
   const byDay = new Map();
   runs.forEach((r, i) => { const k = dayStart(r.start); const o = byDay.get(k) || { load: 0, sec: 0 }; o.load += res[i].load || 0; o.sec += res[i].mov || 0; byDay.set(k, o); });
@@ -982,7 +984,6 @@ function makeSample(today) {
       const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
       const dla = new Float32Array(n), dlo = new Float32Array(n);
       let dist = 0, h = 70, drift = 0;
-      const vmax = vFor(VO2); // speed at VO2max
       for (let i = 0; i < n; i++) {
         const tm = i * DT / 60;
         let q = p;
@@ -992,9 +993,9 @@ function makeSample(today) {
         const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
         const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
         const rat = costRatio(slope);
-        const vel = Math.max(1.2, q * vmax / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
+        const vel = Math.max(1.2, vAt(q * VO2) / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
         if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
-        const target = HRREST + clamp(vel * rat / vmax, 0, 1.05) * (HRMAX - HRREST) + drift;
+        const target = HRMAX * (0.37 + 0.64 * clamp(acsmCost(vel * rat) / VO2, 0, 1.05)) + drift; // Swain, as VO2alg3 assumes
         h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
         dist += vel * DT; d[i] = dist;
         { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));
@@ -1058,46 +1059,51 @@ const GAP = algo({
   },
 });
 const costRatio = i => GAP.ratio(i);
-// ===== VO2alg2 — VO₂max (heart rate against speed, fused with race-like efforts) =====
-// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. This defines the VDOT scale:
-// VO2max = vo2Cost(vVO2max), the speed a runner can hold for ~11 min.
+// ===== VO2alg3 — VO₂max, Garmin/Firstbeat-style: oxygen cost of your pace ÷ the share of VO₂max your heart rate shows =====
+// Gross oxygen cost of flat running (ACSM), v in m/s -> ml/kg/min. Measured VO₂ rises linearly with speed.
+const acsmCost = v => 3.5 + 12 * v; // 0.2 ml/kg per metre + 3.5 at rest
+// Share of VO₂max implied by heart rate (Swain 1994: %HRmax = 0.64·%VO₂max + 37)
+const pctVO2 = (h, hrMax) => (h / hrMax - 0.37) / 0.64;
+// Share of VO₂max a runner can hold for t minutes (Daniels & Gilbert)
+const pctRace = t => 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t);
+// Speed (m/s) at which the oxygen cost equals vo2 — the speed at VO₂max
+const vAt = vo2 => Math.max(0, (vo2 - 3.5) / 12);
+// Daniels & Gilbert VDOT, still shown next to best efforts for runners who use Daniels' tables
 const vo2Cost = v => { const m = v * 60; return Math.max(3.5, -4.60 + 0.182258 * m + 0.000104 * m * m); };
-// Speed (m/s) whose Daniels cost equals vo2
-function vFor(vo2) { let lo = 0, hi = 10; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (vo2Cost(m) < vo2) lo = m; else hi = m; } return lo; }
-// Daniels & Gilbert: VDOT from a race distance and time
-function vdotOf(distM, sec) {
-  const t = sec / 60, v = distM / t;
-  const vo2 = -4.60 + 0.182258 * v + 0.000104 * v * v;
-  const pct = 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t);
-  return vo2 / pct;
-}
+function vdotOf(distM, sec) { const t = sec / 60, v = distM / t; return (-4.60 + 0.182258 * v + 0.000104 * v * v) / pctRace(t); }
+// weighted quantile of [value, weight] (q = 0.5 → median)
+function wQuantile(a, q) { const s = a.slice().sort((x, y) => x[0] - y[0]), tot = s.reduce((t, x) => t + x[1], 0); let c = 0; for (const [v, w] of s) { c += w; if (c >= tot * q) return v; } return s.length ? s[s.length - 1][0] : null; }
+const wMedian = a => wQuantile(a, 0.5);
 const VO2 = algo({
-  key: 'vo2', id: 'VO2alg2', name: 'VO₂max', since: 4,
-  summary: 'Your aerobic ceiling in ml/kg/min, on the same VDOT scale as race results and Garmin-style race predictions.',
+  key: 'vo2', id: 'VO2alg3', name: 'VO₂max', since: 8,
+  summary: 'Your aerobic ceiling in ml/kg/min, estimated the way Garmin (Firstbeat) does: how much oxygen your pace costs, divided by the share of your VO₂max that your heart rate shows you were using.',
   steps: [
     'Each run is resampled to 2-second steps; speed is converted to grade-adjusted (flat-equivalent) speed (GAPalg1).',
-    'Only steady 60-second windows count: after a 5-minute warm-up, pace stable for 2 minutes (±8%), gradient under 8%, heart rate at 35–95% of reserve. Windows after 45 minutes weigh less because of cardiac drift.',
-    'Heart rate rises in step with oxygen use (%HRR ≈ %VO₂ reserve), and oxygen use rises in step with speed. So a weighted line of speed against heart rate is fitted through the windows plus one anchor: resting heart rate at zero speed. One Huber pass down-weights outliers.',
-    'Extending the line to max heart rate (HRMAXalg2) gives your speed at VO₂max. VO₂max is the Daniels–Gilbert oxygen cost of that speed. Needs 6+ windows; confidence grows with the number of windows and how tightly they fit.',
-    'Daily VO₂max blends run estimates from the last 60 days with a 14-day half-life, weighted by confidence. Race-like efforts (BESTalg2) add a VDOT reading by inverse-variance weighting; a race fades out over 60 days.',
+    'Only steady 60-second windows count: after a 5-minute warm-up, pace stable for 2 minutes (±8%), gradient under 8%, heart rate between 65% and 95% of max. Windows after 45 minutes weigh less because of cardiac drift.',
+    'Oxygen cost of each window comes from the ACSM running equation: 3.5 + 0.2 ml/kg for every metre per minute.',
+    'Heart rate tells the share of VO₂max in use (Swain: %HRmax = 0.64 × %VO₂max + 37). VO₂max for the window = oxygen cost ÷ that share. Uses your max heart rate (HRMAXalg2); resting heart rate isn’t needed.',
+    'The run’s VO₂max is the weighted median of its windows (one odd window can’t swing it). Needs 6+ windows; confidence grows with the number of windows and how closely they agree.',
+    'Daily VO₂max is the weighted 70th percentile of run estimates from the last 60 days (14-day half-life × confidence). Heat, fatigue and drift push single runs low far more often than high, so a hot or tired day can’t drag it down. Race-like efforts (BESTalg2) add a reading — oxygen cost of race pace ÷ the share of VO₂max that race length allows — by inverse-variance weighting; a race fades out over 60 days.',
   ],
-  formula: 'speed(HR) = a + b·HR      weighted fit with anchor (HRrest, 0)\nvVO₂max = speed(HRmax)\nVO₂max = −4.60 + 0.182258·v + 0.000104·v²     v in m/min\nday = Σ wᵢ·estᵢ / Σ wᵢ,  wᵢ = confᵢ · 0.5^(ageᵢ/14)\nfused = (day/σ_hr² + race/σ_race²) / (1/σ_hr² + 1/σ_race²),  σ_race = 2 + age/20',
-  inputs: 'Heart rate, distance, altitude; your max and resting heart rate. Not weight, height or age — see below.',
+  formula: 'VO₂(v) = 3.5 + 0.2·v        v = grade-adjusted m/min (ACSM)\n%VO₂max = (HR/HRmax − 0.37) / 0.64     (Swain)\nwindow VO₂max = VO₂(v) / %VO₂max\nrun = weighted median of windows\nday = weighted 70th percentile of runs, w = conf · 0.5^(age/14)\nrace = VO₂(race pace) / (0.8 + 0.1894·e^(−0.0128t) + 0.2990·e^(−0.1933t))',
+  inputs: 'Heart rate, distance, altitude and your max heart rate. Not resting HR, weight, height or age — see below.',
   notes: [
     'Weight: VO₂max is already per kilogram, and running costs about the same oxygen per kilogram for everyone, so weight cancels out. Losing weight raises VO₂max because the same engine carries fewer kilograms — your runs then get faster at the same heart rate, and the estimate follows. Weight is only used to show absolute VO₂ in L/min.',
     'Height: no effect. Formulas that guess VO₂max without exercise use BMI, but your actual heart rate and pace measure it directly and far more accurately.',
-    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg2), which does affect VO₂max.',
+    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg2), which matters a lot: every 3 bpm of max HR moves VO₂max by about 1.',
   ],
-  limits: 'Accuracy depends most on max and resting heart rate. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
+  limits: 'Max heart rate matters most: enter a measured one (or the one Garmin shows) in Profile. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
   history: [
     ['VO2alg1', 1, 'Regressed Daniels’ curved oxygen cost directly on heart rate, anchored at (HRrest, 3.5 ml/kg/min). Read 3–8 ml/kg/min low on easy runs because measured VO₂ rises linearly with speed while Daniels’ curve bends.'],
-    ['VO2alg2', 4, 'Regresses grade-adjusted speed on heart rate and converts vVO₂max with Daniels’ cost (unbiased in tests at VO₂max 35–55). Race efforts must match a duration-appropriate heart rate and fade out smoothly.'],
+    ['VO2alg2', 4, 'Regressed grade-adjusted speed on heart-rate reserve and converted the speed at max HR with Daniels’ cost (VDOT scale). Unbiased against race-based VDOT, but VDOT sits well below lab and Garmin values for most recreational runners: on real files Garmin rated ~48 it gave ~32.'],
+    ['VO2alg3', 8, 'Garmin/Firstbeat method: ACSM oxygen cost ÷ %VO₂max from %HRmax (Swain), weighted median per run. On those same files it gives 44–48 with max HR 197–200. Race efforts and race predictions moved to the same scale (RACEalg2).'],
   ],
-  live() { const S = st.S; return `Using max HR <b>${Math.round(S.hrMaxEff)}</b> and resting HR <b>${S.hrRest}</b> bpm.`; },
+  live() { return `Using max HR <b>${Math.round(st.S.hrMaxEff)}</b> bpm${st.S.hrMax ? '' : ' (automatic — enter yours in Profile for accuracy)'}.`; },
   // CSV summary rows: only average HR and pace are known
-  fromSummary(v, q) { return q > 0.45 && q < 0.95 && v > 1.6 ? { vmax: v / q, est: vo2Cost(v / q), conf: 0.3 } : {}; },
-  fromRun(c) { // c: {n, hr, v, veq, g, moving, hrrOf, hrRest, hrMax, hasHR}
-    const { n, hr, v, veq, g, moving, hrrOf } = c, W = 30, warm = 150, wins = [], out = { windows: wins, est: null, conf: 0 };
+  fromSummary(v, avgHR, hrMax) { const p = pctVO2(avgHR, hrMax); return avgHR / hrMax >= 0.65 && avgHR / hrMax <= 0.95 && v > 1.6 ? { est: acsmCost(v) / p, vmax: vAt(acsmCost(v) / p), conf: 0.3 } : {}; },
+  fromRace(distM, sec) { return acsmCost(distM / sec) / pctRace(sec / 60); },
+  fromRun(c) { // c: {n, hr, v, veq, g, moving, hrMax, hasHR}
+    const { n, hr, v, veq, g, moving, hrMax } = c, W = 30, warm = 150, wins = [], out = { windows: wins, est: null, conf: 0 };
     if (c.hasHR) for (let s = Math.max(warm, W); s + W <= n; s += 15) {
       let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, se = 0, sg = 0;
       for (let i = s - W; i < s + W; i++) { if (!moving(i)) { ok = false; break; } }
@@ -1105,53 +1111,34 @@ const VO2 = algo({
       for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; se += veq[i]; sg += g[i]; }
       if (!ok) continue;
       for (let i = s - W; i < s; i++) pv += v[i];
-      const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W;
-      const h = sh / W, q = hrrOf(h);
-      if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || q < 0.35 || q > 0.95) continue;
-      const tMin = s * DT / 60;
-      wins.push([h, se / W * 60, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]); // [bpm, grade-adjusted m/min, weight]
+      const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W, h = sh / W, f = h / hrMax;
+      if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || f < 0.65 || f > 0.95) continue;
+      const tMin = s * DT / 60, vo2 = acsmCost(se / W);
+      wins.push([h, vo2, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60), vo2 / pctVO2(h, hrMax)]); // [bpm, VO₂ ml/kg/min, weight, VO₂max]
     }
     if (wins.length >= 6) {
-      const fit = VO2.fit(wins, c.hrRest);
-      if (fit && fit.b > 0) {
-        const vmax = (fit.a + fit.b * c.hrMax) / 60; // m/s
-        out.est = vo2Cost(vmax); out.vmax = vmax; out.fit = fit;
-        const sw = wins.reduce((s, w) => s + w[2], 0);
-        out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 30, 0.2, 1);
-        if (out.est < 20 || out.est > 90) { out.est = null; out.vmax = null; out.conf = 0; }
-      }
+      const est = wMedian(wins.map(w => [w[3], w[2]])), mad = wMedian(wins.map(w => [Math.abs(w[3] - est), w[2]]));
+      const sw = wins.reduce((s, w) => s + w[2], 0);
+      out.est = est; out.vmax = vAt(est); out.mad = mad;
+      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - mad / 6, 0.2, 1);
+      if (est < 20 || est > 90) { out.est = null; out.vmax = null; out.conf = 0; }
     }
     return out;
   },
-  // Weighted least squares of speed (m/min) on HR with anchor (HRrest, 0); one Huber reweighting pass.
-  fit(wins, hrRest) {
-    const solve = ws => {
-      const sw0 = ws.reduce((s, w) => s + w[2], 0);
-      const pts = ws.concat([[hrRest, 0, Math.max(2, 0.15 * sw0)]]);
-      let sw = 0, sx = 0, sy = 0; for (const [x, y, w] of pts) { sw += w; sx += w * x; sy += w * y; }
-      const mx = sx / sw, my = sy / sw; let sxy = 0, sxx = 0;
-      for (const [x, y, w] of pts) { sxy += w * (x - mx) * (y - my); sxx += w * (x - mx) ** 2; }
-      const b = sxy / sxx, a = my - b * mx;
-      let se = 0, sw1 = 0; for (const [x, y, w] of ws) { se += w * (y - a - b * x) ** 2; sw1 += w; }
-      return { a, b, sd: Math.sqrt(se / sw1) };
-    };
-    let f = solve(wins);
-    const c = Math.max(7, 1.345 * f.sd);
-    f = solve(wins.map(([x, y, w]) => { const r = Math.abs(y - f.a - f.b * x); return [x, y, w * (r <= c ? 1 : c / r)]; }));
-    return f;
-  },
   // items: [{t, est, conf, vdots:[...]}] sorted by t; T = end of the day being computed
   fuse(items, T) {
-    let hw = 0, hs = 0, perf = null, pAge = 0;
+    let hw = 0, perf = null, pAge = 0; const ests = [];
     for (const it of items) {
       if (it.t > T + DAY) break;
       const age = (T - it.t) / DAY; if (age > 60) continue;
-      if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; hs += w * it.est; }
+      if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; ests.push([it.est, w]); }
       for (const vd of it.vdots) if (perf == null || vd > perf) { perf = vd; pAge = Math.max(0, age); }
     }
     if (!hw && perf == null) return null;
     if (!hw) return { v: perf, hr: null, perf };
-    const vh = hs / hw, sh = 2.5 / Math.sqrt(Math.min(hw, 4));
+    // heat, fatigue, dehydration and drift push single runs low far more often than high, so the
+    // centre of the true value sits above the median: use the weighted 70th percentile
+    const vh = wQuantile(ests, 0.7), sh = 2.5 / Math.sqrt(Math.min(hw, 4));
     if (perf == null) return { v: vh, hr: vh, perf: null };
     const sp = 2.0 + pAge / 20, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
     return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
@@ -1225,20 +1212,20 @@ const HRMAX = algo({
 });
 // ===== LOADalg1 — training load (Banister TRIMP) =====
 const LOAD = algo({
-  key: 'load', id: 'LOADalg1', name: 'Training load (TRIMP)', since: 1,
+  key: 'load', id: 'LOADalg2', name: 'Training load (TRIMP)', since: 8,
   summary: 'How much training stress a workout carried: time weighted by how hard your heart worked.',
   steps: [
     'Every 2-second moving sample adds its minutes × intensity × an exponential weight, so hard minutes count far more than easy ones.',
     'Intensity is heart-rate reserve: (HR − resting) / (max − resting).',
-    'Runs without heart rate get an estimate from grade-adjusted speed as a share of your speed at VO₂max (same linear model as VO2alg2).',
+    'Runs without heart rate get an estimate from grade-adjusted speed as a share of your speed at VO₂max (VO2alg3 scale).',
   ],
   formula: 'TRIMP = Σ minutes · q · k₁ · e^(k₂·q)     q = (HR − HRrest)/(HRmax − HRrest)\nmen k₁ = 0.64, k₂ = 1.92 · women k₁ = 0.86, k₂ = 1.67\nno HR: q ≈ grade-adjusted speed / vVO₂max',
   inputs: 'Heart rate, max and resting heart rate, sex.',
   limits: 'Banister’s weights come from lactate curves of average athletes; strength or cross-training isn’t counted.',
-  history: [['LOADalg1', 1, 'Banister (1991) TRIMP per sample; no-HR estimate from pace.']],
+  history: [['LOADalg1', 1, 'Banister (1991) TRIMP per sample; no-HR estimate from pace.'], ['LOADalg2', 8, 'No-HR estimate uses the speed at VO₂max on the VO2alg3 scale; TRIMP with heart rate unchanged.']],
   k: sex => sex === 'f' ? [0.86, 1.67] : [0.64, 1.92],
   trimp(sec, q, sex) { const [ka, kb] = LOAD.k(sex); q = clamp(q, 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); },
-  noHR(sec, v, vo2ref, sex) { return LOAD.trimp(sec, v / vFor(vo2ref || 45), sex); },
+  noHR(sec, v, vo2ref, sex) { return LOAD.trimp(sec, v / vAt(vo2ref || 45), sex); },
 });
 // ===== ZONEalg1 — heart-rate zones and intensity mix =====
 const ZONE = algo({
@@ -1345,7 +1332,7 @@ const BEST = algo({
   summary: 'Your fastest 1 km, 5 km, 10 km, half and full marathon inside any run, and which of them count as race-like for VO₂max.',
   steps: [
     'A sliding window over the run finds the shortest elapsed time covering each distance; the time is scaled to the exact distance.',
-    'An effort of 3 km or more counts as race-like when its average heart rate is within 3 points of what an all-out effort of that length needs; its VDOT then feeds VO₂max (VO2alg2).',
+    'An effort of 3 km or more counts as race-like when its average heart rate is within 3 points of what an all-out effort of that length needs; it then feeds VO₂max (VO2alg3). Its Daniels VDOT is also shown for runners who use Daniels’ tables.',
   ],
   formula: 'time = Δt · D / Δd   (window just covering D)\nrace-like if avgHR/HRmax ≥ 0.81 + 0.16·e^(−min/120) − 0.03\nVDOT (Daniels & Gilbert) = VO₂(v) / (0.8 + 0.1894·e^(−0.0128 t) + 0.2990·e^(−0.1933 t))',
   inputs: 'Distance, time, heart rate.',
@@ -1373,22 +1360,23 @@ const BEST = algo({
 });
 // ===== RACEalg1 — race time predictions =====
 const RACES = [[5000, '5K', 0], [10000, '10K', 0.01], [21097.5, 'Half marathon', 0.04], [42195, 'Marathon', 0.10]];
-function predictTime(distM, vdot) {
+// time at which a race of distM needs exactly vo2max (same scale as VO2alg3)
+function predictTime(distM, vo2max) {
   let lo = distM / 10, hi = distM / 0.8; // seconds: 10 m/s .. 0.8 m/s
-  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (vdotOf(distM, mid) > vdot) lo = mid; else hi = mid; }
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (VO2.fromRace(distM, mid) > vo2max) lo = mid; else hi = mid; }
   return (lo + hi) / 2;
 }
 const RACE = algo({
-  key: 'race', id: 'RACEalg1', name: 'Race predictions', since: 1,
+  key: 'race', id: 'RACEalg2', name: 'Race predictions', since: 8,
   summary: 'Finish times your current VO₂max supports, slowed for long races when volume or long runs are short.',
   steps: [
-    'The Daniels–Gilbert VDOT formula is inverted: find the time at which a race of that distance gives your VO₂max (VO2alg2).',
+    'Find the time at which the oxygen cost of race pace (ACSM) divided by the share of VO₂max that race length allows (Daniels–Gilbert) equals your VO₂max (VO2alg3).',
     'Longer races get a penalty when training volume and long-run reach (from ENDalg1) are short: up to +1% (10K), +4% (half), +10% (marathon).',
   ],
-  formula: 't = VDOT⁻¹(distance, VO₂max) · (1 + p·(1 − √(f(H)·g(L))))\np = 0 / 0.01 / 0.04 / 0.10 for 5K / 10K / half / marathon',
+  formula: 'solve (3.5 + 0.2·d/t) / pct(t) = VO₂max for t\nt = that time · (1 + p·(1 − √(f(H)·g(L))))\np = 0 / 0.01 / 0.04 / 0.10 for 5K / 10K / half / marathon',
   inputs: 'VO₂max, weekly hours, longest run.',
   limits: 'Assumes even pacing, good conditions and race-specific preparation.',
-  history: [['RACEalg1', 1, 'Daniels VDOT inversion with volume/long-run penalty.']],
+  history: [['RACEalg1', 1, 'Daniels VDOT inversion with volume/long-run penalty.'], ['RACEalg2', 8, 'Same scale as VO2alg3: ACSM cost of race pace ÷ Daniels’ sustainable share of VO₂max, so predictions stay realistic with Garmin-level VO₂max values.']],
   predict(D) { const k = Math.sqrt(fVol(D.H) * gLong(D.L)); return RACES.map(([dist, name, pen]) => [name, predictTime(dist, D.vo2) * (1 + pen * (1 - k)), dist]); },
 });
 // ===== EFalg1 — aerobic efficiency =====
@@ -1592,7 +1580,9 @@ function gauge(o) {
   s += `<text class="g-val" x="${cx}" y="${cy - 22}" text-anchor="middle">${esc(o.center)}</text><text class="g-lab" x="${cx}" y="${cy + 4}" text-anchor="middle">${esc(o.bands[ci][2])}</text>`;
   return `<svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>`;
 }
-const ramp = (k, n) => n <= 1 ? 'var(--z3)' : `color-mix(in oklab, var(--z5) ${Math.round(k / (n - 1) * 100)}%, var(--z1))`;
+// Garmin-style rating colours: poor red → fair orange → good green → excellent blue → superior purple
+const RATING_COLS = { 5: ['--rt1', '--rt2', '--rt4', '--rt6', '--rt7'], 7: ['--rt1', '--rt2', '--rt3', '--rt4', '--rt5', '--rt6', '--rt7'] };
+const ratingCol = (k, n) => `var(${(RATING_COLS[n] || RATING_COLS[7])[k]})`;
 
 /* ---------- charts ---------- */
 function niceTicks(a, b, n) {
@@ -2088,7 +2078,7 @@ function aiSystem(lines) {
   return `You are a concise, encouraging running coach. You review numbers that the app "Pace & Pulse" computed from the runner's Garmin files.
 Reply with ${lines} short lines at most (use 5 only if there is a lot that matters). Each line: one emoji, then one plain sentence of at most 110 characters.
 Cover what they did well, what is missing or risky, and one concrete next step. Quote the numbers that matter. No heading, no preamble, no markdown, no medical diagnosis.
-VO2max is on Daniels' VDOT scale. Load is Banister TRIMP. Write in ${lang}.`;
+VO2max is estimated like Garmin/Firstbeat (comparable to Garmin's number). Load is Banister TRIMP. Write in ${lang}.`;
 }
 function aiAthlete() {
   const S = st.S, u = uName();
@@ -2291,7 +2281,7 @@ const WIDGETS = {
     let g = `<div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>`;
     if (rt) { const b = rt.bounds, lo = Math.floor(b[0] - (b[1] - b[0]) * 1.6), hi = Math.ceil(b[3] + (b[3] - b[2]) * 1.2);
       g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),
-        bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ramp(k, 5)]) }); }
+        bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ratingCol(k, 5)]) }); }
     el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
       ${rt ? `<span class="chip acc">${al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)}</span>` : `<span class="chip">Add age &amp; sex in Profile for a rating</span>`}
       <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
@@ -2299,7 +2289,7 @@ const WIDGETS = {
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
     if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
-    const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ramp(k, TIERS.length)]);
+    const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ratingCol(k, 7)]);
     el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands })}
       ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
@@ -2327,7 +2317,7 @@ const WIDGETS = {
   acute: { name: 'Training load', desc: '7-day load against your optimal range', size: 'S', render(el) {
     const L = ACWR.compute(st.runs, st.res, st.asOf), lab = `<span class="label">${al('acwr', 'Training load')}</span>`;
     if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
-    const bands = [[0, 0.8, 'Low', 'var(--warn)'], [0.8, 1.3, 'Optimal', 'var(--good)'], [1.3, 1.5, 'High', 'var(--warn)'], [1.5, 2, 'Very high', 'var(--crit)']];
+    const bands = [[0, 0.8, 'Low', 'var(--rt6)'], [0.8, 1.3, 'Optimal', 'var(--rt4)'], [1.3, 1.5, 'High', 'var(--rt2)'], [1.5, 2, 'Very high', 'var(--rt1)']];
     el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands })
       + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}<br>${L.status[2]}</div>`;
   } },
@@ -2716,7 +2706,7 @@ function renderWorkout(id) {
       <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
       <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
       ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
-      <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: heart rate against grade-adjusted speed. The line runs from your resting heart rate to max HR; the speed it reaches is your speed at VO₂max.</p><div class="plot" id="dFit"></div></div>
+      <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: its oxygen cost (from grade-adjusted pace) against heart rate. The dashed line is the median estimate; where it meets your max HR is this run’s VO₂max.</p><div class="plot" id="dFit"></div></div>
       <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
       <div class="card"><div class="ch"><h3>${al('zones', 'Time in heart-rate zones')}</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
       ${e.efforts.length ? `<div class="card"><div class="ch"><h3>${al('best', 'Best efforts in this run')}</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
@@ -2755,15 +2745,14 @@ function drawWorkout(r, e, S) {
     empty: 'No heart-rate data in this file.',
     extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
   if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', minSpan: 20, series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }] }));
-  if (e.fit && e.windows.length) {
-    // y in km/h (or mph): the regression is linear in speed; the line ends at max HR = speed at VO2max
-    const a = e.fit.a, b = e.fit.b, k = 60 / U(), sp = v => v * k, uh = st.S.units === 'mi' ? 'mph' : 'km/h', vmx = (a + b * S.hrMaxEff) * k;
-    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: vmx * 1.08, height: 230, label: 'Grade-adjusted speed versus heart rate',
-      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], sp(w[1]), w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ${uh} · ${fmtPace(3600 / p[1] * 1000 / U())}/${uName()}` }],
-      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(vmx)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
-        <circle cx="${sx(S.hrRest)}" cy="${sy(0)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(0) - 6}">rest ${S.hrRest}</text>
-        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(vmx)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
-        <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(vmx) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} · ${fmtPace(1000 / e.vmax)}/${uName()}</text>` });
+  if (e.est && e.windows.length) {
+    // VO2alg3: each window's oxygen cost against heart rate; the Swain line runs from 37% of max HR (zero) to max HR (= VO₂max)
+    const x0 = 0.37 * S.hrMaxEff, at = h => e.est * (h / S.hrMaxEff - 0.37) / 0.64;
+    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: Math.min(x0, ...e.windows.map(w => w[0])) - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est * 1.08, height: 230, label: 'Oxygen cost versus heart rate',
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
+      extra: (sx, sy) => `<line x1="${sx(x0)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
+        <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
   } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
   const sp2 = splitsOf(r, U());
   if (sp2.length) {

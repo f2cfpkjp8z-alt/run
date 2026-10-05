@@ -299,7 +299,7 @@ function analyze(r, S, vo2ref) {
       const q = clamp(hrrOf(r.avgHR), 0, 1);
       out.load = LOAD.trimp(r.dur, q, S.sex);
       out.ef = EF.of(v, r.avgHR);
-      Object.assign(out, VO2.fromSummary(v, q));
+      Object.assign(out, VO2.fromSummary(v, r.avgHR, hrMax));
       const e = BEST.summaryEffort(r, hrMax); if (e) out.efforts.push(e);
     } else out.load = LOAD.noHR(r.dur, v, vo2ref, S.sex);
     return out;
@@ -330,7 +330,7 @@ function analyze(r, S, vo2ref) {
     gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
   out.load = hn > n * 0.5 ? load : LOAD.noHR(mov, gapV, vo2ref, S.sex);
   out.ef = EF.of(gapV, out.avgHR);
-  Object.assign(out, VO2.fromRun({ n, hr, v, veq, g, moving, hrrOf, hrRest, hrMax, hasHR: r.hasHR }));
+  Object.assign(out, VO2.fromRun({ n, hr, v, veq, g, moving, hrMax, hasHR: r.hasHR }));
   out.dec = DRIFT.of({ n, hr, veq, moving, mov, hasHR: r.hasHR });
   out.efforts = BEST.efforts(d, hr, n, dist, hrMax);
   return out;
@@ -341,7 +341,7 @@ function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x
 
 function buildTimeline(runs, res, asOf) {
   // runs sorted by start; res[i] analysis
-  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => e.vdot) }));
+  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => VO2.fromRace(e.D, e.sec)) })); // race-like efforts on the VO2alg3 scale
   const d0 = dayStart(runs[0].start), dEnd = dayStart(asOf);
   const byDay = new Map();
   runs.forEach((r, i) => { const k = dayStart(r.start); const o = byDay.get(k) || { load: 0, sec: 0 }; o.load += res[i].load || 0; o.sec += res[i].mov || 0; byDay.set(k, o); });
@@ -400,7 +400,6 @@ function makeSample(today) {
       const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
       const dla = new Float32Array(n), dlo = new Float32Array(n);
       let dist = 0, h = 70, drift = 0;
-      const vmax = vFor(VO2); // speed at VO2max
       for (let i = 0; i < n; i++) {
         const tm = i * DT / 60;
         let q = p;
@@ -410,9 +409,9 @@ function makeSample(today) {
         const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
         const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
         const rat = costRatio(slope);
-        const vel = Math.max(1.2, q * vmax / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
+        const vel = Math.max(1.2, vAt(q * VO2) / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
         if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
-        const target = HRREST + clamp(vel * rat / vmax, 0, 1.05) * (HRMAX - HRREST) + drift;
+        const target = HRMAX * (0.37 + 0.64 * clamp(acsmCost(vel * rat) / VO2, 0, 1.05)) + drift; // Swain, as VO2alg3 assumes
         h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
         dist += vel * DT; d[i] = dist;
         { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));
