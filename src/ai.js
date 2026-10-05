@@ -60,7 +60,7 @@ Endurance score ${D.end ? Math.round(D.end) + ' (' + tierOf(D.end) + ')' : '-'}.
 Load: last 7 days ${Math.round(a7)} vs weekly average of last 4 weeks ${Math.round(c28 / 4)}.
 Intensity, last 4 weeks (time in HR zones): easy Z1-2 ${pc(z[0] + z[1])}, moderate Z3 ${pc(z[2])}, hard Z4-5 ${pc(z[3] + z[4])}.
 Weekly distance (${uName()}), oldest first: ${wk}.
-Race predictions: ${D.vo2 ? racePreds(D).map(([n, t]) => n + ' ' + fmtDur(t)).join(', ') : '-'}.
+Race predictions: ${D.vo2 ? RACE.predict(D).map(([n, t]) => n + ' ' + fmtDur(t)).join(', ') : '-'}.
 Best efforts: ${Object.entries(best).map(([l, b]) => `${l} ${fmtDur(b.sec)} (${new Date(b.t).toDateString()})`).join(', ') || '-'}.
 Recent workouts, newest first:
 ${recent}

@@ -22,12 +22,8 @@ $('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}">
 /* ---------- compute ---------- */
 function compute() {
   const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
-  // highest 30-s HR across runs; a lone value far above the next-highest is treated as an optical-sensor spike
-  const peaks = runs.map(r => r.hrPeak || 0).filter(x => x > 0).sort((a, b) => b - a);
-  st.detectedMax = peaks.length ? Math.round(peaks.length >= 3 && peaks[0] - peaks[1] > 12 ? peaks[1] : peaks[0]) : null;
-  st.ageMax = S.age ? Math.round(208 - 0.7 * S.age) : null; // Tanaka 2001
-  // like Garmin: the age estimate until a workout goes higher; most training never reaches true max
-  S.hrMaxEff = S.hrMax || Math.max(st.detectedMax || 0, st.ageMax || 0) || 190;
+  const hm = HRMAX.detect(runs.map(r => r.hrPeak || 0), S.age, S.hrMax); // HRMAXalg
+  st.detectedMax = hm.detected; st.ageMax = hm.ageMax; S.hrMaxEff = hm.eff;
   S.hrRest = S.hrRest || 55;
   if (!runs.length) { st.res = []; st.days = []; return; }
   const last = runs[runs.length - 1].start;
@@ -246,7 +242,7 @@ function renderLedger() {
   idx.sort(by[st.sort]);
   const totD = idx.reduce((s, i) => s + (st.res[i].dist || 0), 0), totT = idx.reduce((s, i) => s + (st.res[i].mov || 0), 0);
   $('#runCount').textContent = `${idx.length} workouts · ${fmtDist(totD)} ${uName()} · ${fmtDur(totT)}`;
-  const head = `<div class="ledger-head"><span></span><span>Date</span><span>Workout</span><span>Dist ${uName()}</span><span>Time</span><span>Pace</span><span>Avg HR</span><span>VO₂ est.</span><span>Load</span></div>`;
+  const head = `<div class="ledger-head"><span></span><span>Date</span><span>Workout</span><span>Dist ${uName()}</span><span>Time</span><span>Pace</span><span>Avg HR</span><span>${al('vo2', 'VO₂ est.')}</span><span>${al('load', 'Load')}</span></div>`;
   const rows = idx.slice(0, st.shown).map(i => { const r = st.runs[i], e = st.res[i], g = routeGlyph(r);
     return `<a class="row" href="#w-${esc(r.id)}"><span class="glyph">${g ? `<svg viewBox="0 0 34 34"><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 34 34"><path d="M7 21h5l3-8 4 10 2-5h6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}</span>
       <span class="d">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}<span>${new Date(r.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span></span>
@@ -265,7 +261,7 @@ function renderWorkout(id) {
   const box = $('#v-workout'), i = st.idx ? st.idx.get(id) : undefined;
   if (i == null) { box.innerHTML = `<a class="btn back" href="#workouts">← Workouts</a><p class="empty">This workout isn’t in the current profile.</p>`; return; }
   const r = st.runs[i], e = st.res[i], S = st.S, D = dayAt(r.start);
-  const stat = (l, v, u = '') => `<div class="stat"><span>${l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`;
+  const stat = (l, v, u = '', k) => `<div class="stat"><span>${k ? al(k, l) : l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`;
   const when = new Date(r.start).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
     <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
@@ -274,9 +270,9 @@ function renderWorkout(id) {
     ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
-    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName())}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm')}
-    ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–')}
-    ${stat('Load (TRIMP)', f0(e.load))}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat')}
+    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName(), 'gap')}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm', 'hrmax')}
+    ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '', 'vo2')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–', '', 'vo2')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–', '', 'end')}
+    ${stat('Load (TRIMP)', f0(e.load), '', 'load')}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '', 'drift')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat', 'ef')}
     ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
   h += `<div class="card" id="wAI" style="margin-top:12px" hidden></div>`;
   if (r.summary) h += `<p class="sub" style="margin-top:12px">This workout came from the activity list CSV, so only totals are known. Import its .fit file for the map, charts and splits.</p>`;
@@ -288,10 +284,10 @@ function renderWorkout(id) {
       <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
       <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
       ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
-      <div class="card chart-card"><h3>How this run’s VO₂max was found</h3><p class="cap">Each dot is a steady 60-s window: heart rate against grade-adjusted speed. The line runs from your resting heart rate to max HR; the speed it reaches is your speed at VO₂max.</p><div class="plot" id="dFit"></div></div>
+      <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: heart rate against grade-adjusted speed. The line runs from your resting heart rate to max HR; the speed it reaches is your speed at VO₂max.</p><div class="plot" id="dFit"></div></div>
       <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
-      <div class="card"><div class="ch"><h3>Time in heart-rate zones</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
-      ${e.efforts.length ? `<div class="card"><div class="ch"><h3>Best efforts in this run</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
+      <div class="card"><div class="ch"><h3>${al('zones', 'Time in heart-rate zones')}</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
+      ${e.efforts.length ? `<div class="card"><div class="ch"><h3>${al('best', 'Best efforts in this run')}</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
     </div>`;
   }
   box.innerHTML = h;
@@ -340,18 +336,18 @@ function drawWorkout(r, e, S) {
   const sp2 = splitsOf(r, U());
   if (sp2.length) {
     const ps = sp2.map(s => s.sec / (s.len / 1000)), pmin = Math.min(...ps), pmax = Math.max(...ps);
-    $('#dSplits').innerHTML = `<table class="tb"><thead><tr><th>${uName()}</th><th class="n">Pace</th><th class="n">GAP</th><th class="n">HR</th><th class="n">Elev</th><th class="n">Cad</th></tr></thead><tbody>${sp2.map((s, k) => {
+    $('#dSplits').innerHTML = `<table class="tb"><thead><tr><th>${uName()}</th><th class="n">Pace</th><th class="n">${al('gap', 'GAP')}</th><th class="n">HR</th><th class="n">Elev</th><th class="n">Cad</th></tr></thead><tbody>${sp2.map((s, k) => {
       const p = s.sec / (s.len / 1000), w = pmax > pmin ? 35 + 65 * (pmax - p) / (pmax - pmin) : 70;
       return `<tr><td>${s.len < U() * 0.99 ? (s.len / U()).toFixed(2) : k + 1}</td><td class="n barcell"><i style="width:${w}%"></i><span>${fmtPace(p)}</span></td><td class="n">${fmtPace(s.gap / (s.len / 1000))}</td><td class="n">${s.hr ? Math.round(s.hr) : '–'}</td><td class="n">${s.elev != null ? (s.elev >= 0 ? '+' : '') + Math.round(s.elev) : '–'}</td><td class="n">${s.cad ? Math.round(s.cad) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
   } else $('#dSplits').innerHTML = '<p class="empty">Too short for splits.</p>';
   if (e.zones) {
-    const tot = e.zones.reduce((a, b) => a + b, 0) || 1, lab = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO₂max'], lim = ['<60%', '60–70%', '70–80%', '80–90%', '>90%'];
+    const tot = e.zones.reduce((a, b) => a + b, 0) || 1, lab = ZONE.labels, lim = ['<60%', '60–70%', '70–80%', '80–90%', '>90%'];
     $('#dZones').innerHTML = e.zones.map((z, k) => `<div class="bar-row"><span>${lab[k]} <span class="sub">${lim[k]}${k ? ' · ' + Math.round(hrr([0, 0.6, 0.7, 0.8, 0.9][k])) + '+ bpm' : ''}</span></span><span class="v">${fmtDur(z)} · ${Math.round(z / tot * 100)}%</span><div class="track"><i style="width:${Math.max(1, z / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('');
   } else $('#dZones').innerHTML = '<p class="empty">No heart-rate data.</p>';
   if ($('#dEff')) $('#dEff').innerHTML = effTable(e.efforts.map(x => ({ e: x, r })), false);
 }
 function effTable(rows, withRun = true) {
-  return `<table class="tb"><thead><tr><th>Distance</th><th class="n">Time</th><th class="n">Pace</th><th class="n">Avg HR</th><th class="n">VDOT</th>${withRun ? '<th>Workout</th>' : ''}</tr></thead><tbody>${rows.map(({ e, r }) =>
+  return `<table class="tb"><thead><tr><th>Distance</th><th class="n">Time</th><th class="n">Pace</th><th class="n">Avg HR</th><th class="n">${al('best', 'VDOT')}</th>${withRun ? '<th>Workout</th>' : ''}</tr></thead><tbody>${rows.map(({ e, r }) =>
     `<tr><td>${e.label}</td><td class="n">${fmtDur(e.sec)}</td><td class="n">${fmtPace(e.sec / (e.D / 1000))}</td><td class="n">${e.hr ? Math.round(e.hr) : '–'}</td><td class="n">${e.vdot ? f1(e.vdot) : '–'}</td>${withRun ? `<td><a href="#w-${esc(r.id)}">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}</a></td>` : ''}</tr>`).join('')}</tbody></table>`;
 }
 
@@ -376,7 +372,7 @@ function renderTrends() {
   st.runs.forEach((r, i) => { const dt = new Date(r.start), k = dt.getFullYear() * 12 + dt.getMonth(); const m = mon.get(k) || { n: 0, d: 0, t: 0, hs: 0, hc: 0, l: 0 }; const e = st.res[i];
     m.n++; m.d += e.dist || 0; m.t += e.mov || 0; m.l += e.load || 0; if (e.avgHR) { m.hs += e.avgHR * e.mov; m.hc += e.mov; } mon.set(k, m); });
   const ks = [...mon.keys()].sort((a, b) => b - a), dmax = Math.max(...ks.map(k => mon.get(k).d));
-  $('#monthly').innerHTML = `<table class="tb"><thead><tr><th>Month</th><th class="n">Runs</th><th class="n">Distance ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th><th class="n">Load</th><th class="n">VO₂max</th><th class="n">Endurance</th></tr></thead><tbody>${ks.map(k => {
+  $('#monthly').innerHTML = `<table class="tb"><thead><tr><th>Month</th><th class="n">Runs</th><th class="n">Distance ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th><th class="n">${al('load', 'Load')}</th><th class="n">${al('vo2', 'VO₂max')}</th><th class="n">${al('end', 'Endurance')}</th></tr></thead><tbody>${ks.map(k => {
     const m = mon.get(k), y = Math.floor(k / 12), mo = k % 12, endT = Math.min(new Date(y, mo + 1, 0).getTime(), st.asOf), D = dayAt(endT);
     return `<tr><td>${new Date(y, mo, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</td><td class="n">${m.n}</td><td class="n barcell"><i style="width:${dmax ? m.d / dmax * 100 : 0}%"></i><span>${fmtDist(m.d)}</span></td><td class="n">${fmtDur(m.t)}</td><td class="n">${m.hc ? Math.round(m.hs / m.hc) : '–'}</td><td class="n">${f0(m.l)}</td><td class="n">${D && D.vo2 ? f1(D.vo2) : '–'}</td><td class="n">${D && D.end ? f0(D.end) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
 }
@@ -394,8 +390,8 @@ function renderRecords() {
   const card = (l, v, u, p, href) => `<div class="card rec"><span class="label">${l}</span><div class="val">${v}<small>${u}</small></div><p>${href ? `<a href="${href}">${p}</a>` : p}</p></div>`;
   const R = i => st.runs[i];
   $('#recTop').innerHTML =
-    card('Highest VO₂max', vmax ? f1(vmax.vo2) : '–', 'ml/kg/min', vmax ? fmtDate(vmax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Needs heart-rate data') +
-    card('Best endurance score', emax ? f0(emax.end) : '–', emax ? tierOf(emax.end) : '', emax ? fmtDate(emax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : '') +
+    card(al('vo2', 'Highest VO₂max'), vmax ? f1(vmax.vo2) : '–', 'ml/kg/min', vmax ? fmtDate(vmax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Needs heart-rate data') +
+    card(al('end', 'Best endurance score'), emax ? f0(emax.end) : '–', emax ? tierOf(emax.end) : '', emax ? fmtDate(emax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : '') +
     card('Longest run', fmtDist(st.res[longest].dist), uName(), `${esc(R(longest).name)} · ${fmtDate(R(longest).start, { day: 'numeric', month: 'short', year: 'numeric' })}`, '#w-' + R(longest).id) +
     card('Biggest week', bw ? bw[1].toFixed(1) : '–', uName(), bw ? `Week of ${fmtDate(bw[0] - 3.5 * DAY, { day: 'numeric', month: 'short', year: 'numeric' })} · ${bw[2]} runs` : '') +
     card('Most climbing', st.res[mostUp].ascent ? Math.round(st.res[mostUp].ascent) : '–', 'm', `${esc(R(mostUp).name)}`, '#w-' + R(mostUp).id) +
@@ -430,7 +426,7 @@ function renderProfile() {
   $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
   $('#hrMaxHint').textContent = `Empty = ${Math.round(S.hrMaxEff)} bpm: ` + (st.ageMax && st.ageMax >= (st.detectedMax || 0) ? `age estimate (your runs peak at ${st.detectedMax || '–'}). A measured value is more accurate.` : st.detectedMax ? 'the highest 30-s average in your runs.' : 'default until runs or age are added.');
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
-  renderStorage(); renderDataCard(); renderLook(); renderAISettings();
+  renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
 }
 $('#setForm').addEventListener('submit', async ev => {
   ev.preventDefault();
@@ -591,5 +587,5 @@ async function boot() {
   else { renderChrome(); route(); }
 }
 if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
-initSocial(); initDash();
+initSocial(); initDash(); initAlgo();
 boot();

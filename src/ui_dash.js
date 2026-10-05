@@ -38,35 +38,35 @@ function efChart(el, days, height) {
 }
 
 /* ---------- widgets ---------- */
-const head = (t, extra = '') => `<div class="ch"><h3>${t}</h3>${extra}</div>`;
+const head = (t, extra = '', key) => `<div class="ch"><h3>${key ? al(key, t) : t}</h3>${extra}</div>`;
 const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
 function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
 const WIDGETS = {
   vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating and 4-week change', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
-    if (!D.vo2) { el.innerHTML = `<span class="label">VO₂max</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
+    if (!D.vo2) { el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
     const cat = vo2Category(D.vo2);
-    el.innerHTML = `<span class="label">VO₂max</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
+    el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
       ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
       <div class="sub">${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
-    if (!D.end) { el.innerHTML = `<span class="label">Endurance score</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
+    if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
     const pos = clamp((D.end - 2000) / 11000, 0, 1) * 100;
-    el.innerHTML = `<span class="label">Endurance score</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tierOf(D.end)}</span>
+    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tierOf(D.end)}</span>
       <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
       ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
   status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
-    const D = lastDay(), tsb = D.tsb, s = tsb > 5 ? ['Fresh', 'good'] : tsb > -10 ? ['Balanced', 'acc'] : tsb > -25 ? ['Building', 'warn'] : ['Overreaching', 'crit'];
-    el.innerHTML = `<span class="label">Training status</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${s[1]}"><i></i>${s[0]}</span>
+    const D = lastDay(), tsb = D.tsb, s = FF.status(tsb);
+    el.innerHTML = `<span class="label">${al('ff', 'Training status')}</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${s[1]}"><i></i>${s[0]}</span>
       <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
   } },
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
-    if (!D.vo2) { el.innerHTML = `<span class="label">Race predictions</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
-    el.innerHTML = `<span class="label">Race predictions</span><dl class="kv">${racePreds(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
+    if (!D.vo2) { el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
+    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv">${RACE.predict(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
   } },
   week: { name: 'This week', desc: 'Distance, time and runs, Monday to Sunday', size: 'S', render(el) {
     const now = st.asOf, d0 = (() => { const d = new Date(dayStart(now)); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; })();
@@ -80,13 +80,10 @@ const WIDGETS = {
       <div class="wkbars">${per.map((v, k) => `<div class="${k === today ? 'today' : ''}" title="${fmtDist(v)} ${uName()}"><i style="height:${v ? Math.max(4, v / mx * 46) : 2}px;${v ? '' : 'background:var(--line)'}"></i>${'MTWTFSS'[k]}</div>`).join('')}</div>`;
   } },
   acute: { name: 'Training load', desc: '7-day load against your optimal range', size: 'S', render(el) {
-    const T = dayStart(st.asOf) + DAY; let a = 0, c = 0;
-    st.runs.forEach((r, i) => { const L = st.res[i].load || 0; if (r.start >= T - 7 * DAY && r.start < T) a += L; if (r.start >= T - 28 * DAY && r.start < T) c += L; });
-    c /= 4;
-    if (!c) { el.innerHTML = `<span class="label">Training load</span><p class="sub">Needs a few weeks of workouts.</p>`; return; }
-    const ratio = a / c, max = Math.max(c * 1.8, a * 1.1), pc = x => clamp(x / max * 100, 0, 100);
-    const s = ratio < 0.8 ? ['Low', 'warn', 'Below your usual — fitness can slip if this lasts.'] : ratio <= 1.3 ? ['Optimal', 'good', 'In your productive range.'] : ratio <= 1.5 ? ['High', 'warn', 'Above usual. Keep easy days easy.'] : ['Very high', 'crit', 'Sharp jump — injury risk rises. Ease off.'];
-    el.innerHTML = `<span class="label">Training load</span><div class="big">${f0(a)}<small>7-day load</small></div><span class="chip ${s[1]}"><i></i>${s[0]} · ${ratio.toFixed(2)}×</span>
+    const L = ACWR.compute(st.runs, st.res, st.asOf), lab = `<span class="label">${al('acwr', 'Training load')}</span>`;
+    if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
+    const a = L.acute, c = L.chronic, s = L.status, max = Math.max(c * 1.8, a * 1.1), pc = x => clamp(x / max * 100, 0, 100);
+    el.innerHTML = lab + `<div class="big">${f0(a)}<small>7-day load</small></div><span class="chip ${s[1]}"><i></i>${s[0]} · ${L.ratio.toFixed(2)}×</span>
       <div><div class="meter"><span class="opt" style="left:${pc(0.8 * c)}%;width:${pc(1.3 * c) - pc(0.8 * c)}%"></span><b style="left:${pc(a)}%"></b></div><div class="scale-l"><span>0</span><span>optimal ${f0(0.8 * c)}–${f0(1.3 * c)}</span><span>${f0(max)}</span></div></div>
       <div class="sub">${s[2]}</div>`;
   } },
@@ -97,11 +94,11 @@ const WIDGETS = {
       <div><p class="lt">${esc(r.name)}</p><p class="muted sm" style="margin-bottom:12px">${new Date(r.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
       <dl class="kv"><dt>Distance</dt><dd>${fmtDist(e.dist)} ${uName()}</dd><dt>Time</dt><dd>${fmtDur(e.mov)}</dd><dt>Pace</dt><dd>${fmtPace(e.pace)}/${uName()}</dd><dt>Avg HR</dt><dd>${e.avgHR ? Math.round(e.avgHR) + ' bpm' : '–'}</dd><dt>VO₂max est.</dt><dd>${e.est ? f1(e.est) : '–'}</dd><dt>Load</dt><dd>${f0(e.load)}</dd></dl></div></div>`;
   } },
-  vo2chart: { name: 'VO₂max trend', desc: 'Last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('VO₂max', '<span class="muted sm">Last 6 months</span>') + '<div class="plot"></div>'; vo2Chart(el.querySelector('.plot'), 182, false, 200); } },
+  vo2chart: { name: 'VO₂max trend', desc: 'Last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('VO₂max', '<span class="muted sm">Last 6 months</span>', 'vo2') + '<div class="plot"></div>'; vo2Chart(el.querySelector('.plot'), 182, false, 200); } },
   weekchart: { name: 'Weekly distance', desc: 'Last 16 weeks', size: 'M', chart: true, render(el) { el.innerHTML = head('Weekly distance', `<span class="muted sm">Last 16 weeks, ${uName()}</span>`) + '<div class="plot"></div>'; weekChart(el.querySelector('.plot'), 16, 200); } },
-  loadchart: { name: 'Fitness & fatigue', desc: '42-day and 7-day load, last 12 weeks', size: 'M', chart: true, render(el) { el.innerHTML = head('Fitness &amp; fatigue', '<span class="muted sm">Last 12 weeks</span>') + '<div class="plot"></div>'; loadChart(el.querySelector('.plot'), 84, 200); } },
-  endchart: { name: 'Endurance trend', desc: 'Endurance score, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Endurance score', '<span class="muted sm">Last 6 months</span>') + '<div class="plot"></div>'; endChart(el.querySelector('.plot'), 182, 200); } },
-  efchart: { name: 'Aerobic efficiency', desc: 'Metres per heartbeat, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Aerobic efficiency', '<span class="muted sm">m per beat</span>') + '<div class="plot"></div>'; efChart(el.querySelector('.plot'), 182, 200); } },
+  loadchart: { name: 'Fitness & fatigue', desc: '42-day and 7-day load, last 12 weeks', size: 'M', chart: true, render(el) { el.innerHTML = head('Fitness &amp; fatigue', '<span class="muted sm">Last 12 weeks</span>', 'ff') + '<div class="plot"></div>'; loadChart(el.querySelector('.plot'), 84, 200); } },
+  endchart: { name: 'Endurance trend', desc: 'Endurance score, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Endurance score', '<span class="muted sm">Last 6 months</span>', 'end') + '<div class="plot"></div>'; endChart(el.querySelector('.plot'), 182, 200); } },
+  efchart: { name: 'Aerobic efficiency', desc: 'Metres per heartbeat, last 6 months', size: 'M', chart: true, render(el) { el.innerHTML = head('Aerobic efficiency', '<span class="muted sm">m per beat</span>', 'ef') + '<div class="plot"></div>'; efChart(el.querySelector('.plot'), 182, 200); } },
   calendar: { name: 'Activity calendar', desc: 'Every run of the last 16 weeks', size: 'M', render(el) {
     const W = 16, end = dayStart(st.asOf), endMon = end - ((new Date(end).getDay() + 6) % 7) * DAY, start = endMon - (W - 1) * 7 * DAY, per = new Map();
     st.runs.forEach((r, i) => { const k = dayStart(r.start); if (k >= start) per.set(k, (per.get(k) || 0) + (st.res[i].dist || 0)); });
@@ -121,22 +118,21 @@ const WIDGETS = {
     const T = dayStart(st.asOf) + DAY, z = [0, 0, 0, 0, 0];
     st.runs.forEach((r, i) => { const e = st.res[i]; if (r.start >= T - 28 * DAY && e.zones) e.zones.forEach((s, k) => z[k] += s); });
     const tot = z.reduce((a, b) => a + b, 0);
-    if (!tot) { el.innerHTML = head('Intensity mix') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
+    if (!tot) { el.innerHTML = head('Intensity mix', '', 'zones') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
     const pc = x => Math.round(x / tot * 100), easy = pc(z[0] + z[1]), mod = pc(z[2]), hard = pc(z[3] + z[4]);
     const verdict = easy >= 75 ? 'close to the 80/20 balance most coaches aim for' : mod > 25 ? 'a lot of moderate “grey zone” running — make easy days easier' : 'less easy running than the usual 80% target';
-    const lab = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO₂max'];
-    el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>') + `<p class="sub" style="margin:0 0 12px"><b>${easy}%</b> easy · <b>${mod}%</b> moderate · <b>${hard}%</b> hard — ${verdict}.</p>
+    const lab = ZONE.labels;
+    el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>', 'zones') + `<p class="sub" style="margin:0 0 12px"><b>${easy}%</b> easy · <b>${mod}%</b> moderate · <b>${hard}%</b> hard — ${verdict}.</p>
       <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('')}</div>`;
   } },
-  drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
+  drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance', '', 'end') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
   records: { name: 'Personal bests', desc: 'Fastest 5K, 10K, half and marathon', size: 'M', render(el) {
     const best = {}; st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) if (e.label !== 'Run' && e.label !== '1 km' && (!best[e.label] || e.sec < best[e.label].e.sec)) best[e.label] = { e, r }; });
     const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
-    el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
+    el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>', 'best') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
   } },
 };
 const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'zones:M', 'drivers:M'];
-function racePreds(D) { const k = Math.sqrt(fVol(D.H) * gLong(D.L)); return RACES.map(([dist, name, pen]) => [name, predictTime(dist, D.vo2) * (1 + pen * (1 - k)), dist]); }
 function dashCfg() {
   const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
   return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));
@@ -148,10 +144,10 @@ function saveDash(cfg) {
 function renderBreakdown(D, box) {
   if (!D || !D.vo2) { box.innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }
   const items = [
-    ['Aerobic ceiling', `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
-    ['Training volume', `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
+    [al('vo2', 'Aerobic ceiling'), `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
+    [al('ff', 'Training volume'), `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
     ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
-    ['Durability', D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
+    [al('drift', 'Durability'), D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
   ];
   box.innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
 }

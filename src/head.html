@@ -365,5 +365,15 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 
 .drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 20%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
+/* ---------- algorithm info ---------- */
+.algo-l { cursor: pointer; text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.algo-l:hover { color: var(--accent-ink); }
+.algo-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.algo-card { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; text-align: left; border-radius: var(--r); padding: 14px; background: var(--surface); min-height: 0; font-weight: 400; line-height: 1.4; }
+.algo-card > span:first-child { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.algo-card b { font: 700 1.1rem/1.2 var(--display); }
+.algo-steps { padding-left: 1.2em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.875rem; color: var(--ink2); }
+.algo-hist { padding-left: 1.1em; margin: 8px 0 0; display: grid; gap: 8px; font-size: 0.8125rem; color: var(--ink2); }
+.dlg .chip { font-size: 0.75rem; }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>

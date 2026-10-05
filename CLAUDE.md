@@ -5,7 +5,12 @@ Browser-only running analytics for Garmin Connect exports (FIT/TCX/GPX/ZIP/CSV).
 ## Layout
 - `index.html` — the shipped app (GitHub Pages serves it). Single file, no build tools.
 - `src/` — the same app in parts. Edit these, then rebuild index.html with `./build.sh` (bumps VERSION and stamps the build time shown at the bottom of every page).
-- core.js: parsers, 2 s resampling grid (with GPS offsets), VO2max (grade-adjusted speed regressed on HR, anchored at (HRrest, 0), extrapolated to HRmax = vVO2max, then Daniels cost → VDOT scale; fused with race-like efforts), endurance score, TRIMP/CTL/ATL, splits, sample athlete (generated with the same linear HR–speed model).
+- core.js: parsers, 2 s resampling grid (with GPS offsets), analyze() and buildTimeline() orchestration, splits, sample athlete (generated with the same linear HR–speed model as VO2alg2).
+- src/algo/: one file per measurement, each registered with a versioned id via algo({...}) in registry.js:
+  VO2alg2 vo2max.js · HRMAXalg2 hrmax.js · LOADalg1 load.js · ZONEalg1 zones.js · FFalg1 fitness.js · ACWRalg1 acwr.js ·
+  ENDalg1 endurance.js · DRIFTalg2 drift.js · BESTalg2 efforts.js · RACEalg1 race.js · EFalg1 efficiency.js · GAPalg1 gap.js.
+  Each entry carries summary/steps/formula/inputs/limits/history; the UI shows it in a modal (ui_algo.js).
+- ui_algo.js: al(key, text) makes any label open that algorithm's explanation; Profile lists all algorithms.
 - store.js: storage/auth interface; LocalBackend (localStorage profiles + IndexedDB) and FirebaseBackend (Auth + Firestore, plus `shares/` links and `feed/` posts). On-device is always the default; `FIREBASE_CONFIG` (or a config pasted in Profile → Storage) makes "Save account online" available.
 - ui_social.js: save-account-online flow, share links (#s-<id>) for profiles/workouts/chart images, the feed (publish, follow). Loaded before ui_main.js; no top-level use of ui_main helpers.
 - theme.js: appearance (themes Volt/Ember/Glacier/Ultraviolet/Daylight/auto, font style, text size) per device in localStorage 'pp-ui'. Colour tokens live in head.html; chart series use --c1/--c2 (validated colourblind-safe per theme), zones/ramps --z1..--z5.
@@ -15,6 +20,9 @@ Browser-only running analytics for Garmin Connect exports (FIT/TCX/GPX/ZIP/CSV).
 - Font sizes in CSS are rem so the text-size setting scales them; don't add px font sizes.
 
 ## Rules
+- Every update: add an entry at the top of change.log (version = VERSION + 1, date, what changed and why) before running ./build.sh.
+- Changing how a measurement is calculated = a new algorithm version: bump its id (e.g. VO2alg2 → VO2alg3) and `since`, add a history line with the reason, and name both ids in change.log. Pure refactors must keep numbers identical.
+- Any new place that shows a measurement wraps its label in al('<key>', text).
 - Workout dates always come from the file, never the import time. Workout id = 'a' + start minute.
 - Keep everything dependency-free; no bundler.
 - Profiles are private. Only explicit share links and published feed posts are visible to others; Firestore rules are in ui_main.js (RULES).

@@ -113,12 +113,12 @@
       </div>
     </div>
     <div class="charts">
-      <div class="card chart-card"><h3>VO₂max</h3><p class="cap">Dots are single-run estimates (bigger = more steady data). The line is the blended value on each day.</p><div class="plot" id="cVo2"></div></div>
-      <div class="card chart-card"><h3>Endurance score</h3><p class="cap">Aerobic ceiling scaled by volume, long-run reach and durability.</p><div class="plot" id="cEnd"></div></div>
-      <div class="card chart-card"><h3>Fitness &amp; fatigue</h3><p class="cap">42-day and 7-day training load (TRIMP per day).</p><div class="plot" id="cLoad"></div></div>
+      <div class="card chart-card"><h3><span class="algo-l" role="button" tabindex="0" data-algo="vo2">VO₂max</span></h3><p class="cap">Dots are single-run estimates (bigger = more steady data). The line is the blended value on each day.</p><div class="plot" id="cVo2"></div></div>
+      <div class="card chart-card"><h3><span class="algo-l" role="button" tabindex="0" data-algo="end">Endurance score</span></h3><p class="cap">Aerobic ceiling scaled by volume, long-run reach and durability.</p><div class="plot" id="cEnd"></div></div>
+      <div class="card chart-card"><h3><span class="algo-l" role="button" tabindex="0" data-algo="ff">Fitness &amp; fatigue</span></h3><p class="cap">42-day and 7-day training load (TRIMP per day).</p><div class="plot" id="cLoad"></div></div>
       <div class="card chart-card"><h3>Weekly distance</h3><p class="cap" id="capWeek"></p><div class="plot" id="cWeek"></div></div>
-      <div class="card chart-card"><h3>Aerobic efficiency</h3><p class="cap">Metres per heartbeat at grade-adjusted pace. Rising means more speed for the same effort.</p><div class="plot" id="cEf"></div></div>
-      <div class="card chart-card"><h3>Heart-rate drift</h3><p class="cap">Decoupling on runs of 40+ minutes. Under 5% (dashed line) shows a solid aerobic base.</p><div class="plot" id="cDec"></div></div>
+      <div class="card chart-card"><h3><span class="algo-l" role="button" tabindex="0" data-algo="ef">Aerobic efficiency</span></h3><p class="cap">Metres per heartbeat at grade-adjusted pace. Rising means more speed for the same effort.</p><div class="plot" id="cEf"></div></div>
+      <div class="card chart-card"><h3><span class="algo-l" role="button" tabindex="0" data-algo="drift">Heart-rate drift</span></h3><p class="cap">Decoupling on runs of 40+ minutes. Under 5% (dashed line) shows a solid aerobic base.</p><div class="plot" id="cDec"></div></div>
     </div>
     <div class="card" style="margin-top:12px"><div class="ch"><h3>Monthly summary</h3></div><div class="scroll-x" id="monthly"></div></div>
   </section>
@@ -155,7 +155,7 @@
         <div class="ch"><h3>Physiology</h3></div>
         <p class="muted sm">Heart-rate limits drive every estimate. Measured values beat formulas.</p>
         <div class="form">
-          <label for="fHrMax">Max heart rate<input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
+          <label for="fHrMax"><span>Max heart rate · <span class="algo-l" role="button" tabindex="0" data-algo="hrmax">how it’s chosen</span></span><input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
           <label for="fHrRest">Resting heart rate<input id="fHrRest" type="number" min="30" max="100" inputmode="numeric" required><span class="hint">Morning, lying down.</span></label>
           <label for="fAge">Age<input id="fAge" type="number" min="10" max="99" inputmode="numeric"><span class="hint">For fitness ratings.</span></label>
           <label for="fSex">Sex<select id="fSex"><option value="m">Male</option><option value="f">Female</option></select><span class="hint">TRIMP curve and norms.</span></label>
@@ -169,41 +169,9 @@
       <div class="card" id="storeCard"></div>
       <div class="card" id="dataCard"></div>
     </div>
-    <div class="vh" style="margin-top:28px"><h2>How the numbers are made</h2></div>
-    <div class="method">
-      <div class="card">
-        <h3>VO₂max: heart rate against speed</h3>
-        <ol>
-          <li>Each run is resampled to a 2-second grid. Speed comes from distance, gradient from smoothed altitude; uphill and downhill are converted to flat-equivalent speed with Minetti’s cost-of-gradient model.</li>
-          <li>Only steady 60-second windows count: pace stable for 2 minutes, after a 5-minute warm-up, gradient under 8%, heart rate at 35–95% of reserve. Windows after 45 minutes count less (cardiac drift).</li>
-          <li>Heart rate rises in step with oxygen use, and oxygen use rises in step with speed. So a weighted, outlier-resistant line runs through the windows and one anchor — resting heart rate at zero speed. Extending it to max heart rate gives your speed at VO₂max.</li>
-          <li>VO₂max is the Daniels–Gilbert oxygen cost of that speed, the same VDOT scale as race results and Garmin-style predictions.</li>
-          <li>Run estimates are blended with a 14-day half-life by data quality, then fused with race-like efforts (average HR near what an all-out effort of that length needs) by inverse-variance weighting; a race fades out over 60 days.</li>
-        </ol>
-        <div class="formula">speed(HR) = b·(HR − HRrest)     weighted fit, 2-pass Huber
-vVO₂max   = speed(HRmax)
-VO₂max    = −4.60 + 0.182258·v + 0.000104·v²   (v in m/min)</div>
-        <p>Accuracy depends most on your max and resting heart rate. Without a measured max, the app uses the higher of your age estimate and your hardest run.</p>
-      </div>
-      <div class="card">
-        <h3>Endurance score</h3>
-        <p>VO₂max sets the ceiling. How much of it you can hold for hours depends on the work behind it, so the ceiling is scaled by three saturating factors.</p>
-        <div class="formula">E = 170 · VO₂max · √(f(H)·g(L)) · h(D)
-f(H) = 1 − e^(−H/4)    H = weekly hours (42-day)
-g(L) = 1 − e^(−L/75)   L = longest run, min (6 wk)
-h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
-        <p>Tiers: Recreational &lt;4000 · Intermediate 4000 · Trained 5500 · Well-trained 7000 · Expert 8500 · Superior 10000 · Elite 11500. The app’s own scale, set in a similar range to Garmin’s; not Garmin’s proprietary number.</p>
-      </div>
-      <div class="card">
-        <h3>Load, form and predictions</h3>
-        <ul>
-          <li><b>Training load</b> is Banister TRIMP. Runs without heart rate get an estimate from grade-adjusted pace.</li>
-          <li><b>Fitness / fatigue</b> are 42-day and 7-day exponential averages; <b>form</b> is the difference.</li>
-          <li><b>Heart-rate drift</b> compares grade-adjusted pace per heartbeat in the first and second half of steady runs (interval sessions are skipped).</li>
-          <li><b>Race times</b> invert the Daniels VDOT formula, with a penalty on longer races when volume or long runs are short.</li>
-          <li>Every value is placed on the <b>date and time recorded in the workout file</b>, never the import date.</li>
-        </ul>
-      </div>
+    <div class="vh" style="margin-top:28px"><div><h2>How the numbers are made</h2><p class="muted sm">Each measurement has its own versioned algorithm. Tap one — or any underlined label in the app — to see exactly how it is calculated.</p></div></div>
+    <div class="algo-list" id="algoList"></div>
+    <div class="method" style="margin-top:12px">
       <div class="card">
         <h3>Getting files out of Garmin Connect</h3>
         <ul>
