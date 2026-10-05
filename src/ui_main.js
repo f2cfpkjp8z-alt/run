@@ -11,6 +11,7 @@ const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: 
 const VIEWS = [
   ['overview', 'Overview', '<path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['workouts', 'Workouts', '<path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['feed', 'Feed', '<circle cx="5.5" cy="18.5" r="1.8" fill="currentColor"/><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['trends', 'Trends', '<path d="M3 20h18M5 16l4-5 4 3 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['records', 'Records', '<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['profile', 'Profile', '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
@@ -43,17 +44,17 @@ function setShell(app) { $('#auth').hidden = app; $('#shell').hidden = !app; }
 function loadSample() { const s = makeSample(Date.now()); st.runs = s.runs; st.sample = true; st.S = Object.assign({}, DEFAULT_SETTINGS, s.settings, { units: st.S.units || 'km' }); }
 function enterGuest() { st.user = null; st.guest = true; loadSample(); setShell(true); refresh(); }
 async function enterUser(u) {
-  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {});
+  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {}); st.published = new Set();
   setStatus('Loading workouts…');
   try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
   setShell(true); st.shown = 30; refresh();
   if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
-  maybeOfferMigration();
+  maybeOfferMigration(); loadPublished();
 }
 function showAuth(note) {
   const b = st.backend, local = b.kind === 'local';
   $('#authNote').hidden = !note; $('#authNote').textContent = note || '';
-  $('#authLocal').hidden = !local; $('#authFire').hidden = local;
+  $('#authLocal').hidden = !local; $('#authFire').hidden = local; $('#goOnline').hidden = !fbConfig();
   if (local) {
     const accts = b.accounts();
     $('#profilePick').hidden = !accts.length;
@@ -92,7 +93,7 @@ $('#fFire').addEventListener('submit', async ev => {
 });
 $('#aGoogle').onclick = async () => { try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
 $('#btnGuest').onclick = () => { st.pending = null; enterGuest(); location.hash = '#overview'; };
-async function signOut() { await st.backend.signOut(); st.user = null; closeMenu(); showAuth(); }
+async function signOut() { await st.backend.signOut(); st.user = null; st.published = new Set(); closeMenu(); showAuth(); }
 
 /* ---------- account menu ---------- */
 function renderChrome() {
@@ -101,12 +102,13 @@ function renderChrome() {
   $('#menu').innerHTML = u
     ? `<div class="who"><b>${esc(u.name)}</b><span>${esc(u.email || 'Local profile')} · ${esc(st.backend.label)}</span></div>
        <button type="button" role="menuitem" data-a="profile">Profile &amp; settings</button>
+       ${st.backend.kind === 'local' && fbConfig() ? '<button type="button" role="menuitem" data-a="online">Save account online</button>' : ''}
        ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="switch">Switch profile</button>' : ''}
        <button type="button" role="menuitem" data-a="out">${st.backend.kind === 'local' ? 'Sign out of profile' : 'Sign out'}</button>`
     : `<div class="who"><b>Guest preview</b><span>Sample athlete, nothing is saved</span></div>
        <button type="button" role="menuitem" data-a="signin">${st.backend && st.backend.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button>`;
   $$('#menu button').forEach(b => b.onclick = () => { closeMenu(); const a = b.dataset.a;
-    if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
+    if (a === 'online') saveOnlineDlg(); else if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
   const bn = $('#banner'); const fb = st.backend && st.backend.fallbackError;
   if (st.sample) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>Guest preview with a sample athlete.</b> Create a profile, then import .fit, .tcx, .gpx, .zip or the activities .csv from Garmin Connect.</span><button type="button" class="primary" id="bnGo">Create profile</button>`; $('#bnGo').onclick = () => showAuth(); }
   else if (fb) { bn.hidden = false; bn.className = 'banner warn'; bn.innerHTML = `<span class="grow">${esc(fb)}</span>`; }
@@ -123,11 +125,14 @@ function route() {
   const h = (location.hash || '#overview').slice(1);
   let v = h, id = null;
   if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
-  if (!['overview', 'workouts', 'workout', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (h.startsWith('s-')) { v = 'shared'; id = h.slice(2); }
+  if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (st.view === 'shared' && v !== 'shared') renderChrome();
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
   const tab = v === 'workout' ? 'workouts' : v;
   $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (v === 'shared') $('#banner').hidden = true;
   renderView();
 }
 addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
@@ -139,6 +144,9 @@ function renderView() {
   else if (v === 'trends') renderTrends();
   else if (v === 'records') renderRecords();
   else if (v === 'profile') renderProfile();
+  else if (v === 'feed') renderFeed();
+  else if (v === 'shared') renderShared(st.detail);
+  addChartShare();
 }
 function refresh() { compute(); renderChrome(); route(); }
 
@@ -311,6 +319,7 @@ function renderWorkout(id) {
   let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
     <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
     <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
+    ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
     ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName())}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm')}
@@ -333,6 +342,7 @@ function renderWorkout(id) {
     </div>`;
   }
   box.innerHTML = h;
+  if ($('#shareW')) { $('#shareW').onclick = () => shareWorkout(r, e); $('#pubW').onclick = () => publishDlg(r, e); }
   const del = $('#delW'); if (del) del.onclick = async () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Tap again to delete'; return; }
     try { await st.backend.deleteWorkout(r.id); st.runs = st.runs.filter(x => x.id !== r.id); glyphCache.clear(); setStatus(`Deleted “${r.name}”.`); location.hash = '#workouts'; compute(); renderChrome(); }
@@ -460,7 +470,7 @@ function renderProfile() {
   $('#pCard').innerHTML = u ? `<div class="pc-head"><span class="avatar">${esc(initials(u.name))}</span><div><h3>${esc(u.name)}</h3><p>${esc(u.email || 'No email')} · ${esc(b.label)}</p></div></div>
       <div class="pc-stats"><div><b>${st.runs.length}</b><span>workouts</span></div><div><b>${fmtDist(totD)}</b><span>${uName()} total</span></div><div><b>${st.runs.length ? fmtDate(st.runs[0].start, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div>
       <form id="pEdit" class="form1" hidden><label for="pName">Name<input id="pName" required value="${esc(u.name)}"></label>${b.kind === 'local' ? `<label for="pEmail">Email<input id="pEmail" type="email" value="${esc(u.email || '')}"></label>` : ''}<div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="pCancel">Cancel</button></div></form>
-      <div class="btns" id="pBtns"><button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
+      <div class="btns" id="pBtns">${b.kind === 'local' && fbConfig() ? '<button type="button" class="primary" id="pOnline">Save account online</button>' : ''}${online() ? `<button type="button" class="primary" id="pShare">${ICON_SHARE}Share profile</button>` : ''}<button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
     : `<div class="pc-head"><span class="avatar guest">?</span><div><h3>Guest preview</h3><p>You’re viewing a sample athlete. Nothing is saved.</p></div></div>
       <div class="btns" style="margin-top:16px"><button type="button" class="primary" id="pCreate">${b && b.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button></div>`;
   if (u) {
@@ -468,6 +478,8 @@ function renderProfile() {
     $('#pCancel').onclick = () => { $('#pEdit').hidden = true; $('#pBtns').hidden = false; };
     $('#pEdit').onsubmit = async ev => { ev.preventDefault(); const patch = { name: $('#pName').value.trim() || u.name }; if ($('#pEmail')) patch.email = $('#pEmail').value.trim(); st.user = await b.updateProfile(patch); renderChrome(); renderProfile(); };
     if ($('#pSwitch')) $('#pSwitch').onclick = () => showAuth();
+    if ($('#pOnline')) $('#pOnline').onclick = saveOnlineDlg;
+    if ($('#pShare')) $('#pShare').onclick = shareProfile;
     $('#pOut').onclick = signOut;
   } else $('#pCreate').onclick = () => showAuth();
   // settings
@@ -490,38 +502,53 @@ function parseConfig(txt) {
   const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
   const c = JSON.parse(json); if (!c.apiKey || !c.projectId) throw new Error('The config needs at least apiKey and projectId.'); return c;
 }
-function renderStorage() {
-  const ch = storageChoice(), active = st.backend ? st.backend.kind : 'local';
-  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${active === 'firebase' ? 'good' : ''}"><i></i>Active: ${active === 'firebase' ? 'Firebase cloud' : 'This device'}</span></div>
-    <div class="stack">
-      <label class="radio"><input type="radio" name="bk" value="local" ${ch.kind !== 'firebase' ? 'checked' : ''}><span><b>This device</b><span>Profiles and workouts stay in this browser (IndexedDB). No account needed, no sync.</span></span></label>
-      <label class="radio"><input type="radio" name="bk" value="firebase" ${ch.kind === 'firebase' ? 'checked' : ''}><span><b>Firebase cloud</b><span>Email or Google sign-in, workouts in Firestore, synced across devices.</span></span></label>
-      <div id="fbBox" ${ch.kind === 'firebase' ? '' : 'hidden'} class="stack">
-        <label for="fbCfg" class="sm" style="font-weight:600;color:var(--ink2)">Firebase web config</label>
-        <textarea id="fbCfg" spellcheck="false" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${ch.config ? esc(JSON.stringify(ch.config, null, 2)) : ''}</textarea>
-        <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, and create a Firestore database.</p>
-        <p class="fine">Firebase needs the page served from a normal web address (for example Firebase Hosting). Inside the Claude preview, outside network calls are blocked, so the app falls back to this device.</p>
-        <details><summary>Firestore security rules</summary><div class="formula">rules_version = '2';
+const RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
+    // profiles and workouts: owner only
     match /users/{uid}/{doc=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == uid;
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // share links: anyone with the id can open one; never listed
+    match /shares/{id} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+    // feed: signed-in runners read; authors write their own posts
+    match /feed/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid
+                            && id == request.auth.uid + '_' + request.resource.data.wid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
   }
-}</div></details>
-      </div>
+}`;
+function renderStorage() {
+  const b = st.backend, isOn = b && b.kind === 'firebase', cfg = fbConfig();
+  const setup = FIREBASE_CONFIG ? '' : `<details${cfg ? '' : ' open'}><summary>Online account setup (Firebase)</summary><div class="stack" style="margin-top:10px">
+      <textarea id="fbCfg" spellcheck="false" aria-label="Firebase web config" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${cfg ? esc(JSON.stringify(cfg, null, 2)) : ''}</textarea>
+      <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, create a Firestore database, and add this site’s domain to Authentication → Authorized domains. To offer it to everyone, put the config in FIREBASE_CONFIG in store.js.</p>
       <p class="form-err" id="fbErr" hidden></p>
-      <div class="foot" style="margin-top:4px"><button type="button" class="primary" id="bkSave">Use this storage</button></div>
+      <div class="btns"><button type="button" id="cfgSave">Save config</button></div>
+      <details><summary>Firestore security rules</summary><div class="formula">${esc(RULES)}</div></details></div></details>`;
+  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${isOn ? 'good' : ''}"><i></i>${isOn ? 'Online account' : 'This device'}</span></div>
+    <div class="stack">
+      ${isOn ? `<p class="sub">Signed in online. Workouts sync to every device you sign in on. Your profile is private; only what you share or publish can be seen by others.</p>
+        <div class="btns"><button type="button" id="goLocalP">Use on-device profiles</button></div>`
+      : `<p class="sub">Profiles and workouts are stored in this browser only. Save the account online to sync between devices, share links and use the feed.</p>
+        ${st.user && cfg ? '<div class="btns"><button type="button" class="primary" id="saveOn">Save account online</button></div>' : ''}
+        ${!st.user && cfg ? '<div class="btns"><button type="button" id="goOnP">Sign in to an online account</button></div>' : ''}`}
+      ${setup}
     </div>`;
-  $$('input[name="bk"]').forEach(x => x.onchange = () => { $('#fbBox').hidden = x.value !== 'firebase' || !x.checked; });
-  $('#bkSave').onclick = async () => {
-    const kind = $$('input[name="bk"]').find(x => x.checked).value; $('#fbErr').hidden = true;
-    try {
-      if (kind === 'firebase') { const config = parseConfig($('#fbCfg').value); if (st.user && st.backend.kind === 'local' && st.runs.length) lsSet('pp-migrate', st.user.id); lsSet('pp-backend', { kind, config }); }
-      else lsSet('pp-backend', { kind: 'local' });
-      await boot();
-    } catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
+  if ($('#saveOn')) $('#saveOn').onclick = saveOnlineDlg;
+  if ($('#goOnP')) $('#goOnP').onclick = () => useBackend('firebase');
+  if ($('#goLocalP')) $('#goLocalP').onclick = async () => { await st.backend.signOut(); useBackend('local'); };
+  if ($('#cfgSave')) $('#cfgSave').onclick = () => {
+    $('#fbErr').hidden = true;
+    try { lsSet('pp-fbconfig', parseConfig($('#fbCfg').value)); setStatus('Firebase config saved. “Save account online” is now available.'); renderChrome(); renderProfile(); }
+    catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
   };
 }
 async function maybeOfferMigration() {
@@ -542,7 +569,7 @@ function renderDataCard() {
   $('#dataCard').innerHTML = `<div class="ch"><h3>Your data</h3></div>
     <dl class="kv"><dt>Workouts</dt><dd>${st.runs.length}</dd><dt>With full detail</dt><dd>${full}</dd><dt>With GPS route</dt><dd>${gps}</dd><dt>Date range</dt><dd>${st.runs.length ? fmtDate(st.runs[0].start, { day: 'numeric', month: 'short', year: '2-digit' }) + ' – ' + fmtDate(st.runs[st.runs.length - 1].start, { day: 'numeric', month: 'short', year: '2-digit' }) : '–'}</dd></dl>
     <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. Importing the same workout twice replaces it.</p>
-    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import more</label><button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
+    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import files</label>${'webkitdirectory' in HTMLInputElement.prototype && !matchMedia('(pointer: coarse)').matches ? '<label class="btn" for="folder">Import folder</label>' : ''}<button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
   const arm = (id, text, fn) => { const b = $(id); if (!b) return; b.onclick = async () => { if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = text; return; } b.disabled = true; try { await fn(); } catch (e) { setStatus(e.message); } }; };
   arm('#delAll', 'Tap again to delete all', async () => { await st.backend.clearWorkouts(); st.runs = []; glyphCache.clear(); setStatus('All workouts deleted.'); refresh(); });
   arm('#delAcct', 'Tap again to delete profile', async () => { await st.backend.deleteAccount(); st.user = null; setStatus(''); showAuth('Profile deleted.'); });
@@ -568,7 +595,8 @@ async function importFiles(files) {
     } catch (err) { skipped.bad++; console.warn(name, err); }
   };
   setStatus('Reading files…');
-  for (const f of files) await handle(f.name, () => f.arrayBuffer());
+  let k = 0;
+  for (const f of files) { k++; if (files.length > 1) setStatus(`Reading file ${k} of ${files.length}… ${found.length} runs found`); await handle(f.name, () => f.arrayBuffer()); }
   const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
   if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
   const byId = new Map(st.runs.map(r => [r.id, r])), toSave = []; let added = 0, upd = 0;
@@ -580,7 +608,7 @@ async function importFiles(files) {
   setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, updated ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
   if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
 }
-$('#file').addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); });
+['#file', '#folder'].forEach(s => $(s).addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); }));
 let dragN = 0;
 addEventListener('dragenter', ev => { if ([...(ev.dataTransfer?.types || [])].includes('Files')) { dragN++; $('#drop').hidden = false; } });
 addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#drop').hidden = true; } });
@@ -600,7 +628,8 @@ async function boot() {
   st.backend = await openBackend();
   const u = st.backend.user();
   if (u) await enterUser(u);
-  else if (st.backend.kind === 'firebase' || st.backend.accounts().length) showAuth();
+  else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
   else { renderChrome(); route(); }
 }
+initSocial();
 boot();

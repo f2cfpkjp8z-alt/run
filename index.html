@@ -48,7 +48,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
 .danger.armed { background: var(--crit); color: #fff; border-color: var(--crit); }
 .link { background: none; border: 0; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; padding: 8px 0; min-height: 0; }
 .wide { width: 100%; }
-#file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+#file, #folder { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 input, select, textarea { font: 15px var(--body); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 42px; width: 100%; }
 textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
 
@@ -78,7 +78,7 @@ textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
   :root { --bnav-h: 62px; }
   .tabs { display: none; }
   .hide-sm { display: none; }
-  .bnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  .bnav { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 11px/1 var(--body); }
@@ -277,6 +277,36 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
 
 .drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 22%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
+/* ---------- share, dialog, feed ---------- */
+.chart-card { position: relative; }
+.share-btn { min-height: 32px; padding: 6px 10px; font-size: 13px; gap: 6px; }
+.chart-card > .share-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
+.share-btn svg { width: 15px; height: 15px; }
+.dlg { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
+.dlg::backdrop { background: rgb(0 0 0 / .45); }
+.dlg h2 { font-size: 1.5rem; margin-bottom: 6px; }
+.dlg p { margin: 0 0 12px; font-size: 14px; color: var(--ink2); }
+.dlg .x { position: absolute; right: 10px; top: 10px; width: 36px; min-height: 36px; padding: 0; border: 0; font-size: 20px; background: transparent; }
+.dlg .chk { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 6px 0; }
+.dlg .chk input { width: auto; min-height: 0; accent-color: var(--accent); }
+.linkrow { display: flex; gap: 8px; } .linkrow input { flex: 1; min-width: 0; font: 13px var(--mono); }
+.dlg img { width: 100%; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px; }
+.feed { display: grid; gap: 12px; max-width: 680px; }
+.post { display: grid; gap: 12px; }
+.post-h { display: flex; gap: 12px; align-items: center; }
+.post-h .avatar { flex: none; cursor: default; }
+.post-h .who { flex: 1; min-width: 0; } .post-h .who b { display: block; } .post-h .who span { font-size: 13px; color: var(--muted); }
+.post h3 { text-transform: none; letter-spacing: 0; font-size: 1.35rem; color: var(--ink); }
+.post-stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.post-stats span { display: block; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.post-stats b { font: 600 1.35rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.smap { position: relative; width: 100%; height: clamp(200px, 45vw, 320px); border-radius: 10px; overflow: hidden; background: var(--sunk); }
+.smap .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+.smap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+:root[data-theme="dark"] .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
+.smap .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; color: var(--ink2); }
+.shared-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>
 <!-- ============ AUTH SCREEN ============ -->
@@ -313,7 +343,8 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
           <p class="form-err" id="cErr" hidden></p>
           <button class="primary wide" type="submit">Create profile</button>
         </form>
-        <p class="fine">Stored only in this browser. Switch to Firebase in Profile → Storage to sync across devices.</p>
+        <p class="fine">Stored only in this browser. You can save the profile online later from Profile.</p>
+        <button type="button" class="wide" id="goOnline" hidden>Sign in to an online account</button>
       </div>
       <div id="authFire" hidden>
         <div class="seg seg-wide" role="tablist" aria-label="Account">
@@ -328,6 +359,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
           <button class="primary wide" type="submit" id="aSubmit">Sign in</button>
         </form>
         <button type="button" class="wide" id="aGoogle">Continue with Google</button>
+        <button type="button" class="link" id="goLocal">Use profiles on this device instead</button>
       </div>
       <button type="button" class="link" id="btnGuest">Explore with a sample athlete</button>
     </div>
@@ -347,7 +379,8 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
       <label class="btn primary" for="file" title="Import Garmin files">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 11v3h12v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hide-sm">Import</span></label>
-      <input id="file" type="file" multiple accept=".fit,.tcx,.gpx,.csv,.zip,application/zip,application/gpx+xml,text/csv">
+      <input id="file" type="file" multiple>
+      <input id="folder" type="file" multiple webkitdirectory>
       <div class="menu-wrap">
         <button type="button" class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"></button>
         <div class="menu card" id="menu" role="menu" hidden></div>
@@ -419,6 +452,19 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
     </div>
   </section>
 
+  <!-- FEED -->
+  <section class="view" id="v-feed" data-view="feed" hidden>
+    <div class="vh"><div><h2>Feed</h2><p class="muted">Workouts runners chose to publish. Profiles stay private.</p></div>
+      <div class="seg" id="feedMode" role="group" aria-label="Show">
+        <button type="button" data-f="all">Everyone</button><button type="button" data-f="following">Following</button><button type="button" data-f="mine">Mine</button>
+      </div>
+    </div>
+    <div class="feed" id="feedList"></div>
+  </section>
+
+  <!-- SHARED (public link) -->
+  <section class="view" id="v-shared" data-view="shared" hidden></section>
+
   <!-- PROFILE -->
   <section class="view" id="v-profile" data-view="profile" hidden>
     <div class="vh"><h2>Profile</h2></div>
@@ -480,7 +526,8 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
           <li><b>Everything:</b> Account → Data Management → <i>Export Your Data</i>, then import the .zip files inside it.</li>
           <li><b>Activity list:</b> Activities → All Activities → <i>Export CSV</i>. Summary-level only, no map.</li>
         </ul>
-        <p>Files are processed in your browser. Only the parsed workouts are saved, to the storage chosen above.</p>
+        <p>Files are processed in your browser. Only the parsed workouts are saved, to this device or your online account.</p>
+        <p>Pick many files at once (or a whole folder on desktop) — they are all imported in one go.</p>
       </div>
     </div>
     <footer>Estimates for training guidance, not a medical assessment.</footer>
@@ -488,6 +535,7 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
 </main>
 <nav class="bnav" id="bnav" aria-label="Sections"></nav>
 </div>
+<dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
@@ -1048,8 +1096,9 @@ function splitsOf(r, unitM) {
 //   init() · user() · accounts() · signIn(cred) · signUp(info) · signOut()
 //   updateProfile(patch) · deleteAccount()
 //   listWorkouts() · putWorkouts(list) · deleteWorkout(id) · clearWorkouts()
-// To ship with Firebase by default, paste your web-app config here (Firebase console →
-// Project settings → Your apps → SDK setup and configuration → Config).
+// Paste your Firebase web-app config here (Firebase console → Project settings → Your apps →
+// SDK setup and configuration → Config) to offer online accounts, sharing and the feed.
+// On-device profiles stay the default; users opt in with "Save account online".
 const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
@@ -1129,6 +1178,7 @@ const FirebaseBackend = {
   kind: 'firebase', label: 'Firebase cloud', secure: true,
   profile: null,
   async init(config) {
+    if (this.auth) return;
     if (!window.firebase) for (const m of ['app', 'auth', 'firestore']) await loadScript(FIREBASE_SDK + 'firebase-' + m + '-compat.js');
     if (!firebase.apps.length) firebase.initializeApp(config);
     this.auth = firebase.auth(); this.fs = firebase.firestore();
@@ -1158,7 +1208,10 @@ const FirebaseBackend = {
     this.profile = Object.assign({}, this.profile, patch, { settings: Object.assign({}, this.profile.settings, patch.settings || {}) });
     await this.fs.collection('users').doc(this.auth.currentUser.uid).set(this.profile, { merge: true }); return this.user();
   },
-  async deleteAccount() { await this.clearWorkouts(); await this.fs.collection('users').doc(this.auth.currentUser.uid).delete(); await this.auth.currentUser.delete(); this.profile = null; },
+  async deleteAccount() {
+    const me = this.auth.currentUser.uid;
+    for (const c of ['feed', 'shares']) { const qs = await this.fs.collection(c).where('uid', '==', me).get(); for (const d of qs.docs) await d.ref.delete(); }
+    await this.clearWorkouts(); await this.fs.collection('users').doc(this.auth.currentUser.uid).delete(); await this.auth.currentUser.delete(); this.profile = null; },
   _col() { return this.fs.collection('users').doc(this.auth.currentUser.uid).collection('workouts'); },
   _enc(r) { const o = {}; for (const [k, v] of Object.entries(r)) { if (v == null || k === 'pid' || k === 'key') continue; o[k] = ArrayBuffer.isView(v) ? { __t: v.constructor.name, b: firebase.firestore.Blob.fromUint8Array(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) } : v; } return o; },
   _dec(o) { const r = {}; for (const [k, v] of Object.entries(o)) { if (v && v.__t && TYPED[v.__t]) { const u8 = v.b.toUint8Array(); r[k] = new TYPED[v.__t](u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } else r[k] = v; } return r; },
@@ -1170,15 +1223,33 @@ const FirebaseBackend = {
   },
   async deleteWorkout(id) { await this._col().doc(id).delete(); },
   async clearWorkouts() { const qs = await this._col().get(); for (let i = 0; i < qs.docs.length; i += 400) { const b = this.fs.batch(); qs.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit(); } },
+  // ---- sharing: shares/{id} is readable by anyone holding the link (get only, never listed) ----
+  _me() { const u = this.auth.currentUser; if (!u) throw new Error('Sign in to your online account first.'); return u.uid; },
+  async createShare(data) { const ref = this.fs.collection('shares').doc(); await ref.set(Object.assign({}, data, { uid: this._me(), createdAt: Date.now() })); return ref.id; },
+  async getShare(id) { const s = await this.fs.collection('shares').doc(id).get(); return s.exists ? s.data() : null; },
+  async deleteShare(id) { await this.fs.collection('shares').doc(id).delete(); },
+  // ---- feed: feed/{uid_workoutId}, readable by signed-in users only ----
+  async publish(post) { const me = this._me(); await this.fs.collection('feed').doc(me + '_' + post.wid).set(Object.assign({}, post, { uid: me, author: this.profile.name || 'Runner', createdAt: Date.now() })); },
+  async unpublish(wid) { await this.fs.collection('feed').doc(this._me() + '_' + wid).delete(); },
+  async listFeed(mode) {
+    const col = this.fs.collection('feed'), me = this._me(); let qs;
+    if (mode === 'mine') qs = await col.where('uid', '==', me).get();
+    else if (mode === 'following') { const f = (this.profile.following || []).slice(0, 30); if (!f.length) return []; qs = await col.where('uid', 'in', f).limit(200).get(); }
+    else qs = await col.orderBy('start', 'desc').limit(60).get();
+    return qs.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => b.start - a.start);
+  },
+  async follow(uid, on) { const f = new Set(this.profile.following || []); if (on) f.add(uid); else f.delete(uid); return this.updateProfile({ following: [...f] }); },
 };
 
 /* ---------- backend selection ---------- */
-function storageChoice() { const c = lsGet('pp-backend', null); if (c) return c; return FIREBASE_CONFIG ? { kind: 'firebase', config: FIREBASE_CONFIG } : { kind: 'local' }; }
+// On-device storage is always the default. 'pp-backend' = { kind: 'firebase' } once a user moves online.
+function fbConfig() { const c = lsGet('pp-backend', null); return FIREBASE_CONFIG || lsGet('pp-fbconfig', null) || (c && c.config) || null; }
+function storageChoice() { const c = lsGet('pp-backend', null); return c && c.kind === 'firebase' && fbConfig() ? { kind: 'firebase', config: fbConfig() } : { kind: 'local' }; }
 async function openBackend() {
   const c = storageChoice(); LocalBackend.fallbackError = null;
-  if (c.kind === 'firebase' && c.config) {
+  if (c.kind === 'firebase') {
     try { await FirebaseBackend.init(c.config); return FirebaseBackend; }
-    catch (e) { console.warn(e); await LocalBackend.init(); LocalBackend.fallbackError = 'Could not reach Firebase, so this session uses on-device storage. ' + (e.message || ''); return LocalBackend; }
+    catch (e) { console.warn(e); await LocalBackend.init(); LocalBackend.fallbackError = 'Could not reach the online account, so this session uses on-device storage. ' + (e.message || ''); return LocalBackend; }
   }
   await LocalBackend.init(); return LocalBackend;
 }
@@ -1303,6 +1374,307 @@ function plot(el, o) {
   svg.addEventListener('pointermove', move); svg.addEventListener('pointerdown', move); svg.addEventListener('pointerleave', hide);
 }
 
+// ===== ONLINE: save account online, share links, feed =====
+// Loaded before ui_main.js; everything here runs at call time, after ui_main's helpers exist.
+const ICON_SHARE = '<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10V2M5 4.8 8 2l3 2.8M3 8v6h10V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const online = () => !!(st.user && st.backend && st.backend.kind === 'firebase');
+const clean = o => JSON.parse(JSON.stringify(o)); // Firestore rejects undefined; NaN becomes null
+const numOr = x => (x == null || x === '' || !isFinite(+x)) ? null : +x;
+
+/* ---------- dialog ---------- */
+function openDlg(html) {
+  const d = $('#dlg');
+  $('#dlgBody').innerHTML = `<button type="button" class="x" aria-label="Close" data-close>×</button>` + html;
+  d.querySelectorAll('[data-close]').forEach(b => b.onclick = () => d.close());
+  if (!d.open) d.showModal();
+  return d;
+}
+function closeDlg() { const d = $('#dlg'); if (d.open) d.close(); }
+
+/* ---------- routes for sharing ---------- */
+function routeFlat(r, max = 400) {
+  if (!r.hasGPS) return null;
+  const out = [], step = Math.max(1, Math.floor(r.n / max));
+  for (let i = 0; i < r.n; i += step) if (!isNaN(r.dla[i])) out.push(+(r.lat0 + r.dla[i]).toFixed(5), +(r.lon0 + r.dlo[i]).toFixed(5));
+  return out.length >= 4 ? out : null;
+}
+// Static tile map of a flat [lat, lon, lat, lon, …] route. Used for shared links and feed posts.
+function staticMap(el, flat) {
+  const pts = [];
+  if (Array.isArray(flat)) for (let i = 0; i + 1 < flat.length; i += 2) { const a = +flat[i], o = +flat[i + 1]; if (isFinite(a) && isFinite(o) && Math.abs(a) < 85 && Math.abs(o) <= 180) pts.push([a, o]); }
+  if (pts.length < 2) { el.remove(); return; }
+  const W = el.clientWidth || 600, H = el.clientHeight || 260;
+  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+  for (const [a, o] of pts) { la0 = Math.min(la0, a); la1 = Math.max(la1, a); lo0 = Math.min(lo0, o); lo1 = Math.max(lo1, o); }
+  let z; for (z = 17; z > 2; z--) if (wx(lo1, z) - wx(lo0, z) <= W - 40 && wy(la0, z) - wy(la1, z) <= H - 40) break;
+  const x0 = (wx(lo0, z) + wx(lo1, z)) / 2 - W / 2, y0 = (wy(la0, z) + wy(la1, z)) / 2 - H / 2, N = 2 ** z;
+  let im = '';
+  for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W) / 256); tx++) for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H) / 256); ty++) {
+    if (ty < 0 || ty >= N) continue;
+    im += `<img alt="" draggable="false" loading="lazy" src="https://tile.openstreetmap.org/${z}/${((tx % N) + N) % N}/${ty}.png" style="left:${tx * 256 - x0}px;top:${ty * 256 - y0}px">`;
+  }
+  const P = pts.map(([a, o]) => [wx(o, z) - x0, wy(a, z) - y0]);
+  const d = P.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('');
+  const s = P[0], e = P[P.length - 1];
+  el.innerHTML = `<div class="tiles"></div><svg aria-label="Route map"><path d="${d}" stroke="var(--surface)" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/><path d="${d}" stroke="var(--accent)" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${e[0]}" cy="${e[1]}" r="6" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="6" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/></svg>
+    <div class="attr" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>`;
+  const tiles = el.querySelector('.tiles'); tiles.innerHTML = im;
+  tiles.querySelectorAll('img').forEach(img => { img.onload = () => { el.querySelector('.attr').hidden = false; }; img.onerror = () => img.remove(); });
+}
+
+/* ---------- chart → image ---------- */
+async function chartPng(card) {
+  const svg = card.querySelector('.plot svg'); if (!svg) throw new Error('This chart has no data to share yet.');
+  const vb = svg.viewBox.baseVal, W = vb.width, H = vb.height;
+  const title = (card.querySelector('h3') || {}).textContent || 'Chart';
+  const res = t => t.replace(/var\((--[\w-]+)\)/g, (m, n) => (css(n) || '#888').replace(/"/g, "'"));
+  const style = `<style>.ax{fill:${css('--muted')};font:11px monospace}.grid{stroke:${css('--line')};stroke-width:1}.base{stroke:${css('--ink2')};stroke-width:1;opacity:.5}.xh,.hl{display:none}</style>`;
+  const markup = res(svg.outerHTML).replace(/^<svg([^>]*)>/, (m, a) => `<svg${/xmlns=/.test(a) ? '' : ' xmlns="http://www.w3.org/2000/svg"'} width="${W}" height="${H}"${a}>${style}`);
+  const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup); await img.decode();
+  const legend = [...card.querySelectorAll('.legend span')].map(s => [s.textContent, res((s.querySelector('i') || {}).style?.background || '') || css('--accent')]);
+  const k = 2, pad = 20, head = 44 + (legend.length ? 24 : 0), cw = W + 2 * pad, chh = H + head + pad + 18;
+  const cv = document.createElement('canvas'); cv.width = cw * k; cv.height = chh * k;
+  const g = cv.getContext('2d'); g.scale(k, k);
+  g.fillStyle = css('--surface'); g.fillRect(0, 0, cw, chh);
+  g.fillStyle = css('--ink'); g.font = '600 20px "Barlow Condensed", sans-serif'; g.fillText(title.toUpperCase(), pad, 32);
+  let lx = pad; g.font = '13px "Source Sans 3", sans-serif';
+  for (const [t, c] of legend) { g.fillStyle = c; g.fillRect(lx, 50, 10, 10); g.fillStyle = css('--ink2'); g.fillText(t, lx + 15, 59); lx += 30 + g.measureText(t).width; }
+  g.drawImage(img, pad, head, W, H);
+  g.fillStyle = css('--muted'); g.font = '12px "Source Sans 3", sans-serif'; g.fillText('Pace & Pulse' + (st.user ? ' · ' + st.user.name : ''), pad, chh - 10);
+  let url = cv.toDataURL('image/png'); if (url.length > 800000) url = cv.toDataURL('image/jpeg', 0.85);
+  return url;
+}
+function addChartShare() {
+  $$('.chart-card').forEach(c => {
+    let b = c.querySelector('.share-btn');
+    if (!b) {
+      const h = c.querySelector('h3'); if (!h) return;
+      let row = h.parentElement.classList.contains('ch') ? h.parentElement : null;
+      if (!row) { row = document.createElement('div'); row.className = 'ch'; row.style.marginBottom = '2px'; h.before(row); row.appendChild(h); }
+      b = document.createElement('button'); b.type = 'button'; b.className = 'share-btn ghost'; b.setAttribute('aria-label', 'Share chart');
+      b.innerHTML = ICON_SHARE + '<span>Share</span>'; b.onclick = () => shareChart(c); row.appendChild(b);
+    }
+    b.hidden = !online() || !!c.closest('#v-shared');
+  });
+}
+async function shareChart(card) {
+  openDlg('<h2>Share chart</h2><p>Making an image…</p>');
+  try { const img = await chartPng(card); await shareThing({ type: 'chart', title: (card.querySelector('h3') || {}).textContent || 'Chart', by: st.user.name, img }, 'chart'); }
+  catch (e) { openDlg(`<h2>Could not share</h2><p>${esc(e.message || e)}</p>`); }
+}
+
+/* ---------- share links ---------- */
+async function shareThing(data, label) {
+  openDlg(`<h2>Share ${esc(label)}</h2><p>Creating a link…</p>`);
+  let id;
+  try { id = await st.backend.createShare(clean(data)); }
+  catch (e) { openDlg(`<h2>Could not share</h2><p>${esc(fireMsg(e))}</p>`); return; }
+  const url = location.origin + location.pathname + '#s-' + id;
+  openDlg(`<h2>Share ${esc(label)}</h2><p>Anyone with this link can see this ${esc(label)} — nothing else. Your profile stays private.</p>
+    ${data.img ? `<img src="${data.img}" alt="">` : ''}
+    <div class="linkrow"><input id="shUrl" readonly value="${esc(url)}" aria-label="Share link"><button type="button" class="primary" id="shCopy">Copy</button></div>
+    <div class="btns" style="margin-top:12px">${navigator.share ? '<button type="button" id="shNative">Share…</button>' : ''}${data.img ? '<a class="btn" id="shImg" download="pace-pulse.png">Save image</a>' : ''}<button type="button" class="danger" id="shStop">Stop sharing</button></div>`);
+  $('#shCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(url); } catch (e) { $('#shUrl').select(); document.execCommand('copy'); }
+    $('#shCopy').textContent = 'Copied';
+  };
+  if ($('#shImg')) $('#shImg').href = data.img;
+  if ($('#shNative')) $('#shNative').onclick = async () => {
+    const o = { title: data.title, url };
+    try {
+      if (data.img) { const blob = await (await fetch(data.img)).blob(), f = new File([blob], 'pace-pulse.' + (blob.type === 'image/jpeg' ? 'jpg' : 'png'), { type: blob.type }); if (navigator.canShare && navigator.canShare({ files: [f] })) o.files = [f]; }
+      await navigator.share(o);
+    } catch (e) { /* user cancelled */ }
+  };
+  $('#shStop').onclick = async () => { try { await st.backend.deleteShare(id); closeDlg(); setStatus('Share link removed.'); } catch (e) { setStatus('Could not remove link: ' + fireMsg(e)); } };
+}
+function shareWorkout(r, e) {
+  const n = r.n, step = Math.max(1, Math.ceil(n / 200)), sp = r.summary ? null : smooth(Array.from(r.d, (x, i) => i ? (x - r.d[i - 1]) / DT : 0), 15), hrS = r.summary ? null : smooth(r.hr, 5);
+  const pace = [], hr = [];
+  if (sp) for (let i = 0; i < n; i += step) { pace.push(r.mv[i] && sp[i] > 1.2 ? Math.round(1000 / sp[i]) : 0); hr.push(hrS[i] > 0 ? Math.round(hrS[i]) : 0); }
+  shareThing({ type: 'workout', title: r.name, by: st.user.name, name: r.name, start: r.start, dist: e.dist, mov: e.mov, pace: e.pace, gap: e.gapPace, avgHR: e.avgHR, maxHR: e.maxHR,
+    ascent: e.ascent, cad: e.cad, est: e.est, load: e.load, route: routeFlat(r), step: step * DT, paceS: pace, hrS: hr.some(x => x) ? hr : null }, 'workout');
+}
+function shareProfile() {
+  const D = st.days.length ? st.days[st.days.length - 1] : null, totD = st.res.reduce((s, e) => s + (e.dist || 0), 0), totT = st.res.reduce((s, e) => s + (e.mov || 0), 0);
+  const recent = st.runs.map((r, i) => [r, st.res[i]]).slice(-10).reverse().map(([r, e]) => ({ name: r.name, start: r.start, dist: e.dist, mov: e.mov, avgHR: e.avgHR }));
+  const weeks = weekly().slice(-16).map(w => [w[0], Math.round(w[1] * U()), w[2]]);
+  shareThing({ type: 'profile', title: st.user.name, by: st.user.name, name: st.user.name, n: st.runs.length, dist: totD, mov: totT, first: st.runs.length ? st.runs[0].start : null,
+    vo2: D && D.vo2, end: D && D.end, tier: D && D.end ? tierOf(D.end) : null, recent, weeks }, 'profile');
+}
+
+/* ---------- shared view (#s-<id>) ---------- */
+async function renderShared(id) {
+  const box = $('#v-shared'); box.innerHTML = '<p class="empty">Loading…</p>';
+  const cfg = fbConfig();
+  if (!cfg) { box.innerHTML = '<p class="empty">Sharing is not set up in this copy of the app.</p>'; return; }
+  let s;
+  try { await FirebaseBackend.init(cfg); s = await FirebaseBackend.getShare(id); }
+  catch (e) { if (st.detail === id) box.innerHTML = `<p class="empty">Could not open this link. ${esc(fireMsg(e))}</p>`; return; }
+  if (st.view !== 'shared' || st.detail !== id) return;
+  if (!s) { box.innerHTML = '<p class="empty">This link was removed by its owner.</p>'; return; }
+  const by = s.by ? `Shared by ${esc(s.by)}` : 'Shared';
+  const stat = (l, v, u = '') => `<div class="stat"><span>${l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`;
+  const foot = `<p class="fine" style="margin-top:20px">${by} with Pace &amp; Pulse. <a href="#overview">Open the app</a></p>`;
+  if (s.type === 'chart') {
+    const ok = typeof s.img === 'string' && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(s.img);
+    box.innerHTML = `<div class="vh"><div><p class="eyebrow">${by}</p><h2>${esc(s.title)}</h2></div></div>${ok ? `<img class="shared-img" src="${s.img}" alt="${esc(s.title)}">` : '<p class="empty">Image missing.</p>'}${foot}`;
+  } else if (s.type === 'workout') {
+    const when = numOr(s.start) ? new Date(+s.start).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    box.innerHTML = `<div class="wd-head"><div><p class="eyebrow">${by}</p><h2>${esc(s.name)}</h2><p>${esc(when)}</p></div></div>
+      <div class="stats">${stat('Distance', fmtDist(numOr(s.dist)), uName())}${stat('Moving time', fmtDur(numOr(s.mov)))}${stat('Avg pace', fmtPace(numOr(s.pace)), '/' + uName())}
+      ${stat('Grade-adj. pace', fmtPace(numOr(s.gap)), '/' + uName())}${stat('Avg HR', numOr(s.avgHR) ? Math.round(s.avgHR) : '–', 'bpm')}${stat('Max HR', numOr(s.maxHR) ? Math.round(s.maxHR) : '–', 'bpm')}
+      ${stat('Ascent', numOr(s.ascent) != null ? Math.round(s.ascent) : '–', 'm')}${stat('Cadence', numOr(s.cad) ? Math.round(s.cad) : '–', 'spm')}${stat('VO₂max est.', numOr(s.est) ? f1(+s.est) : '–')}</div>
+      <div class="wd-grid">${Array.isArray(s.route) ? '<div class="card span2"><h3 style="margin-bottom:10px">Route</h3><div class="smap" id="shMap"></div></div>' : ''}
+      ${Array.isArray(s.paceS) && s.paceS.length ? '<div class="card chart-card"><h3>Pace</h3><div class="plot" id="shPace"></div></div>' : ''}
+      ${Array.isArray(s.hrS) ? '<div class="card chart-card"><h3>Heart rate</h3><div class="plot" id="shHr"></div></div>' : ''}</div>${foot}`;
+    if ($('#shMap')) staticMap($('#shMap'), s.route);
+    const stp = (numOr(s.step) || 2) / 60, xo = { xTime: false, xFmt: v => v + "'", tipX: v => fmtDur(v * 60), height: 190 };
+    if ($('#shPace')) {
+      const pts = s.paceS.map((v, i) => [i * stp, numOr(v) || null]), pv = pts.filter(p => p[1]).map(p => p[1]).sort((a, b) => a - b);
+      const lo = pv[Math.floor(pv.length * 0.02)], hi = pv[Math.floor(pv.length * 0.98)];
+      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+    }
+    if ($('#shHr')) plot($('#shHr'), Object.assign({}, xo, { label: 'Heart rate', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: s.hrS.map((v, i) => [i * stp, numOr(v) || null]), fmt: v => Math.round(v) + ' bpm' }] }));
+  } else if (s.type === 'profile') {
+    const rec = Array.isArray(s.recent) ? s.recent : [];
+    box.innerHTML = `<div class="card"><div class="pc-head"><span class="avatar">${esc(initials(s.name))}</span><div><p class="eyebrow">${by}</p><h3>${esc(s.name)}</h3></div></div>
+      <div class="pc-stats"><div><b>${f0(numOr(s.n))}</b><span>workouts</span></div><div><b>${fmtDist(numOr(s.dist))}</b><span>${uName()} total</span></div><div><b>${fmtDur(numOr(s.mov))}</b><span>total time</span></div></div>
+      <div class="pc-stats"><div><b>${numOr(s.vo2) ? f1(+s.vo2) : '–'}</b><span>VO₂max</span></div><div><b>${numOr(s.end) ? f0(+s.end) : '–'}</b><span>${esc(s.tier || 'Endurance score')}</span></div><div><b>${numOr(s.first) ? fmtDate(+s.first, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div></div>
+      ${Array.isArray(s.weeks) && s.weeks.length ? '<div class="card chart-card" style="margin-top:12px"><h3>Weekly distance</h3><div class="plot" id="shWeek"></div></div>' : ''}
+      ${rec.length ? `<div class="card" style="margin-top:12px"><div class="ch"><h3>Recent workouts</h3></div><div class="scroll-x"><table class="tb"><thead><tr><th>Date</th><th>Workout</th><th class="n">Dist ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th></tr></thead><tbody>${rec.map(w =>
+        `<tr><td>${numOr(w.start) ? fmtDate(+w.start, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td><td>${esc(w.name)}</td><td class="n">${fmtDist(numOr(w.dist))}</td><td class="n">${fmtDur(numOr(w.mov))}</td><td class="n">${numOr(w.avgHR) ? Math.round(w.avgHR) : '–'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}${foot}`;
+    if ($('#shWeek')) { const pts = s.weeks.map(w => [numOr(w[0]), (numOr(w[1]) || 0) / U(), numOr(w[2]) || 0]).filter(p => p[0]);
+      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+  } else box.innerHTML = '<p class="empty">Unknown shared item.</p>';
+}
+
+/* ---------- save account online ---------- */
+function saveOnlineDlg() {
+  const cfg = fbConfig(), u = st.user;
+  if (!cfg) { openDlg('<h2>Online accounts aren’t set up</h2><p>This copy of the app has no Firebase project yet. Add one under Profile → Storage → Online account setup.</p>'); return; }
+  const ready = FirebaseBackend.init(cfg).catch(e => e); // load the SDK now so Google’s popup opens straight from the click
+  let mode = 'up';
+  const draw = () => {
+    const up = mode === 'up';
+    openDlg(`<h2>Save account online</h2>
+      <p>Copies “${esc(u.name)}”, its settings and ${st.runs.length} workout${st.runs.length === 1 ? '' : 's'} to a private online account. Sign in on any device; nobody else can see it. The copy on this device stays.</p>
+      <div class="seg seg-wide" role="tablist"><button type="button" role="tab" id="soUp" aria-selected="${up}">Create account</button><button type="button" role="tab" id="soIn" aria-selected="${!up}">I have an account</button></div>
+      <form id="soF" class="form1" style="margin-top:12px">
+        ${up ? `<label for="soName">Name<input id="soName" autocomplete="name" value="${esc(u.name)}"></label>` : ''}
+        <label for="soEmail">Email<input id="soEmail" type="email" required autocomplete="email" value="${esc(u.email || '')}"></label>
+        <label for="soPass">Password<input id="soPass" type="password" required minlength="6" autocomplete="${up ? 'new-password' : 'current-password'}"></label>
+        <p class="form-err" id="soErr" hidden></p>
+        <button class="primary wide" type="submit" id="soGo">${up ? 'Create account and upload' : 'Sign in and upload'}</button>
+      </form>
+      <button type="button" class="wide" id="soG" style="margin-top:8px">Continue with Google</button>`);
+    $('#soUp').onclick = () => { mode = 'up'; draw(); }; $('#soIn').onclick = () => { mode = 'in'; draw(); };
+    $('#soF').onsubmit = ev => { ev.preventDefault(); go({ name: $('#soName') ? $('#soName').value.trim() : '', email: $('#soEmail').value.trim(), password: $('#soPass').value }); };
+    $('#soG').onclick = () => go({ google: true });
+  };
+  const go = async c => {
+    const err = $('#soErr'), btns = $$('#dlgBody button'); err.hidden = true; btns.forEach(b => b.disabled = true);
+    const say = t => { err.textContent = t; err.hidden = false; err.style.color = 'var(--ink2)'; };
+    try {
+      const r0 = await ready; if (r0 instanceof Error) throw r0;
+      const settings = Object.assign({}, DEFAULT_SETTINGS, u.settings || {});
+      if (c.google) await FirebaseBackend.signIn({ google: true });
+      else if (mode === 'up') await FirebaseBackend.signUp({ name: c.name || u.name, email: c.email, password: c.password, settings });
+      else await FirebaseBackend.signIn({ email: c.email, password: c.password });
+      if (mode !== 'up' || c.google) { const has = await FirebaseBackend._col().limit(1).get(); if (has.empty) await FirebaseBackend.updateProfile({ settings, name: FirebaseBackend.profile.name || u.name }); }
+      const list = st.runs.slice();
+      for (let i = 0; i < list.length; i += 20) { say(`Uploading workouts… ${i} of ${list.length}`); await FirebaseBackend.putWorkouts(list.slice(i, i + 20)); }
+      lsSet('pp-backend', { kind: 'firebase' }); st.backend = FirebaseBackend; closeDlg();
+      await enterUser(FirebaseBackend.user());
+      setStatus(`Account saved online. ${list.length} workout${list.length === 1 ? '' : 's'} uploaded.`);
+    } catch (e) { err.style.color = ''; err.textContent = fireMsg(e); err.hidden = false; btns.forEach(b => b.disabled = false); }
+  };
+  draw();
+}
+async function useBackend(kind) {
+  lsSet('pp-backend', { kind });
+  st.backend = await openBackend(); st.user = null;
+  showAuth(st.backend.fallbackError || undefined);
+}
+
+/* ---------- feed ---------- */
+async function loadPublished() {
+  st.published = new Set();
+  if (!online()) return;
+  try { (await st.backend.listFeed('mine')).forEach(p => st.published.add(p.wid)); if (st.view === 'workout') renderView(); } catch (e) { console.warn(e); }
+}
+function publishDlg(r, e) {
+  const on = st.published && st.published.has(r.id);
+  openDlg(`<h2>${on ? 'Update feed post' : 'Publish to feed'}</h2>
+    <p>Signed-in runners will see this workout in the feed with your name. Your profile and other workouts stay private.</p>
+    <label class="chk"><input type="checkbox" checked disabled> Name, date, distance, time and pace</label>
+    <label class="chk"><input type="checkbox" id="pbHr" ${e.avgHR ? 'checked' : 'disabled'}> Average and max heart rate</label>
+    <label class="chk"><input type="checkbox" id="pbRoute" ${r.hasGPS ? 'checked' : 'disabled'}> GPS route map <span class="opt">(shows where you started)</span></label>
+    <p class="form-err" id="pbErr" hidden></p>
+    <div class="btns" style="margin-top:8px"><button type="button" class="primary" id="pbGo">${on ? 'Update post' : 'Publish'}</button>${on ? '<button type="button" class="danger" id="pbDel">Remove from feed</button>' : ''}</div>`);
+  const fail = x => { $('#pbErr').textContent = fireMsg(x); $('#pbErr').hidden = false; };
+  $('#pbGo').onclick = async () => {
+    $('#pbGo').disabled = true;
+    const post = { wid: r.id, name: r.name, start: r.start, dist: e.dist, mov: e.mov, pace: e.pace, ascent: e.ascent };
+    if ($('#pbHr').checked) { post.avgHR = e.avgHR; post.maxHR = e.maxHR; }
+    if ($('#pbRoute').checked) post.route = routeFlat(r, 300);
+    try { await st.backend.publish(clean(post)); st.published.add(r.id); closeDlg(); setStatus(`“${r.name}” is in the feed.`); renderView(); }
+    catch (x) { $('#pbGo').disabled = false; fail(x); }
+  };
+  if ($('#pbDel')) $('#pbDel').onclick = async () => {
+    try { await st.backend.unpublish(r.id); st.published.delete(r.id); closeDlg(); setStatus(`“${r.name}” removed from the feed.`); renderView(); } catch (x) { fail(x); }
+  };
+}
+async function renderFeed() {
+  st.feedMode = st.feedMode || 'all';
+  $$('#feedMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === st.feedMode)));
+  $('#feedMode').hidden = !online();
+  const box = $('#feedList');
+  if (!online()) {
+    box.innerHTML = `<div class="card"><h3 style="margin-bottom:8px">Join the feed</h3><p class="muted" style="margin-bottom:14px">The feed shows workouts that runners publish — name, time, distance, heart rate and route. It needs an online account; your profile itself stays private.</p>
+      ${st.user && fbConfig() ? '<button type="button" class="primary" id="fdSave">Save account online</button>' : fbConfig() ? '<button type="button" class="primary" id="fdIn">Sign in or create an online account</button>' : '<p class="fine">Online accounts are not set up in this copy of the app.</p>'}</div>`;
+    if ($('#fdSave')) $('#fdSave').onclick = saveOnlineDlg;
+    if ($('#fdIn')) $('#fdIn').onclick = () => useBackend('firebase');
+    return;
+  }
+  const mode = st.feedMode; box.innerHTML = '<p class="empty">Loading feed…</p>';
+  let posts;
+  try { posts = await st.backend.listFeed(mode); } catch (e) { box.innerHTML = `<p class="empty">Could not load the feed. ${esc(fireMsg(e))}</p>`; return; }
+  if (st.view !== 'feed' || st.feedMode !== mode) return;
+  const me = st.user.id, fol = new Set(st.user.following || []);
+  if (!posts.length) {
+    box.innerHTML = `<p class="empty">${mode === 'following' ? 'Follow runners from the Everyone tab to see their workouts here.' : mode === 'mine' ? 'Nothing published yet. Open a workout and choose “Publish to feed”.' : 'No workouts published yet. Be the first: open a workout and choose “Publish to feed”.'}</p>`;
+    return;
+  }
+  box.innerHTML = posts.map((p, k) => {
+    const mine = p.uid === me;
+    return `<article class="card post"><div class="post-h"><span class="avatar">${esc(initials(p.author))}</span><div class="who"><b>${esc(p.author || 'Runner')}${mine ? ' <span class="opt">(you)</span>' : ''}</b>
+      <span>${numOr(p.start) ? new Date(+p.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span></div>
+      ${mine ? `<button type="button" class="ghost danger" data-del="${esc(p.wid)}">Remove</button>` : `<button type="button" class="${fol.has(p.uid) ? 'ghost' : 'primary'}" data-fol="${esc(p.uid)}">${fol.has(p.uid) ? 'Following' : 'Follow'}</button>`}</div>
+      <h3>${mine && p.wid ? `<a href="#w-${esc(p.wid)}" style="color:inherit">${esc(p.name)}</a>` : esc(p.name)}</h3>
+      <div class="post-stats"><div><span>Distance</span><b>${fmtDist(numOr(p.dist))} <small>${uName()}</small></b></div><div><span>Time</span><b>${fmtDur(numOr(p.mov))}</b></div><div><span>Pace</span><b>${fmtPace(numOr(p.pace))} <small>/${uName()}</small></b></div>
+      ${numOr(p.avgHR) ? `<div><span>Avg HR</span><b>${Math.round(p.avgHR)} <small>bpm</small></b></div>` : ''}${numOr(p.ascent) ? `<div><span>Ascent</span><b>${Math.round(p.ascent)} <small>m</small></b></div>` : ''}</div>
+      ${Array.isArray(p.route) ? `<div class="smap" data-k="${k}"></div>` : ''}</article>`;
+  }).join('');
+  $$('#feedList .smap').forEach(el => staticMap(el, posts[+el.dataset.k].route));
+  $$('#feedList [data-fol]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { st.user = await st.backend.follow(b.dataset.fol, !fol.has(b.dataset.fol)); renderFeed(); } catch (e) { setStatus(fireMsg(e)); b.disabled = false; }
+  });
+  $$('#feedList [data-del]').forEach(b => b.onclick = async () => {
+    if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Tap again'; return; }
+    try { await st.backend.unpublish(b.dataset.del); st.published && st.published.delete(b.dataset.del); renderFeed(); } catch (e) { setStatus(fireMsg(e)); }
+  });
+}
+function initSocial() {
+  const d = $('#dlg');
+  d.addEventListener('click', ev => { if (ev.target !== d) return; const r = d.getBoundingClientRect(); if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) d.close(); });
+  $$('#feedMode button').forEach(b => b.onclick = () => { st.feedMode = b.dataset.f; renderFeed(); });
+  $('#goOnline').onclick = () => useBackend('firebase');
+  $('#goLocal').onclick = () => useBackend('local');
+}
+// ===== END ONLINE =====
 // ===== APP =====
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1316,6 +1688,7 @@ const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: 
 const VIEWS = [
   ['overview', 'Overview', '<path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['workouts', 'Workouts', '<path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['feed', 'Feed', '<circle cx="5.5" cy="18.5" r="1.8" fill="currentColor"/><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['trends', 'Trends', '<path d="M3 20h18M5 16l4-5 4 3 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['records', 'Records', '<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['profile', 'Profile', '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
@@ -1348,17 +1721,17 @@ function setShell(app) { $('#auth').hidden = app; $('#shell').hidden = !app; }
 function loadSample() { const s = makeSample(Date.now()); st.runs = s.runs; st.sample = true; st.S = Object.assign({}, DEFAULT_SETTINGS, s.settings, { units: st.S.units || 'km' }); }
 function enterGuest() { st.user = null; st.guest = true; loadSample(); setShell(true); refresh(); }
 async function enterUser(u) {
-  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {});
+  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {}); st.published = new Set();
   setStatus('Loading workouts…');
   try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
   setShell(true); st.shown = 30; refresh();
   if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
-  maybeOfferMigration();
+  maybeOfferMigration(); loadPublished();
 }
 function showAuth(note) {
   const b = st.backend, local = b.kind === 'local';
   $('#authNote').hidden = !note; $('#authNote').textContent = note || '';
-  $('#authLocal').hidden = !local; $('#authFire').hidden = local;
+  $('#authLocal').hidden = !local; $('#authFire').hidden = local; $('#goOnline').hidden = !fbConfig();
   if (local) {
     const accts = b.accounts();
     $('#profilePick').hidden = !accts.length;
@@ -1397,7 +1770,7 @@ $('#fFire').addEventListener('submit', async ev => {
 });
 $('#aGoogle').onclick = async () => { try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
 $('#btnGuest').onclick = () => { st.pending = null; enterGuest(); location.hash = '#overview'; };
-async function signOut() { await st.backend.signOut(); st.user = null; closeMenu(); showAuth(); }
+async function signOut() { await st.backend.signOut(); st.user = null; st.published = new Set(); closeMenu(); showAuth(); }
 
 /* ---------- account menu ---------- */
 function renderChrome() {
@@ -1406,12 +1779,13 @@ function renderChrome() {
   $('#menu').innerHTML = u
     ? `<div class="who"><b>${esc(u.name)}</b><span>${esc(u.email || 'Local profile')} · ${esc(st.backend.label)}</span></div>
        <button type="button" role="menuitem" data-a="profile">Profile &amp; settings</button>
+       ${st.backend.kind === 'local' && fbConfig() ? '<button type="button" role="menuitem" data-a="online">Save account online</button>' : ''}
        ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="switch">Switch profile</button>' : ''}
        <button type="button" role="menuitem" data-a="out">${st.backend.kind === 'local' ? 'Sign out of profile' : 'Sign out'}</button>`
     : `<div class="who"><b>Guest preview</b><span>Sample athlete, nothing is saved</span></div>
        <button type="button" role="menuitem" data-a="signin">${st.backend && st.backend.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button>`;
   $$('#menu button').forEach(b => b.onclick = () => { closeMenu(); const a = b.dataset.a;
-    if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
+    if (a === 'online') saveOnlineDlg(); else if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
   const bn = $('#banner'); const fb = st.backend && st.backend.fallbackError;
   if (st.sample) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>Guest preview with a sample athlete.</b> Create a profile, then import .fit, .tcx, .gpx, .zip or the activities .csv from Garmin Connect.</span><button type="button" class="primary" id="bnGo">Create profile</button>`; $('#bnGo').onclick = () => showAuth(); }
   else if (fb) { bn.hidden = false; bn.className = 'banner warn'; bn.innerHTML = `<span class="grow">${esc(fb)}</span>`; }
@@ -1428,11 +1802,14 @@ function route() {
   const h = (location.hash || '#overview').slice(1);
   let v = h, id = null;
   if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
-  if (!['overview', 'workouts', 'workout', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (h.startsWith('s-')) { v = 'shared'; id = h.slice(2); }
+  if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (st.view === 'shared' && v !== 'shared') renderChrome();
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
   const tab = v === 'workout' ? 'workouts' : v;
   $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (v === 'shared') $('#banner').hidden = true;
   renderView();
 }
 addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
@@ -1444,6 +1821,9 @@ function renderView() {
   else if (v === 'trends') renderTrends();
   else if (v === 'records') renderRecords();
   else if (v === 'profile') renderProfile();
+  else if (v === 'feed') renderFeed();
+  else if (v === 'shared') renderShared(st.detail);
+  addChartShare();
 }
 function refresh() { compute(); renderChrome(); route(); }
 
@@ -1616,6 +1996,7 @@ function renderWorkout(id) {
   let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
     <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
     <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
+    ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
     ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName())}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm')}
@@ -1638,6 +2019,7 @@ function renderWorkout(id) {
     </div>`;
   }
   box.innerHTML = h;
+  if ($('#shareW')) { $('#shareW').onclick = () => shareWorkout(r, e); $('#pubW').onclick = () => publishDlg(r, e); }
   const del = $('#delW'); if (del) del.onclick = async () => {
     if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Tap again to delete'; return; }
     try { await st.backend.deleteWorkout(r.id); st.runs = st.runs.filter(x => x.id !== r.id); glyphCache.clear(); setStatus(`Deleted “${r.name}”.`); location.hash = '#workouts'; compute(); renderChrome(); }
@@ -1765,7 +2147,7 @@ function renderProfile() {
   $('#pCard').innerHTML = u ? `<div class="pc-head"><span class="avatar">${esc(initials(u.name))}</span><div><h3>${esc(u.name)}</h3><p>${esc(u.email || 'No email')} · ${esc(b.label)}</p></div></div>
       <div class="pc-stats"><div><b>${st.runs.length}</b><span>workouts</span></div><div><b>${fmtDist(totD)}</b><span>${uName()} total</span></div><div><b>${st.runs.length ? fmtDate(st.runs[0].start, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div>
       <form id="pEdit" class="form1" hidden><label for="pName">Name<input id="pName" required value="${esc(u.name)}"></label>${b.kind === 'local' ? `<label for="pEmail">Email<input id="pEmail" type="email" value="${esc(u.email || '')}"></label>` : ''}<div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="pCancel">Cancel</button></div></form>
-      <div class="btns" id="pBtns"><button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
+      <div class="btns" id="pBtns">${b.kind === 'local' && fbConfig() ? '<button type="button" class="primary" id="pOnline">Save account online</button>' : ''}${online() ? `<button type="button" class="primary" id="pShare">${ICON_SHARE}Share profile</button>` : ''}<button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
     : `<div class="pc-head"><span class="avatar guest">?</span><div><h3>Guest preview</h3><p>You’re viewing a sample athlete. Nothing is saved.</p></div></div>
       <div class="btns" style="margin-top:16px"><button type="button" class="primary" id="pCreate">${b && b.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button></div>`;
   if (u) {
@@ -1773,6 +2155,8 @@ function renderProfile() {
     $('#pCancel').onclick = () => { $('#pEdit').hidden = true; $('#pBtns').hidden = false; };
     $('#pEdit').onsubmit = async ev => { ev.preventDefault(); const patch = { name: $('#pName').value.trim() || u.name }; if ($('#pEmail')) patch.email = $('#pEmail').value.trim(); st.user = await b.updateProfile(patch); renderChrome(); renderProfile(); };
     if ($('#pSwitch')) $('#pSwitch').onclick = () => showAuth();
+    if ($('#pOnline')) $('#pOnline').onclick = saveOnlineDlg;
+    if ($('#pShare')) $('#pShare').onclick = shareProfile;
     $('#pOut').onclick = signOut;
   } else $('#pCreate').onclick = () => showAuth();
   // settings
@@ -1795,38 +2179,53 @@ function parseConfig(txt) {
   const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
   const c = JSON.parse(json); if (!c.apiKey || !c.projectId) throw new Error('The config needs at least apiKey and projectId.'); return c;
 }
-function renderStorage() {
-  const ch = storageChoice(), active = st.backend ? st.backend.kind : 'local';
-  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${active === 'firebase' ? 'good' : ''}"><i></i>Active: ${active === 'firebase' ? 'Firebase cloud' : 'This device'}</span></div>
-    <div class="stack">
-      <label class="radio"><input type="radio" name="bk" value="local" ${ch.kind !== 'firebase' ? 'checked' : ''}><span><b>This device</b><span>Profiles and workouts stay in this browser (IndexedDB). No account needed, no sync.</span></span></label>
-      <label class="radio"><input type="radio" name="bk" value="firebase" ${ch.kind === 'firebase' ? 'checked' : ''}><span><b>Firebase cloud</b><span>Email or Google sign-in, workouts in Firestore, synced across devices.</span></span></label>
-      <div id="fbBox" ${ch.kind === 'firebase' ? '' : 'hidden'} class="stack">
-        <label for="fbCfg" class="sm" style="font-weight:600;color:var(--ink2)">Firebase web config</label>
-        <textarea id="fbCfg" spellcheck="false" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${ch.config ? esc(JSON.stringify(ch.config, null, 2)) : ''}</textarea>
-        <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, and create a Firestore database.</p>
-        <p class="fine">Firebase needs the page served from a normal web address (for example Firebase Hosting). Inside the Claude preview, outside network calls are blocked, so the app falls back to this device.</p>
-        <details><summary>Firestore security rules</summary><div class="formula">rules_version = '2';
+const RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
+    // profiles and workouts: owner only
     match /users/{uid}/{doc=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == uid;
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // share links: anyone with the id can open one; never listed
+    match /shares/{id} {
+      allow get: if true;
+      allow list: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+    // feed: signed-in runners read; authors write their own posts
+    match /feed/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid
+                            && id == request.auth.uid + '_' + request.resource.data.wid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
   }
-}</div></details>
-      </div>
+}`;
+function renderStorage() {
+  const b = st.backend, isOn = b && b.kind === 'firebase', cfg = fbConfig();
+  const setup = FIREBASE_CONFIG ? '' : `<details${cfg ? '' : ' open'}><summary>Online account setup (Firebase)</summary><div class="stack" style="margin-top:10px">
+      <textarea id="fbCfg" spellcheck="false" aria-label="Firebase web config" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${cfg ? esc(JSON.stringify(cfg, null, 2)) : ''}</textarea>
+      <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, create a Firestore database, and add this site’s domain to Authentication → Authorized domains. To offer it to everyone, put the config in FIREBASE_CONFIG in store.js.</p>
       <p class="form-err" id="fbErr" hidden></p>
-      <div class="foot" style="margin-top:4px"><button type="button" class="primary" id="bkSave">Use this storage</button></div>
+      <div class="btns"><button type="button" id="cfgSave">Save config</button></div>
+      <details><summary>Firestore security rules</summary><div class="formula">${esc(RULES)}</div></details></div></details>`;
+  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${isOn ? 'good' : ''}"><i></i>${isOn ? 'Online account' : 'This device'}</span></div>
+    <div class="stack">
+      ${isOn ? `<p class="sub">Signed in online. Workouts sync to every device you sign in on. Your profile is private; only what you share or publish can be seen by others.</p>
+        <div class="btns"><button type="button" id="goLocalP">Use on-device profiles</button></div>`
+      : `<p class="sub">Profiles and workouts are stored in this browser only. Save the account online to sync between devices, share links and use the feed.</p>
+        ${st.user && cfg ? '<div class="btns"><button type="button" class="primary" id="saveOn">Save account online</button></div>' : ''}
+        ${!st.user && cfg ? '<div class="btns"><button type="button" id="goOnP">Sign in to an online account</button></div>' : ''}`}
+      ${setup}
     </div>`;
-  $$('input[name="bk"]').forEach(x => x.onchange = () => { $('#fbBox').hidden = x.value !== 'firebase' || !x.checked; });
-  $('#bkSave').onclick = async () => {
-    const kind = $$('input[name="bk"]').find(x => x.checked).value; $('#fbErr').hidden = true;
-    try {
-      if (kind === 'firebase') { const config = parseConfig($('#fbCfg').value); if (st.user && st.backend.kind === 'local' && st.runs.length) lsSet('pp-migrate', st.user.id); lsSet('pp-backend', { kind, config }); }
-      else lsSet('pp-backend', { kind: 'local' });
-      await boot();
-    } catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
+  if ($('#saveOn')) $('#saveOn').onclick = saveOnlineDlg;
+  if ($('#goOnP')) $('#goOnP').onclick = () => useBackend('firebase');
+  if ($('#goLocalP')) $('#goLocalP').onclick = async () => { await st.backend.signOut(); useBackend('local'); };
+  if ($('#cfgSave')) $('#cfgSave').onclick = () => {
+    $('#fbErr').hidden = true;
+    try { lsSet('pp-fbconfig', parseConfig($('#fbCfg').value)); setStatus('Firebase config saved. “Save account online” is now available.'); renderChrome(); renderProfile(); }
+    catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
   };
 }
 async function maybeOfferMigration() {
@@ -1847,7 +2246,7 @@ function renderDataCard() {
   $('#dataCard').innerHTML = `<div class="ch"><h3>Your data</h3></div>
     <dl class="kv"><dt>Workouts</dt><dd>${st.runs.length}</dd><dt>With full detail</dt><dd>${full}</dd><dt>With GPS route</dt><dd>${gps}</dd><dt>Date range</dt><dd>${st.runs.length ? fmtDate(st.runs[0].start, { day: 'numeric', month: 'short', year: '2-digit' }) + ' – ' + fmtDate(st.runs[st.runs.length - 1].start, { day: 'numeric', month: 'short', year: '2-digit' }) : '–'}</dd></dl>
     <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. Importing the same workout twice replaces it.</p>
-    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import more</label><button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
+    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import files</label>${'webkitdirectory' in HTMLInputElement.prototype && !matchMedia('(pointer: coarse)').matches ? '<label class="btn" for="folder">Import folder</label>' : ''}<button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
   const arm = (id, text, fn) => { const b = $(id); if (!b) return; b.onclick = async () => { if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = text; return; } b.disabled = true; try { await fn(); } catch (e) { setStatus(e.message); } }; };
   arm('#delAll', 'Tap again to delete all', async () => { await st.backend.clearWorkouts(); st.runs = []; glyphCache.clear(); setStatus('All workouts deleted.'); refresh(); });
   arm('#delAcct', 'Tap again to delete profile', async () => { await st.backend.deleteAccount(); st.user = null; setStatus(''); showAuth('Profile deleted.'); });
@@ -1873,7 +2272,8 @@ async function importFiles(files) {
     } catch (err) { skipped.bad++; console.warn(name, err); }
   };
   setStatus('Reading files…');
-  for (const f of files) await handle(f.name, () => f.arrayBuffer());
+  let k = 0;
+  for (const f of files) { k++; if (files.length > 1) setStatus(`Reading file ${k} of ${files.length}… ${found.length} runs found`); await handle(f.name, () => f.arrayBuffer()); }
   const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
   if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
   const byId = new Map(st.runs.map(r => [r.id, r])), toSave = []; let added = 0, upd = 0;
@@ -1885,7 +2285,7 @@ async function importFiles(files) {
   setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, updated ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
   if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
 }
-$('#file').addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); });
+['#file', '#folder'].forEach(s => $(s).addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); }));
 let dragN = 0;
 addEventListener('dragenter', ev => { if ([...(ev.dataTransfer?.types || [])].includes('Files')) { dragN++; $('#drop').hidden = false; } });
 addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#drop').hidden = true; } });
@@ -1905,9 +2305,9 @@ async function boot() {
   st.backend = await openBackend();
   const u = st.backend.user();
   if (u) await enterUser(u);
-  else if (st.backend.kind === 'firebase' || st.backend.accounts().length) showAuth();
+  else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
   else { renderChrome(); route(); }
 }
+initSocial();
 boot();
-</script>
-</body></html>
+</script></body></html>

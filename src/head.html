@@ -47,7 +47,7 @@ button:hover, .btn:hover { border-color: var(--accent); }
 .danger.armed { background: var(--crit); color: #fff; border-color: var(--crit); }
 .link { background: none; border: 0; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; padding: 8px 0; min-height: 0; }
 .wide { width: 100%; }
-#file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+#file, #folder { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 input, select, textarea { font: 15px var(--body); padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 42px; width: 100%; }
 textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
 
@@ -77,7 +77,7 @@ textarea { font: 12px/1.5 var(--mono); min-height: 120px; resize: vertical; }
   :root { --bnav-h: 62px; }
   .tabs { display: none; }
   .hide-sm { display: none; }
-  .bnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  .bnav { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 11px/1 var(--body); }
@@ -276,5 +276,35 @@ details summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var
 
 .drop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 22%, transparent); border: 3px dashed var(--accent); font: 700 2rem var(--display); color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) { .view:not([hidden]) { animation: rise .3s ease both; } }
+/* ---------- share, dialog, feed ---------- */
+.chart-card { position: relative; }
+.share-btn { min-height: 32px; padding: 6px 10px; font-size: 13px; gap: 6px; }
+.chart-card > .share-btn { position: absolute; top: 10px; right: 10px; z-index: 2; }
+.share-btn svg { width: 15px; height: 15px; }
+.dlg { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
+.dlg::backdrop { background: rgb(0 0 0 / .45); }
+.dlg h2 { font-size: 1.5rem; margin-bottom: 6px; }
+.dlg p { margin: 0 0 12px; font-size: 14px; color: var(--ink2); }
+.dlg .x { position: absolute; right: 10px; top: 10px; width: 36px; min-height: 36px; padding: 0; border: 0; font-size: 20px; background: transparent; }
+.dlg .chk { display: flex; gap: 10px; align-items: center; font-size: 14px; padding: 6px 0; }
+.dlg .chk input { width: auto; min-height: 0; accent-color: var(--accent); }
+.linkrow { display: flex; gap: 8px; } .linkrow input { flex: 1; min-width: 0; font: 13px var(--mono); }
+.dlg img { width: 100%; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px; }
+.feed { display: grid; gap: 12px; max-width: 680px; }
+.post { display: grid; gap: 12px; }
+.post-h { display: flex; gap: 12px; align-items: center; }
+.post-h .avatar { flex: none; cursor: default; }
+.post-h .who { flex: 1; min-width: 0; } .post-h .who b { display: block; } .post-h .who span { font-size: 13px; color: var(--muted); }
+.post h3 { text-transform: none; letter-spacing: 0; font-size: 1.35rem; color: var(--ink); }
+.post-stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.post-stats span { display: block; font: 600 11px/1.2 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.post-stats b { font: 600 1.35rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.smap { position: relative; width: 100%; height: clamp(200px, 45vw, 320px); border-radius: 10px; overflow: hidden; background: var(--sunk); }
+.smap .tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+.smap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+:root[data-theme="dark"] .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .smap .tiles img { filter: brightness(.75) contrast(1.1) saturate(.6); } }
+.smap .attr { position: absolute; right: 0; bottom: 0; font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 2px 6px; border-top-left-radius: 6px; color: var(--ink2); }
+.shared-img { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>

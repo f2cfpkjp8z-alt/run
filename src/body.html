@@ -32,7 +32,8 @@
           <p class="form-err" id="cErr" hidden></p>
           <button class="primary wide" type="submit">Create profile</button>
         </form>
-        <p class="fine">Stored only in this browser. Switch to Firebase in Profile → Storage to sync across devices.</p>
+        <p class="fine">Stored only in this browser. You can save the profile online later from Profile.</p>
+        <button type="button" class="wide" id="goOnline" hidden>Sign in to an online account</button>
       </div>
       <div id="authFire" hidden>
         <div class="seg seg-wide" role="tablist" aria-label="Account">
@@ -47,6 +48,7 @@
           <button class="primary wide" type="submit" id="aSubmit">Sign in</button>
         </form>
         <button type="button" class="wide" id="aGoogle">Continue with Google</button>
+        <button type="button" class="link" id="goLocal">Use profiles on this device instead</button>
       </div>
       <button type="button" class="link" id="btnGuest">Explore with a sample athlete</button>
     </div>
@@ -66,7 +68,8 @@
       <label class="btn primary" for="file" title="Import Garmin files">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11V2M4.5 5.5 8 2l3.5 3.5M2 11v3h12v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hide-sm">Import</span></label>
-      <input id="file" type="file" multiple accept=".fit,.tcx,.gpx,.csv,.zip,application/zip,application/gpx+xml,text/csv">
+      <input id="file" type="file" multiple>
+      <input id="folder" type="file" multiple webkitdirectory>
       <div class="menu-wrap">
         <button type="button" class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"></button>
         <div class="menu card" id="menu" role="menu" hidden></div>
@@ -138,6 +141,19 @@
     </div>
   </section>
 
+  <!-- FEED -->
+  <section class="view" id="v-feed" data-view="feed" hidden>
+    <div class="vh"><div><h2>Feed</h2><p class="muted">Workouts runners chose to publish. Profiles stay private.</p></div>
+      <div class="seg" id="feedMode" role="group" aria-label="Show">
+        <button type="button" data-f="all">Everyone</button><button type="button" data-f="following">Following</button><button type="button" data-f="mine">Mine</button>
+      </div>
+    </div>
+    <div class="feed" id="feedList"></div>
+  </section>
+
+  <!-- SHARED (public link) -->
+  <section class="view" id="v-shared" data-view="shared" hidden></section>
+
   <!-- PROFILE -->
   <section class="view" id="v-profile" data-view="profile" hidden>
     <div class="vh"><h2>Profile</h2></div>
@@ -199,7 +215,8 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
           <li><b>Everything:</b> Account → Data Management → <i>Export Your Data</i>, then import the .zip files inside it.</li>
           <li><b>Activity list:</b> Activities → All Activities → <i>Export CSV</i>. Summary-level only, no map.</li>
         </ul>
-        <p>Files are processed in your browser. Only the parsed workouts are saved, to the storage chosen above.</p>
+        <p>Files are processed in your browser. Only the parsed workouts are saved, to this device or your online account.</p>
+        <p>Pick many files at once (or a whole folder on desktop) — they are all imported in one go.</p>
       </div>
     </div>
     <footer>Estimates for training guidance, not a medical assessment.</footer>
@@ -207,4 +224,5 @@ h(D) = 1.04 − 0.012·D  D = HR drift % (≥ 60 min)</div>
 </main>
 <nav class="bnav" id="bnav" aria-label="Sections"></nav>
 </div>
+<dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>

@@ -3,8 +3,9 @@
 //   init() · user() · accounts() · signIn(cred) · signUp(info) · signOut()
 //   updateProfile(patch) · deleteAccount()
 //   listWorkouts() · putWorkouts(list) · deleteWorkout(id) · clearWorkouts()
-// To ship with Firebase by default, paste your web-app config here (Firebase console →
-// Project settings → Your apps → SDK setup and configuration → Config).
+// Paste your Firebase web-app config here (Firebase console → Project settings → Your apps →
+// SDK setup and configuration → Config) to offer online accounts, sharing and the feed.
+// On-device profiles stay the default; users opt in with "Save account online".
 const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
@@ -84,6 +85,7 @@ const FirebaseBackend = {
   kind: 'firebase', label: 'Firebase cloud', secure: true,
   profile: null,
   async init(config) {
+    if (this.auth) return;
     if (!window.firebase) for (const m of ['app', 'auth', 'firestore']) await loadScript(FIREBASE_SDK + 'firebase-' + m + '-compat.js');
     if (!firebase.apps.length) firebase.initializeApp(config);
     this.auth = firebase.auth(); this.fs = firebase.firestore();
@@ -113,7 +115,10 @@ const FirebaseBackend = {
     this.profile = Object.assign({}, this.profile, patch, { settings: Object.assign({}, this.profile.settings, patch.settings || {}) });
     await this.fs.collection('users').doc(this.auth.currentUser.uid).set(this.profile, { merge: true }); return this.user();
   },
-  async deleteAccount() { await this.clearWorkouts(); await this.fs.collection('users').doc(this.auth.currentUser.uid).delete(); await this.auth.currentUser.delete(); this.profile = null; },
+  async deleteAccount() {
+    const me = this.auth.currentUser.uid;
+    for (const c of ['feed', 'shares']) { const qs = await this.fs.collection(c).where('uid', '==', me).get(); for (const d of qs.docs) await d.ref.delete(); }
+    await this.clearWorkouts(); await this.fs.collection('users').doc(this.auth.currentUser.uid).delete(); await this.auth.currentUser.delete(); this.profile = null; },
   _col() { return this.fs.collection('users').doc(this.auth.currentUser.uid).collection('workouts'); },
   _enc(r) { const o = {}; for (const [k, v] of Object.entries(r)) { if (v == null || k === 'pid' || k === 'key') continue; o[k] = ArrayBuffer.isView(v) ? { __t: v.constructor.name, b: firebase.firestore.Blob.fromUint8Array(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) } : v; } return o; },
   _dec(o) { const r = {}; for (const [k, v] of Object.entries(o)) { if (v && v.__t && TYPED[v.__t]) { const u8 = v.b.toUint8Array(); r[k] = new TYPED[v.__t](u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } else r[k] = v; } return r; },
@@ -125,15 +130,33 @@ const FirebaseBackend = {
   },
   async deleteWorkout(id) { await this._col().doc(id).delete(); },
   async clearWorkouts() { const qs = await this._col().get(); for (let i = 0; i < qs.docs.length; i += 400) { const b = this.fs.batch(); qs.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit(); } },
+  // ---- sharing: shares/{id} is readable by anyone holding the link (get only, never listed) ----
+  _me() { const u = this.auth.currentUser; if (!u) throw new Error('Sign in to your online account first.'); return u.uid; },
+  async createShare(data) { const ref = this.fs.collection('shares').doc(); await ref.set(Object.assign({}, data, { uid: this._me(), createdAt: Date.now() })); return ref.id; },
+  async getShare(id) { const s = await this.fs.collection('shares').doc(id).get(); return s.exists ? s.data() : null; },
+  async deleteShare(id) { await this.fs.collection('shares').doc(id).delete(); },
+  // ---- feed: feed/{uid_workoutId}, readable by signed-in users only ----
+  async publish(post) { const me = this._me(); await this.fs.collection('feed').doc(me + '_' + post.wid).set(Object.assign({}, post, { uid: me, author: this.profile.name || 'Runner', createdAt: Date.now() })); },
+  async unpublish(wid) { await this.fs.collection('feed').doc(this._me() + '_' + wid).delete(); },
+  async listFeed(mode) {
+    const col = this.fs.collection('feed'), me = this._me(); let qs;
+    if (mode === 'mine') qs = await col.where('uid', '==', me).get();
+    else if (mode === 'following') { const f = (this.profile.following || []).slice(0, 30); if (!f.length) return []; qs = await col.where('uid', 'in', f).limit(200).get(); }
+    else qs = await col.orderBy('start', 'desc').limit(60).get();
+    return qs.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((a, b) => b.start - a.start);
+  },
+  async follow(uid, on) { const f = new Set(this.profile.following || []); if (on) f.add(uid); else f.delete(uid); return this.updateProfile({ following: [...f] }); },
 };
 
 /* ---------- backend selection ---------- */
-function storageChoice() { const c = lsGet('pp-backend', null); if (c) return c; return FIREBASE_CONFIG ? { kind: 'firebase', config: FIREBASE_CONFIG } : { kind: 'local' }; }
+// On-device storage is always the default. 'pp-backend' = { kind: 'firebase' } once a user moves online.
+function fbConfig() { const c = lsGet('pp-backend', null); return FIREBASE_CONFIG || lsGet('pp-fbconfig', null) || (c && c.config) || null; }
+function storageChoice() { const c = lsGet('pp-backend', null); return c && c.kind === 'firebase' && fbConfig() ? { kind: 'firebase', config: fbConfig() } : { kind: 'local' }; }
 async function openBackend() {
   const c = storageChoice(); LocalBackend.fallbackError = null;
-  if (c.kind === 'firebase' && c.config) {
+  if (c.kind === 'firebase') {
     try { await FirebaseBackend.init(c.config); return FirebaseBackend; }
-    catch (e) { console.warn(e); await LocalBackend.init(); LocalBackend.fallbackError = 'Could not reach Firebase, so this session uses on-device storage. ' + (e.message || ''); return LocalBackend; }
+    catch (e) { console.warn(e); await LocalBackend.init(); LocalBackend.fallbackError = 'Could not reach the online account, so this session uses on-device storage. ' + (e.message || ''); return LocalBackend; }
   }
   await LocalBackend.init(); return LocalBackend;
 }
