@@ -52,7 +52,7 @@ const WIDGETS = {
         bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ratingCol(k, 5)]) }); }
     el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
       ${rt ? `<span class="chip acc">${al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)}</span>` : `<span class="chip">Add age &amp; sex in Profile for a rating</span>`}
-      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}${al('hrmax', 'Max HR')} <span class="num">${Math.round(S.hrMaxEff)}</span> ${S.hrMax ? '(yours)' : st.hm && st.hm.source === 'detected' ? '(auto, from a run)' : st.hm && st.hm.source === 'age' ? '(auto, 220 − age)' : '(default)'}<br>Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();

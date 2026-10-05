@@ -23,7 +23,7 @@ $('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}">
 function compute() {
   const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
   const hm = HRMAX.detect(runs, S.age, S.hrMax); // HRMAXalg
-  st.detectedMax = hm.detected; st.ageMax = hm.ageMax; S.hrMaxEff = hm.eff;
+  st.hm = hm; st.detectedMax = hm.detected; st.ageMax = hm.ageMax; S.hrMaxEff = hm.eff;
   S.hrRest = S.hrRest || 55;
   if (!runs.length) { st.res = []; st.days = []; return; }
   const last = runs[runs.length - 1].start;
@@ -272,7 +272,7 @@ function renderWorkout(id) {
     ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
-    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName(), 'gap')}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm', 'hrmax')}
+    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName(), 'gap')}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) + (st.hm && st.hm.source === 'detected' && st.hm.run === r ? ' ★' : '') : '–', st.hm && st.hm.source === 'detected' && st.hm.run === r ? 'bpm · sets your max' : 'bpm', 'hrmax')}
     ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '', 'vo2')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–', '', 'vo2')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–', '', 'end')}
     ${stat('Load (TRIMP)', f0(e.load), '', 'load')}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '', 'drift')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat', 'ef')}
     ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
@@ -426,7 +426,8 @@ function renderProfile() {
   const S = st.S;
   $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fHeight').value = S.height || '';
   const bmi = S.weight && S.height ? S.weight / (S.height / 100) ** 2 : null; $('#bmiHint').textContent = bmi ? `BMI ${bmi.toFixed(1)}. Not used in VO₂max (see How it’s calculated).` : 'With weight, gives your BMI.'; $('#fUnits').value = S.units;
-  $('#hrMaxHint').textContent = `Empty = ${Math.round(S.hrMaxEff)} bpm: ` + (st.ageMax && st.ageMax >= (st.detectedMax || 0) ? `age estimate (your runs peak at ${st.detectedMax || '–'}). A measured value is more accurate.` : st.detectedMax ? 'the highest 30-s average in your runs.' : 'default until runs or age are added.');
+  $('#hrMaxHint').innerHTML = st.hm ? 'In use: ' + HRMAX.describe(st.hm) + '.' : 'Empty = automatic.';
+  $('#fHrMax').placeholder = st.hm && !S.hrMax ? 'Auto ' + Math.round(S.hrMaxEff) : 'Auto';
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
   renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
 }
@@ -570,9 +571,11 @@ async function importFiles(files) {
   if (!toSave.length) { setStatus(`No new workouts: ${dup === 1 ? 'that workout is' : `all ${dup} are`} already imported.${tail}`); return; }
   setStatus(`Saving ${toSave.length} workouts…`);
   try { await st.backend.putWorkouts(toSave); for (const id of drop) await st.backend.deleteWorkout(id); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
+  const hrBefore = st.S.hrMaxEff;
   st.runs = kept; glyphCache.clear(); st.shown = 30; refresh();
+  const hrNote = !st.S.hrMax && st.S.hrMaxEff > hrBefore && st.hm.source === 'detected' ? ` New max heart rate detected: ${Math.round(st.S.hrMaxEff)} bpm (was ${Math.round(hrBefore)}) in “${st.hm.run.name}” — VO₂max, zones and load updated.` : '';
   const lastNew = toSave.reduce((a, b) => (b.start > a.start ? b : a), toSave[0]);
-  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, added full detail to ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${dupMsg}${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
+  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, added full detail to ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${dupMsg}${hrNote}${tail}`);
   if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
 }
 ['#file', '#folder'].forEach(s => $(s).addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); }));

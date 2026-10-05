@@ -3,6 +3,18 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v10 — 2026-10-05
+  Auto max heart rate now says where it comes from and when it changes. Profile shows the value in use
+    ("200 bpm, auto — 220 − age" or "199 bpm, auto — detected in <run>, <date>"), the VO₂max card shows it,
+    the run that set it is marked ★ "sets your max", and an import that raises it says so
+    ("New max heart rate detected: 199 bpm (was 197) …"). Auto = the higher of 220 − age and the highest
+    6-second peak in your runs.
+  HRMAXalg3 → HRMAXalg4. Why: the glitch check compared runs with each other, so with only a few runs a real
+    hard effort (your Benchmark Run, 191 bpm) was thrown away as a "spike". Now each run is checked on its
+    own: a 6-s peak is a spike only if it sits more than 10 bpm above that run's 30-s peak.
+  Explanation added: height and weight are not used — they don't predict max heart rate; age does.
+  Why: so you can see which max HR every number is based on and trust that it follows your runs.
+
 v9 — 2026-10-05
   Every overview card opens its own trend page (#m-…) with 7 days / 4 weeks / Year buttons, always starting
     on 7 days: VO₂max, endurance, fitness/fatigue/form, race predictions, distance, training load,

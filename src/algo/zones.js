@@ -3,7 +3,7 @@ const ZONE = algo({
   key: 'zones', id: 'ZONEalg2', name: 'Heart-rate zones', since: 9,
   summary: 'Five intensity zones as % of max heart rate — Garmin’s default zones — and the easy/moderate/hard mix built from them.',
   steps: [
-    'Each moving second is placed in a zone by % of max heart rate (HRMAXalg3), the same boundaries Garmin uses by default.',
+    'Each moving second is placed in a zone by % of max heart rate (HRMAXalg4), the same boundaries Garmin uses by default.',
     'Intensity mix adds up the last 4 weeks: easy = Z1–Z2, moderate = Z3, hard = Z4–Z5. Most endurance coaches aim for about 80% easy (Seiler’s polarized model).',
   ],
   formula: 'Z1 < 60% ≤ Z2 < 70% ≤ Z3 < 80% ≤ Z4 < 90% ≤ Z5   (% of HRmax)',
