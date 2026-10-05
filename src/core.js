@@ -1,0 +1,553 @@
+// ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
+const DAY = 86400000;
+const DT = 2; // analysis grid, seconds
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const FIT_EPOCH = 631065600; // 1989-12-31T00:00:00Z in unix seconds
+
+/* ---------- FIT ---------- */
+const FIT_SIZE = {0:1,1:1,2:1,3:2,4:2,5:4,6:4,7:1,8:4,9:8,10:1,11:2,12:4,13:1,14:8,15:8,16:8};
+function parseFIT(buf) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 14) throw new Error('File too small to be FIT');
+  const hs = dv.getUint8(0);
+  const sig = String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11));
+  if (sig !== '.FIT') throw new Error('Not a FIT file');
+  const dataSize = dv.getUint32(4, true);
+  const end = Math.min(hs + dataSize, buf.byteLength - 0);
+  let p = hs, lastTs = 0;
+  const defs = {}, pts = [];
+  let sport = null, session = null, created = null;
+
+  function readMsg(def) {
+    const m = {};
+    for (const [num, size, bt] of def.fields) {
+      const base = bt & 0x1f, ts = FIT_SIZE[base];
+      if (p + size > buf.byteLength) { p = buf.byteLength; return m; }
+      if (ts && size === ts && ts <= 4 && base !== 7) {
+        let v;
+        if (base === 8) v = dv.getFloat32(p, def.le);
+        else if (size === 1) v = (base === 1) ? dv.getInt8(p) : dv.getUint8(p);
+        else if (size === 2) v = (base === 3) ? dv.getInt16(p, def.le) : dv.getUint16(p, def.le);
+        else v = (base === 5) ? dv.getInt32(p, def.le) : dv.getUint32(p, def.le);
+        const inval =
+          (base === 0 || base === 2 || base === 13) ? v === 0xff :
+          base === 1 ? v === 0x7f : base === 3 ? v === 0x7fff : base === 4 ? v === 0xffff :
+          base === 5 ? v === 0x7fffffff : base === 6 ? v === 0xffffffff :
+          (base === 10 || base === 11 || base === 12) ? v === 0 : base === 8 ? !isFinite(v) : false;
+        if (!inval) m[num] = v;
+      }
+      p += size;
+    }
+    p += def.devSize;
+    return m;
+  }
+  function handle(g, m) {
+    if (g === 20) {
+      if (m[253] == null) return;
+      const spd = m[73] != null ? m[73] / 1000 : m[6] != null ? m[6] / 1000 : null;
+      const alt = m[78] != null ? m[78] / 5 - 500 : m[2] != null ? m[2] / 5 - 500 : null;
+      let cad = m[4] != null ? m[4] + (m[53] != null ? m[53] / 128 : 0) : null;
+      pts.push({ ts: m[253], d: m[5] != null ? m[5] / 100 : null, hr: m[3] ?? null, alt, cad, v: spd,
+        lat: m[0] != null ? m[0] * (180 / 2147483648) : null, lon: m[1] != null ? m[1] * (180 / 2147483648) : null });
+    } else if (g === 18) {
+      session = m; if (m[5] != null) sport = m[5];
+    } else if (g === 12) {
+      if (m[0] != null && sport == null) sport = m[0];
+    } else if (g === 0) {
+      if (m[4] != null) created = m[4];
+    }
+  }
+  while (p < end) {
+    const h = dv.getUint8(p++);
+    if (h & 0x80) {
+      const def = defs[(h >> 5) & 3]; if (!def) throw new Error('Corrupt FIT (compressed header)');
+      const off = h & 31; let ts = (lastTs & ~31) + off; if (off < (lastTs & 31)) ts += 32; lastTs = ts;
+      const m = readMsg(def); m[253] = ts; handle(def.g, m); continue;
+    }
+    const lt = h & 15;
+    if (h & 0x40) {
+      p++; const le = dv.getUint8(p++) === 0; const g = dv.getUint16(p, le); p += 2;
+      const n = dv.getUint8(p++); const fields = [];
+      for (let i = 0; i < n; i++) { fields.push([dv.getUint8(p), dv.getUint8(p + 1), dv.getUint8(p + 2)]); p += 3; }
+      let devSize = 0;
+      if (h & 0x20) { const nd = dv.getUint8(p++); for (let i = 0; i < nd; i++) { devSize += dv.getUint8(p + 1); p += 3; } }
+      defs[lt] = { g, le, fields, devSize };
+    } else {
+      const def = defs[lt]; if (!def) throw new Error('Corrupt FIT (missing definition)');
+      const m = readMsg(def); if (m[253] != null) lastTs = m[253]; handle(def.g, m);
+    }
+  }
+  if (!pts.length) return null;
+  const isRun = sport == null || sport === 1;
+  const t0 = pts[0].ts;
+  // workout date/time comes from the file: session start_time, else first record, else file creation time
+  const startTs = (session && session[2] != null) ? session[2] : (t0 || created);
+  return {
+    sport: isRun ? 'running' : 'other:' + sport,
+    start: (startTs + FIT_EPOCH) * 1000,
+    pts: pts.map(q => ({ t: q.ts - startTs, d: q.d, hr: q.hr, alt: q.alt, cad: q.cad, v: q.v, lat: q.lat, lon: q.lon })),
+  };
+}
+
+/* ---------- XML (TCX / GPX) ---------- */
+const tag = (el, name) => el.getElementsByTagNameNS('*', name);
+const txt = (el, name) => { const e = tag(el, name)[0]; return e ? e.textContent.trim() : null; };
+const num = s => (s == null || s === '' ? null : (isFinite(+s) ? +s : null));
+
+function parseTCX(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (tag(doc, 'parsererror').length) throw new Error('Unreadable TCX');
+  const act = tag(doc, 'Activity')[0];
+  const sp = (act && act.getAttribute('Sport')) || 'Running';
+  const tps = tag(doc, 'Trackpoint'); const pts = []; let t0 = null;
+  for (const tp of tps) {
+    const time = txt(tp, 'Time'); if (!time) continue;
+    const ms = Date.parse(time); if (t0 == null) t0 = ms;
+    const hrEl = tag(tp, 'HeartRateBpm')[0];
+    pts.push({ t: (ms - t0) / 1000, d: num(txt(tp, 'DistanceMeters')), alt: num(txt(tp, 'AltitudeMeters')),
+      hr: hrEl ? num(txt(hrEl, 'Value')) : null, cad: num(txt(tp, 'RunCadence')) ?? num(txt(tp, 'Cadence')),
+      v: num(txt(tp, 'Speed')), lat: num(txt(tp, 'LatitudeDegrees')), lon: num(txt(tp, 'LongitudeDegrees')) });
+  }
+  if (!pts.length) return null;
+  const name = act ? txt(act, 'Notes') : null;
+  const idT = act ? Date.parse(txt(act, 'Id') || '') : NaN;
+  const start = isFinite(idT) && Math.abs(idT - t0) < 6 * 3600e3 ? idT : t0;
+  if (start !== t0) pts.forEach(q => q.t += (t0 - start) / 1000);
+  return { sport: /run/i.test(sp) ? 'running' : 'other:' + sp, start, pts, name };
+}
+
+function parseGPX(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (tag(doc, 'parsererror').length) throw new Error('Unreadable GPX');
+  const trk = tag(doc, 'trk')[0];
+  const type = trk ? txt(trk, 'type') : null;
+  const name = trk ? txt(trk, 'name') : null;
+  const pts = []; let t0 = null;
+  for (const p of tag(doc, 'trkpt')) {
+    const time = txt(p, 'time'); if (!time) continue;
+    const ms = Date.parse(time); if (t0 == null) t0 = ms;
+    pts.push({ t: (ms - t0) / 1000, d: null, lat: +p.getAttribute('lat'), lon: +p.getAttribute('lon'),
+      alt: num(txt(p, 'ele')), hr: num(txt(p, 'hr')), cad: num(txt(p, 'cad')), v: null });
+  }
+  if (!pts.length) return null;
+  const isRun = !type || /run/i.test(type);
+  return { sport: isRun ? 'running' : 'other:' + type, start: t0, pts, name: name && name.trim() };
+}
+
+/* ---------- CSV (Garmin Connect activity list) ---------- */
+function splitCSV(line) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur); return out;
+}
+const hms = s => { if (!s) return null; const parts = s.split(':').map(Number); if (parts.some(isNaN)) return null; return parts.reduce((a, b) => a * 60 + b, 0); };
+const csvNum = s => { if (s == null) return null; s = String(s).replace(/,/g, '').trim(); return s === '' || s === '--' || isNaN(+s) ? null : +s; };
+
+function parseCSV(text, units) {
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const head = splitCSV(lines[0]).map(h => h.trim().toLowerCase());
+  const col = (...names) => { for (const n of names) { const i = head.indexOf(n); if (i >= 0) return i; } return -1; };
+  const cType = col('activity type'), cDate = col('date'), cTitle = col('title'), cDist = col('distance'),
+    cTime = col('time', 'moving time', 'elapsed time'), cAvg = col('avg hr', 'average heart rate'), cMax = col('max hr', 'maximum heart rate'),
+    cAsc = col('total ascent', 'elev gain'), cCad = col('avg run cadence', 'average run cadence');
+  if (cDate < 0 || cDist < 0 || cTime < 0) throw new Error('CSV is missing Date, Distance or Time columns');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const r = splitCSV(lines[i]);
+    const type = cType >= 0 ? r[cType] : 'Running';
+    if (!/run/i.test(type || '')) continue;
+    const start = Date.parse((r[cDate] || '').replace(' ', 'T'));
+    let dist = csvNum(r[cDist]); const dur = hms(r[cTime]);
+    if (!isFinite(start) || !dist || !dur) continue;
+    dist *= units === 'mi' ? 1609.344 : 1000;
+    let asc = cAsc >= 0 ? csvNum(r[cAsc]) : null; if (asc != null && units === 'mi') asc *= 0.3048;
+    out.push({ summary: true, id: 'a' + Math.round(start / 60000), start, name: (cTitle >= 0 && r[cTitle]) || 'Run',
+      src: 'CSV', dist, dur, avgHR: cAvg >= 0 ? csvNum(r[cAvg]) : null, maxHR: cMax >= 0 ? csvNum(r[cMax]) : null,
+      ascent: asc, cad: cCad >= 0 ? csvNum(r[cCad]) : null, hrPeak: cMax >= 0 ? csvNum(r[cMax]) : null });
+  }
+  return out;
+}
+
+/* ---------- ZIP (native DecompressionStream) ---------- */
+function zipEntries(buf) {
+  const dv = new DataView(buf); let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('Unreadable ZIP archive');
+  const cnt = dv.getUint16(e + 10, true); let off = dv.getUint32(e + 16, true); const out = [];
+  for (let k = 0; k < cnt; k++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true),
+      nlen = dv.getUint16(off + 28, true), xlen = dv.getUint16(off + 30, true), clen = dv.getUint16(off + 32, true),
+      loff = dv.getUint32(off + 42, true);
+    const name = new TextDecoder().decode(new Uint8Array(buf, off + 46, nlen));
+    off += 46 + nlen + xlen + clen;
+    if (name.endsWith('/')) continue;
+    const ds = loff + 30 + dv.getUint16(loff + 26, true) + dv.getUint16(loff + 28, true);
+    out.push({ name, method, data: new Uint8Array(buf, ds, csize) });
+  }
+  return out;
+}
+async function inflateEntry(en) {
+  if (en.method === 0) return en.data.slice().buffer;
+  if (en.method !== 8) throw new Error('Unsupported compression in ' + en.name);
+  const s = new Blob([en.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return await new Response(s).arrayBuffer();
+}
+
+/* ---------- Raw track -> uniform 2 s grid ---------- */
+function hav(a, b, c, d) {
+  const R = 6371008, r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2);
+  return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * r) * Math.cos(c * r) * y * y));
+}
+function buildGrid(raw, meta) {
+  let pts = raw.pts.filter(q => isFinite(q.t) && q.t >= -5).sort((a, b) => a.t - b.t);
+  pts.forEach(q => { if (q.t < 0) q.t = 0; if (q.lat === 0 && q.lon === 0) q.lat = q.lon = null; if (q.lat != null && (!isFinite(q.lat) || Math.abs(q.lat) > 90)) q.lat = q.lon = null; });
+  pts = pts.filter((q, i) => i === 0 || q.t > pts[i - 1].t);
+  if (pts.length < 30) return null;
+  // distance: prefer device distance, else integrate speed, else GPS
+  const hasD = pts.filter(q => q.d != null).length > pts.length * 0.8;
+  if (!hasD) {
+    let acc = 0;
+    const hasV = pts.filter(q => q.v != null).length > pts.length * 0.8;
+    pts.forEach((q, i) => {
+      if (i) {
+        const pr = pts[i - 1], dt = q.t - pr.t;
+        if (hasV) acc += (q.v ?? pr.v ?? 0) * Math.min(dt, 10);
+        else if (q.lat != null && pr.lat != null) acc += hav(pr.lat, pr.lon, q.lat, q.lon);
+      }
+      q.d = acc;
+    });
+  } else { let last = 0; pts.forEach(q => { if (q.d == null || q.d < last) q.d = last; last = q.d; }); }
+  const T = pts[pts.length - 1].t, n = Math.floor(T / DT) + 1;
+  if (n < 60) return null;
+  const d = new Float32Array(n), hr = new Float32Array(n).fill(NaN), alt = new Float32Array(n).fill(NaN),
+    cad = new Float32Array(n).fill(NaN), mv = new Uint8Array(n);
+  const g0 = pts.find(q => q.lat != null && q.lon != null);
+  const lat0 = g0 ? g0.lat : null, lon0 = g0 ? g0.lon : null;
+  const dla = g0 ? new Float32Array(n).fill(NaN) : null, dlo = g0 ? new Float32Array(n).fill(NaN) : null;
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i * DT;
+    while (j < pts.length - 2 && pts[j + 1].t < t) j++;
+    const a = pts[j], b = pts[Math.min(j + 1, pts.length - 1)];
+    const span = b.t - a.t, f = span > 0 ? clamp((t - a.t) / span, 0, 1) : 0;
+    const lerp = (x, y) => x == null ? y : y == null ? x : x + (y - x) * f;
+    d[i] = lerp(a.d, b.d);
+    const gap = span > 12;
+    if (!gap) {
+      const h = lerp(a.hr, b.hr); if (h != null && h > 30 && h < 240) hr[i] = h;
+      const c = lerp(a.cad, b.cad); if (c != null && c > 0) cad[i] = c;
+      mv[i] = 1;
+    }
+    const al = lerp(a.alt, b.alt); if (al != null) alt[i] = al;
+    if (g0) { const la = lerp(a.lat, b.lat), lo = lerp(a.lon, b.lon); if (la != null && lo != null) { dla[i] = la - lat0; dlo[i] = lo - lon0; } }
+  }
+  // cadence: Garmin stores strides/min; convert to steps/min
+  let cs = 0, cn = 0; for (let i = 0; i < n; i++) if (cad[i] > 0) { cs += cad[i]; cn++; }
+  if (cn && cs / cn < 120) for (let i = 0; i < n; i++) cad[i] *= 2;
+  const hasHR = hr.some(x => x > 0), hasAlt = alt.some(x => !isNaN(x));
+  // fill alt gaps
+  if (hasAlt) { let last = NaN; for (let i = 0; i < n; i++) { if (isNaN(alt[i])) alt[i] = last; else last = alt[i]; } let first = alt.find(x => !isNaN(x)); for (let i = 0; i < n && isNaN(alt[i]); i++) alt[i] = first; }
+  // peak HR (30 s rolling mean max) for HRmax detection
+  let hrPeak = null;
+  if (hasHR) { const W = 15; for (let i = 0; i + W <= n; i++) { let s = 0, c = 0; for (let k = i; k < i + W; k++) if (hr[k] > 0) { s += hr[k]; c++; } if (c === W) hrPeak = Math.max(hrPeak || 0, s / W); } }
+  const start = raw.start;
+  const hasGPS = !!g0 && dla.filter(x => !isNaN(x)).length > n * 0.3;
+  return Object.assign({ ver: 2, id: 'a' + Math.round(start / 60000), start, n, d, hr, alt, cad, mv, hasHR, hasAlt, hrPeak,
+    hasGPS, lat0: hasGPS ? lat0 : null, lon0: hasGPS ? lon0 : null, dla: hasGPS ? dla : null, dlo: hasGPS ? dlo : null,
+    name: raw.name || defaultName(start) }, meta || {});
+}
+function defaultName(ms) { const h = new Date(ms).getHours(); return (h < 11 ? 'Morning' : h < 14 ? 'Lunch' : h < 18 ? 'Afternoon' : 'Evening') + ' Run'; }
+
+/* ---------- Physiology ---------- */
+// Minetti et al. (2002) energy cost of running vs gradient, J/kg/m; ratio to flat
+function costRatio(i) { i = clamp(i, -0.3, 0.3); return Math.max(0.45, (155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6) / 3.6); }
+// Oxygen cost of flat running (Daniels & Gilbert), v in m/s -> ml/kg/min. Shared by both VO2max models.
+const vo2Cost = v => { const m = v * 60; return Math.max(3.5, -4.60 + 0.182258 * m + 0.000104 * m * m); };
+// Daniels & Gilbert running formula
+function vdotOf(distM, sec) {
+  const t = sec / 60, v = distM / t;
+  const vo2 = -4.60 + 0.182258 * v + 0.000104 * v * v;
+  const pct = 0.8 + 0.1894393 * Math.exp(-0.012778 * t) + 0.2989558 * Math.exp(-0.1932605 * t);
+  return vo2 / pct;
+}
+function predictTime(distM, vdot) {
+  let lo = distM / 10, hi = distM / 0.8; // seconds: 10 m/s .. 0.8 m/s
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (vdotOf(distM, mid) > vdot) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+function smooth(a, w) {
+  const n = a.length, o = new Float32Array(n), h = w >> 1; let s = 0, c = 0;
+  for (let i = 0; i < Math.min(n, h); i++) if (!isNaN(a[i])) { s += a[i]; c++; }
+  for (let i = 0; i < n; i++) {
+    const add = i + h, rem = i - h - 1;
+    if (add < n && !isNaN(a[add])) { s += a[add]; c++; }
+    if (rem >= 0 && !isNaN(a[rem])) { s -= a[rem]; c--; }
+    o[i] = c ? s / c : NaN;
+  }
+  return o;
+}
+const trimpK = sex => sex === 'f' ? [0.86, 1.67] : [0.64, 1.92];
+const ZONES = [0.6, 0.7, 0.8, 0.9]; // %HRR upper bounds of Z1..Z4
+const EFFORTS = [[1000, '1 km'], [5000, '5 km'], [10000, '10 km'], [21097.5, 'Half marathon'], [42195, 'Marathon']];
+
+function analyze(r, S, vo2ref) {
+  const hrMax = S.hrMaxEff, hrRest = S.hrRest, [ka, kb] = trimpK(S.sex);
+  const hrrOf = h => (h - hrRest) / (hrMax - hrRest);
+  if (r.summary) {
+    const v = r.dist / r.dur, out = { dist: r.dist, mov: r.dur, avgHR: r.avgHR, maxHR: r.maxHR, ascent: r.ascent, cad: r.cad,
+      pace: r.dur / (r.dist / 1000), gapPace: r.dur / (r.dist / 1000), efforts: [], zones: null, dec: null, windows: [], est: null, conf: 0 };
+    if (r.avgHR) {
+      const q = clamp(hrrOf(r.avgHR), 0, 1);
+      out.load = r.dur / 60 * q * ka * Math.exp(kb * q);
+      out.ef = v * 60 / r.avgHR;
+      if (q > 0.45 && q < 0.95 && v > 1.6) { out.est = 3.5 + (vo2Cost(v) - 3.5) / q; out.conf = 0.3; }
+      if (r.dist >= 3000 && r.avgHR / hrMax >= (r.dur < 1800 ? 0.88 : 0.85)) out.efforts.push({ D: r.dist, label: 'Run', sec: r.dur, hr: r.avgHR, vdot: vdotOf(r.dist, r.dur) });
+    } else out.load = loadNoHR(r.dur, v, vo2ref, ka, kb);
+    return out;
+  }
+  const n = r.n, d = r.d, hr = r.hr, mv = r.mv;
+  const v = new Float32Array(n), g = new Float32Array(n), K = 3;
+  for (let i = 0; i < n; i++) { const a = Math.max(0, i - K), b = Math.min(n - 1, i + K); v[i] = b > a ? (d[b] - d[a]) / ((b - a) * DT) : 0; }
+  const altS = r.hasAlt ? smooth(r.alt, 15) : null;
+  if (altS) for (let i = 0; i < n; i++) { const a = Math.max(0, i - 8), b = Math.min(n - 1, i + 8), dd = d[b] - d[a]; g[i] = dd > 20 ? clamp((altS[b] - altS[a]) / dd, -0.3, 0.3) : 0; }
+  const moving = i => mv[i] && v[i] > 0.8;
+  let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0;
+  const zones = [0, 0, 0, 0, 0];
+  const vo2 = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const rat = costRatio(g[i]); vo2[i] = vo2Cost(v[i] * rat);
+    if (!moving(i)) continue;
+    mov += DT; gapS += v[i] * rat * DT;
+    if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
+    if (hr[i] > 0) {
+      hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
+      const q = clamp(hrrOf(hr[i]), 0, 1); load += DT / 60 * q * ka * Math.exp(kb * q);
+      let z = 0; while (z < 4 && q >= ZONES[z]) z++; zones[z] += DT;
+    }
+  }
+  if (altS) { let ref = altS[0]; for (let i = 1; i < n; i++) { if (altS[i] - ref > 3) { asc += altS[i] - ref; ref = altS[i]; } else if (ref - altS[i] > 3) ref = altS[i]; } }
+  const dist = d[n - 1] - d[0];
+  const gapV = mov ? gapS / mov : 0;
+  const out = { dist, mov, elapsed: (n - 1) * DT, avgHR: hn ? hs / hn : null, maxHR: hn ? maxHR : null,
+    ascent: altS ? asc : null, cad: cn ? cs / cn : null, pace: dist > 0 ? mov / (dist / 1000) : null,
+    gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
+  out.load = hn > n * 0.5 ? load : loadNoHR(mov, gapV, vo2ref, ka, kb);
+  out.ef = out.avgHR ? gapV * 60 / out.avgHR : null;
+
+  // --- steady-state windows -> anchored HR–VO2 regression ---
+  const W = 30, warm = 150, wins = [];
+  if (r.hasHR) for (let s = Math.max(warm, W); s + W <= n; s += 15) {
+    let ok = true, sv = 0, sv2 = 0, pv = 0, sh = 0, so = 0, sg = 0;
+    for (let i = s - W; i < s + W; i++) { if (!moving(i)) { ok = false; break; } }
+    if (!ok) continue;
+    for (let i = s; i < s + W; i++) { if (!(hr[i] > 0)) { ok = false; break; } sv += v[i]; sv2 += v[i] * v[i]; sh += hr[i]; so += vo2[i]; sg += g[i]; }
+    if (!ok) continue;
+    for (let i = s - W; i < s; i++) pv += v[i];
+    const mvv = sv / W, cv = Math.sqrt(Math.max(0, sv2 / W - mvv * mvv)) / mvv, pmv = pv / W;
+    const h = sh / W, q = hrrOf(h);
+    if (mvv < 1.6 || cv > 0.08 || Math.abs(mvv - pmv) / mvv > 0.08 || Math.abs(sg / W) > 0.08 || q < 0.35 || q > 0.95) continue;
+    const tMin = s * DT / 60;
+    wins.push([h, so / W, tMin <= 45 ? 1 : Math.exp(-(tMin - 45) / 60)]);
+  }
+  out.windows = wins; out.est = null; out.conf = 0;
+  if (wins.length >= 6) {
+    const fit = anchoredFit(wins, hrRest);
+    if (fit && fit.b > 0) {
+      out.est = fit.a + fit.b * hrMax; out.fit = fit;
+      const sw = wins.reduce((s, w) => s + w[2], 0);
+      out.conf = (1 - Math.exp(-sw / 15)) * clamp(1 - fit.sd / 6, 0.2, 1);
+      if (out.est < 20 || out.est > 90) { out.est = null; out.conf = 0; }
+    }
+  }
+  // --- aerobic decoupling (Pa:HR) ---
+  out.dec = null;
+  if (r.hasHR && mov >= 2400) {
+    const idx = []; for (let i = 300; i < n; i++) if (moving(i) && hr[i] > 0) idx.push(i);
+    if (idx.length > 200) {
+      const half = idx.length >> 1, ef = (a, b) => { let sv = 0, sh = 0; for (let k = a; k < b; k++) { const i = idx[k]; sv += v[i] * costRatio(g[i]); sh += hr[i]; } return sv / sh; };
+      const e1 = ef(0, half), e2 = ef(half, idx.length); out.dec = (e1 - e2) / e1 * 100;
+    }
+  }
+  // --- best efforts ---
+  out.efforts = [];
+  const pre = new Float64Array(n + 1), prc = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) { pre[i + 1] = pre[i] + (hr[i] > 0 ? hr[i] : 0); prc[i + 1] = prc[i] + (hr[i] > 0 ? 1 : 0); }
+  for (const [D, label] of EFFORTS) {
+    if (dist < D) continue;
+    let best = Infinity, bi = 0, bj = 0, i = 0;
+    for (let j = 0; j < n; j++) { while (i < j && d[j] - d[i + 1] >= D) i++; if (d[j] - d[i] >= D) { const t = (j - i) * DT; if (t < best) { best = t; bi = i; bj = j; } } }
+    if (!isFinite(best)) continue;
+    const c = prc[bj + 1] - prc[bi], ehr = c > (bj - bi) * 0.8 ? (pre[bj + 1] - pre[bi]) / c : null;
+    const e = { D, label, sec: best, hr: ehr };
+    if (D >= 3000 && ehr && ehr / hrMax >= (best < 1800 ? 0.88 : 0.85)) e.vdot = vdotOf(D, best);
+    out.efforts.push(e);
+  }
+  return out;
+}
+function loadNoHR(sec, v, vo2ref, ka, kb) { const q = clamp((vo2Cost(v) - 3.5) / ((vo2ref || 45) - 3.5), 0, 1); return sec / 60 * q * ka * Math.exp(kb * q); }
+
+// Weighted least squares of VO2 on HR with a physiological anchor (HRrest, 3.5 ml/kg/min),
+// one Huber reweighting pass for robustness.
+function anchoredFit(wins, hrRest) {
+  const solve = ws => {
+    const sw0 = ws.reduce((s, w) => s + w[2], 0);
+    const pts = ws.concat([[hrRest, 3.5, Math.max(2, 0.15 * sw0)]]);
+    let sw = 0, sx = 0, sy = 0; for (const [x, y, w] of pts) { sw += w; sx += w * x; sy += w * y; }
+    const mx = sx / sw, my = sy / sw; let sxy = 0, sxx = 0;
+    for (const [x, y, w] of pts) { sxy += w * (x - mx) * (y - my); sxx += w * (x - mx) ** 2; }
+    const b = sxy / sxx, a = my - b * mx;
+    let se = 0, sw1 = 0; for (const [x, y, w] of ws) { se += w * (y - a - b * x) ** 2; sw1 += w; }
+    return { a, b, sd: Math.sqrt(se / sw1) };
+  };
+  let f = solve(wins);
+  const c = Math.max(1.5, 1.345 * f.sd);
+  const rw = wins.map(([x, y, w]) => { const r = Math.abs(y - f.a - f.b * x); return [x, y, w * (r <= c ? 1 : c / r)]; });
+  f = solve(rw);
+  return f;
+}
+
+/* ---------- Timeline: fitness, VO2max fusion, endurance ---------- */
+const TIERS = [[0, 'Recreational'], [4000, 'Intermediate'], [5500, 'Trained'], [7000, 'Well-trained'], [8500, 'Expert'], [10000, 'Superior'], [11500, 'Elite']];
+const tierOf = e => { let t = TIERS[0]; for (const x of TIERS) if (e >= x[0]) t = x; return t[1]; };
+const fVol = H => 1 - Math.exp(-H / 4), gLong = L => 1 - Math.exp(-L / 75), hDur = D => clamp(1.04 - 0.012 * D, 0.8, 1.04);
+const RACES = [[5000, '5K', 0], [10000, '10K', 0.01], [21097.5, 'Half marathon', 0.04], [42195, 'Marathon', 0.10]];
+
+function dayStart(ms) { const x = new Date(ms); x.setHours(0, 0, 0, 0); return x.getTime(); }
+
+function fuseVO2(items, T) {
+  // items: [{t, est, conf, vdots:[...]}] sorted by t
+  let hw = 0, hs = 0, perf = null;
+  for (const it of items) {
+    if (it.t > T + DAY) break;
+    const age = (T - it.t) / DAY; if (age > 60) continue;
+    if (it.est) { const w = it.conf * Math.pow(0.5, Math.max(0, age) / 14); hw += w; hs += w * it.est; }
+    for (const vd of it.vdots) if (perf == null || vd > perf) perf = vd;
+  }
+  if (!hw && perf == null) return null;
+  if (!hw) return { v: perf, hr: null, perf };
+  const vh = hs / hw, sh = 2.5 / Math.sqrt(Math.min(hw, 4));
+  if (perf == null) return { v: vh, hr: vh, perf: null };
+  const sp = 2.0, wh = 1 / sh ** 2, wp = 1 / sp ** 2;
+  return { v: (vh * wh + perf * wp) / (wh + wp), hr: vh, perf };
+}
+
+function buildTimeline(runs, res, asOf) {
+  // runs sorted by start; res[i] analysis
+  const items = runs.map((r, i) => ({ t: r.start, est: res[i].est, conf: res[i].conf, vdots: res[i].efforts.filter(e => e.vdot).map(e => e.vdot) }));
+  const d0 = dayStart(runs[0].start), dEnd = dayStart(asOf);
+  const kC = 1 - Math.exp(-1 / 42), kA = 1 - Math.exp(-1 / 7);
+  const byDay = new Map();
+  runs.forEach((r, i) => { const k = dayStart(r.start); const o = byDay.get(k) || { load: 0, sec: 0 }; o.load += res[i].load || 0; o.sec += res[i].mov || 0; byDay.set(k, o); });
+  let sl = 0, ss = 0; for (const [k, o] of byDay) if (k < d0 + 28 * DAY) { sl += o.load; ss += o.sec; }
+  const span = Math.max(7, Math.min(28, (dEnd - d0) / DAY + 1));
+  let ctl = sl / span, atl = ctl, hrs = ss / 3600 / span * 7; const days = [];
+  let j = 0; // pointer for long-run & decoupling windows
+  for (let t = d0; t <= dEnd; t = dayStart(t + DAY * 1.5)) {
+    const o = byDay.get(t) || { load: 0, sec: 0 };
+    ctl += (o.load - ctl) * kC; atl += (o.load - atl) * kA; hrs += (o.sec / 3600 * 7 - hrs) * kC;
+    days.push({ t, ctl, atl, tsb: ctl - atl, H: hrs, load: o.load });
+  }
+  // per-day VO2 & endurance (sample every day; cost is small)
+  let lo = 0;
+  for (const day of days) {
+    const T = day.t + DAY - 1;
+    while (lo < runs.length && runs[lo].start < T - 42 * DAY) lo++;
+    let L = 0, ds = 0, dw = 0;
+    for (let i = lo; i < runs.length && runs[i].start <= T; i++) {
+      L = Math.max(L, (res[i].mov || 0) / 60);
+      if (res[i].dec != null && res[i].mov >= 3600) { ds += clamp(res[i].dec, -5, 20) * res[i].mov; dw += res[i].mov; }
+    }
+    const D = dw ? ds / dw : 7;
+    const f = fuseVO2(items, T);
+    day.vo2 = f ? f.v : null; day.vo2hr = f ? f.hr : null; day.vo2perf = f ? f.perf : null;
+    day.L = L; day.D = D; day.hasDec = dw > 0;
+    day.end = day.vo2 ? 170 * day.vo2 * Math.sqrt(fVol(day.H) * gLong(L)) * hDur(D) : null;
+  }
+  return days;
+}
+
+/* ---------- Synthetic sample athlete (deterministic) ---------- */
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function vFor(vo2) { let lo = 0, hi = 10; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (vo2Cost(m) < vo2) lo = m; else hi = m; } return lo; }
+function makeSample(today) {
+  const rnd = mulberry(42), gauss = () => { let u = 0; for (let k = 0; k < 6; k++) u += rnd(); return u - 3; };
+  const HRMAX = 189, HRREST = 50, end = dayStart(today) - DAY, weeks = 20, start = end - weeks * 7 * DAY;
+  const runs = [];
+  const plan = [ // [dow offset, kind]
+    [1, 'easy'], [3, 'tempo'], [5, 'easy'], [6, 'long']];
+  for (let w = 0; w < weeks; w++) {
+    const recov = w % 4 === 3;
+    for (const [dow, kind0] of plan) {
+      let kind = kind0;
+      if (w === 9 && dow === 5) kind = 'race5';
+      if (w === 18 && dow === 5) kind = 'race10';
+      const day = start + (w * 7 + dow) * DAY;
+      if (day > end) continue;
+      if (rnd() < 0.08) continue; // missed session
+      const frac = (day - start) / (end - start);
+      const VO2 = 46.5 + 5 * frac;
+      const p = { easy: 0.6, tempo: 0.62, long: 0.58, race5: 0.97, race10: 0.93 }[kind];
+      let mins = { easy: 42, tempo: 55, long: 70 + 55 * frac, race5: 20, race10: 41 }[kind] * (recov ? 0.7 : 1) * (0.92 + 0.16 * rnd());
+      const hilly = rnd() < 0.5, hour = kind === 'long' ? 8 : 18;
+      const runStart = day + hour * 3600000 + Math.floor(rnd() * 40) * 60000;
+      const n = Math.floor((mins + (kind.startsWith('race') ? 15 : 0)) * 60 / DT);
+      const d = new Float32Array(n), hr = new Float32Array(n), alt = new Float32Array(n), cad = new Float32Array(n), mv = new Uint8Array(n).fill(1);
+      const route = [{ len: 3200, R: 480, ph: 0.4, sq: 1.5, lat: 47.37 }, { len: 4100, R: 600, ph: 2.1, sq: 0.8, lat: 47.37 }, { len: 2400, R: 360, ph: 1.2, sq: 1.2, lat: 47.37 }][Math.floor(rnd() * 3)];
+      const dla = new Float32Array(n), dlo = new Float32Array(n);
+      let dist = 0, h = 70, drift = 0;
+      const fit = (VO2 - 3.5);
+      for (let i = 0; i < n; i++) {
+        const tm = i * DT / 60;
+        let q = p;
+        if (kind === 'tempo') { const b = tm - 12; q = (b > 0 && b < 34 && (b % 12) < 10) ? 0.86 : 0.6; }
+        if (kind.startsWith('race')) q = tm < 12 ? 0.55 : p;
+        if (tm < 3) q *= 0.85;
+        const terrain = hilly ? 18 * Math.sin(dist / 700) + 8 * Math.sin(dist / 210) : 2 * Math.sin(dist / 500);
+        const slope = hilly ? (18 / 700 * Math.cos(dist / 700) + 8 / 210 * Math.cos(dist / 210)) : 0;
+        const rat = costRatio(slope);
+        const vTarget = vFor(3.5 + q * fit);
+        const vel = Math.max(1.2, vTarget / Math.pow(rat, 0.6) * (1 + 0.02 * gauss()));
+        const vo2 = vo2Cost(vel * rat);
+        if (tm > 25) drift += DT / 60 * 0.045 * (kind === 'long' ? 1 : 0.6) * (1 - 0.6 * frac);
+        const target = HRREST + clamp((vo2 - 3.5) / fit, 0, 1.05) * (HRMAX - HRREST) + drift;
+        h += (target - h) * (1 - Math.exp(-DT / 28)) + 0.8 * gauss();
+        dist += vel * DT; d[i] = dist;
+        { const L = route.len, th = 2 * Math.PI * ((dist % L) / L), rr = route.R * (1 + 0.18 * Math.sin(3 * th + route.ph) + 0.07 * Math.sin(7 * th));
+          dla[i] = rr * Math.sin(th) / 111320; dlo[i] = rr * Math.cos(th) * route.sq / (111320 * Math.cos(route.lat * Math.PI / 180)); } hr[i] = Math.round(Math.min(HRMAX + 1, h)); alt[i] = 120 + terrain; cad[i] = Math.round(158 + 9 * (vel - 2.5) + gauss());
+      }
+      const names = { easy: 'Easy Run', tempo: 'Tempo 3×10 min', long: 'Long Run', race5: 'Park 5K Race', race10: '10K Race' };
+      // shift so the trace starts at the origin offset
+      const a0 = dla[0], o0 = dlo[0]; for (let i = 0; i < n; i++) { dla[i] -= a0; dlo[i] -= o0; }
+      runs.push({ ver: 2, id: 's' + runs.length, start: runStart, n, d, hr, alt, cad, mv, hasHR: true, hasAlt: true,
+        hasGPS: true, lat0: 47.37 + 0.004, lon0: 8.54 - 0.01, dla, dlo,
+        hrPeak: null, name: names[kind], src: 'Sample', sample: true });
+    }
+  }
+  runs.forEach(r => { let pk = 0; for (let i = 15; i < r.n; i++) { let s = 0; for (let k = i - 15; k < i; k++) s += r.hr[k]; pk = Math.max(pk, s / 15); } r.hrPeak = pk; });
+  return { runs, settings: { hrRest: HRREST, hrMax: HRMAX, age: 34, sex: 'm' } };
+}
+// ===== END CORE =====
+
+/* ---------- splits per km / mile ---------- */
+function splitsOf(r, unitM) {
+  const out = [], n = r.n, d = r.d; let i0 = 0, target = unitM;
+  const altS = r.hasAlt ? smooth(r.alt, 15) : null;
+  const seg = (a, b, len) => {
+    let mt = 0, hs = 0, hc = 0, gs = 0, cs = 0, cc = 0;
+    for (let i = a + 1; i <= b; i++) {
+      const v = (d[i] - d[i - 1]) / DT; if (!r.mv[i] || v < 0.8) continue; mt += DT;
+      if (r.hr[i] > 0) { hs += r.hr[i]; hc++; } if (r.cad[i] > 0) { cs += r.cad[i]; cc++; }
+      if (altS && i > 8 && i < n - 8) { const dd = d[i + 8] - d[i - 8]; gs += dd > 20 ? costRatio(clamp((altS[i + 8] - altS[i - 8]) / dd, -0.3, 0.3)) * DT : DT; } else gs += DT;
+    }
+    return { len, sec: mt, hr: hc ? hs / hc : null, cad: cc ? cs / cc : null, elev: altS ? altS[b] - altS[a] : null, gap: mt ? mt / (gs / mt) : null };
+  };
+  for (let i = 1; i < n; i++) if (d[i] - d[0] >= target) { out.push(seg(i0, i, unitM)); i0 = i; target += unitM; }
+  const rest = d[n - 1] - d[i0]; if (rest > unitM * 0.1) out.push(seg(i0, n - 1, rest));
+  return out;
+}

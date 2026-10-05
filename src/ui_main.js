@@ -1,0 +1,606 @@
+// ===== APP =====
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+
+const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
+  range: 182, shown: 30, view: 'overview', detail: null, q: '', yr: 'all', sort: 'new', mapMode: 'pace', pending: null, authMode: 'in' };
+
+const VIEWS = [
+  ['overview', 'Overview', '<path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['workouts', 'Workouts', '<path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+  ['trends', 'Trends', '<path d="M3 20h18M5 16l4-5 4 3 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['records', 'Records', '<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['profile', 'Profile', '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
+];
+$('#tabs').innerHTML = VIEWS.map(([k, l]) => `<a href="#${k}" data-v="${k}">${l}</a>`).join('');
+$('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${l}</a>`).join('');
+
+/* ---------- compute ---------- */
+function compute() {
+  const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
+  const peaks = runs.map(r => r.hrPeak || 0).filter(x => x > 0);
+  const tanaka = S.age ? 208 - 0.7 * S.age : 190;
+  st.detectedMax = peaks.length ? Math.round(Math.max(...peaks)) : null;
+  S.hrMaxEff = S.hrMax || st.detectedMax || tanaka;
+  S.hrRest = S.hrRest || 55;
+  if (!runs.length) { st.res = []; st.days = []; return; }
+  const last = runs[runs.length - 1].start;
+  st.asOf = Date.now() - last < 14 * DAY ? Date.now() : last;
+  st.res = runs.map(r => analyze(r, S, 45));
+  st.days = buildTimeline(runs, st.res, st.asOf);
+  const ref = st.days[st.days.length - 1].vo2 || 45; let changed = false;
+  runs.forEach((r, i) => { if (!(r.hasHR || r.avgHR)) { st.res[i] = analyze(r, S, ref); changed = true; } });
+  if (changed) st.days = buildTimeline(runs, st.res, st.asOf);
+  st.idx = new Map(runs.map((r, i) => [r.id, i]));
+}
+const dayAt = t => { const d = st.days; if (!d.length) return null; let lo = 0, hi = d.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (d[m].t <= t) lo = m; else hi = m - 1; } return d[lo]; };
+
+/* ---------- session ---------- */
+function setShell(app) { $('#auth').hidden = app; $('#shell').hidden = !app; }
+function loadSample() { const s = makeSample(Date.now()); st.runs = s.runs; st.sample = true; st.S = Object.assign({}, DEFAULT_SETTINGS, s.settings, { units: st.S.units || 'km' }); }
+function enterGuest() { st.user = null; st.guest = true; loadSample(); setShell(true); refresh(); }
+async function enterUser(u) {
+  st.user = u; st.guest = false; st.sample = false; st.S = Object.assign({}, DEFAULT_SETTINGS, u.settings || {});
+  setStatus('Loading workouts…');
+  try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
+  setShell(true); st.shown = 30; refresh();
+  if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
+  maybeOfferMigration();
+}
+function showAuth(note) {
+  const b = st.backend, local = b.kind === 'local';
+  $('#authNote').hidden = !note; $('#authNote').textContent = note || '';
+  $('#authLocal').hidden = !local; $('#authFire').hidden = local;
+  if (local) {
+    const accts = b.accounts();
+    $('#profilePick').hidden = !accts.length;
+    $('#plist').innerHTML = accts.map(p => `<button type="button" data-id="${esc(p.id)}"><span class="avatar">${esc(initials(p.name))}</span><span><b>${esc(p.name)}</b><span>${esc(p.email || 'Created ' + fmtDate(p.createdAt, { day: 'numeric', month: 'short', year: 'numeric' }))}</span></span></button>`).join('');
+    $$('#plist button').forEach(x => x.onclick = async () => enterUser(await b.signIn({ id: x.dataset.id })));
+    $('#createTitle').textContent = accts.length ? 'Create a new profile' : 'Create your profile';
+  } else setAuthMode(st.authMode);
+  setShell(false); $('#cErr').hidden = $('#aErr').hidden = true;
+  scrollTo(0, 0);
+}
+function setAuthMode(m) {
+  st.authMode = m; const up = m === 'up';
+  $('#tabIn').setAttribute('aria-selected', String(!up)); $('#tabUp').setAttribute('aria-selected', String(up));
+  $('#lName').hidden = !up; $('#aSubmit').textContent = up ? 'Create account' : 'Sign in';
+  $('#aPass').autocomplete = up ? 'new-password' : 'current-password';
+}
+$('#tabIn').onclick = () => setAuthMode('in'); $('#tabUp').onclick = () => setAuthMode('up');
+$('#fCreate').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  try {
+    const rest = parseFloat($('#cRest').value), mx = parseFloat($('#cMax').value);
+    const u = await st.backend.signUp({ name: $('#cName').value, email: $('#cEmail').value, settings: { hrRest: isFinite(rest) ? rest : 55, hrMax: isFinite(mx) ? mx : null, units: st.S.units } });
+    $('#fCreate').reset(); enterUser(u);
+  } catch (e) { $('#cErr').textContent = e.message; $('#cErr').hidden = false; }
+});
+const fireMsg = e => ({ 'auth/invalid-credential': 'Email or password is wrong.', 'auth/wrong-password': 'Email or password is wrong.', 'auth/user-not-found': 'No account with that email. Create one instead.',
+  'auth/email-already-in-use': 'That email already has an account. Sign in instead.', 'auth/weak-password': 'Use at least 6 characters for the password.', 'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
+  'auth/network-request-failed': 'Firebase could not be reached. Check your connection.' }[e.code] || e.message);
+$('#fFire').addEventListener('submit', async ev => {
+  ev.preventDefault(); $('#aErr').hidden = true;
+  try {
+    const email = $('#aEmail').value, password = $('#aPass').value;
+    const u = st.authMode === 'up' ? await st.backend.signUp({ name: $('#aName').value || email.split('@')[0], email, password, settings: { units: st.S.units } }) : await st.backend.signIn({ email, password });
+    enterUser(u);
+  } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; }
+});
+$('#aGoogle').onclick = async () => { try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
+$('#btnGuest').onclick = () => { st.pending = null; enterGuest(); location.hash = '#overview'; };
+async function signOut() { await st.backend.signOut(); st.user = null; closeMenu(); showAuth(); }
+
+/* ---------- account menu ---------- */
+function renderChrome() {
+  const u = st.user, av = $('#avatar');
+  av.textContent = u ? initials(u.name) : '?'; av.classList.toggle('guest', !u);
+  $('#menu').innerHTML = u
+    ? `<div class="who"><b>${esc(u.name)}</b><span>${esc(u.email || 'Local profile')} · ${esc(st.backend.label)}</span></div>
+       <button type="button" role="menuitem" data-a="profile">Profile &amp; settings</button>
+       ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="switch">Switch profile</button>' : ''}
+       <button type="button" role="menuitem" data-a="out">${st.backend.kind === 'local' ? 'Sign out of profile' : 'Sign out'}</button>`
+    : `<div class="who"><b>Guest preview</b><span>Sample athlete, nothing is saved</span></div>
+       <button type="button" role="menuitem" data-a="signin">${st.backend && st.backend.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button>`;
+  $$('#menu button').forEach(b => b.onclick = () => { closeMenu(); const a = b.dataset.a;
+    if (a === 'profile') location.hash = '#profile'; else if (a === 'switch' || a === 'signin') showAuth(); else if (a === 'out') signOut(); });
+  const bn = $('#banner'); const fb = st.backend && st.backend.fallbackError;
+  if (st.sample) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>Guest preview with a sample athlete.</b> Create a profile, then import .fit, .tcx, .gpx, .zip or the activities .csv from Garmin Connect.</span><button type="button" class="primary" id="bnGo">Create profile</button>`; $('#bnGo').onclick = () => showAuth(); }
+  else if (fb) { bn.hidden = false; bn.className = 'banner warn'; bn.innerHTML = `<span class="grow">${esc(fb)}</span>`; }
+  else if (!st.runs.length) { bn.hidden = false; bn.className = 'banner'; bn.innerHTML = `<span class="grow"><b>No workouts yet.</b> Import your Garmin Connect exports to start tracking. Drag files anywhere on the page, or use Import.</span><label class="btn primary" for="file">Import workouts</label>`; }
+  else bn.hidden = true;
+}
+const closeMenu = () => { $('#menu').hidden = true; $('#avatar').setAttribute('aria-expanded', 'false'); };
+$('#avatar').onclick = ev => { ev.stopPropagation(); const m = $('#menu'); m.hidden = !m.hidden; $('#avatar').setAttribute('aria-expanded', String(!m.hidden)); };
+document.addEventListener('click', ev => { if (!$('#menu').hidden && !ev.target.closest('.menu-wrap')) closeMenu(); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeMenu(); });
+
+/* ---------- router ---------- */
+function route() {
+  const h = (location.hash || '#overview').slice(1);
+  let v = h, id = null;
+  if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
+  if (!['overview', 'workouts', 'workout', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  st.view = v; st.detail = id;
+  $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
+  const tab = v === 'workout' ? 'workouts' : v;
+  $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  renderView();
+}
+addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
+function renderView() {
+  const v = st.view;
+  if (v === 'overview') renderOverview();
+  else if (v === 'workouts') renderLedger();
+  else if (v === 'workout') renderWorkout(st.detail);
+  else if (v === 'trends') renderTrends();
+  else if (v === 'records') renderRecords();
+  else if (v === 'profile') renderProfile();
+}
+function refresh() { compute(); renderChrome(); route(); }
+
+/* ---------- route glyph & map ---------- */
+const glyphCache = new Map();
+function routeGlyph(r, size = 34, pad = 3) {
+  if (!r.hasGPS) return '';
+  const key = r.id + ':' + size; if (glyphCache.has(key)) return glyphCache.get(key);
+  const k = Math.cos(r.lat0 * Math.PI / 180), step = Math.max(1, Math.floor(r.n / 120)), xs = [], ys = [];
+  for (let i = 0; i < r.n; i += step) if (!isNaN(r.dla[i])) { xs.push(r.dlo[i] * k); ys.push(-r.dla[i]); }
+  if (xs.length < 2) return '';
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), s = (size - 2 * pad) / Math.max(x1 - x0, y1 - y0, 1e-9);
+  const ox = (size - (x1 - x0) * s) / 2, oy = (size - (y1 - y0) * s) / 2;
+  const d = xs.map((x, i) => (i ? 'L' : 'M') + ((x - x0) * s + ox).toFixed(1) + ',' + ((ys[i] - y0) * s + oy).toFixed(1)).join('');
+  glyphCache.set(key, d); return d;
+}
+const wx = (lo, z) => (lo + 180) / 360 * 256 * 2 ** z;
+const wy = (la, z) => { const s = Math.sin(la * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256 * 2 ** z; };
+function mapView(el, r, mode) {
+  const n = r.n, step = Math.max(1, Math.floor(n / 1800)), I = [];
+  for (let i = 0; i < n; i += step) if (!isNaN(r.dla[i])) I.push(i);
+  if (I.length < 2) { el.outerHTML = '<p class="empty">No GPS positions in this file.</p>'; return; }
+  const LA = i => r.lat0 + r.dla[i], LO = i => r.lon0 + r.dlo[i];
+  // values to colour by
+  const sp = new Float32Array(n); for (let i = 0; i < n; i++) { const a = Math.max(0, i - 5), b = Math.min(n - 1, i + 5); sp[i] = b > a ? (r.d[b] - r.d[a]) / ((b - a) * DT) : 0; }
+  const val = i => mode === 'hr' ? (r.hr[i] > 0 ? r.hr[i] : NaN) : mode === 'elev' ? r.alt[i] : (r.mv[i] && sp[i] > 1 ? sp[i] : NaN);
+  const vs = I.map(val).filter(x => !isNaN(x)).sort((a, b) => a - b);
+  const lo = vs[Math.floor(vs.length * 0.05)] ?? 0, hi = vs[Math.floor(vs.length * 0.95)] ?? 1;
+  const ramp = ['--z1', '--z2', '--z3', '--z4', '--z5'].map(css);
+  const bin = i => { const v = val(i); if (isNaN(v) || hi <= lo) return 2; return clamp(Math.floor((v - lo) / (hi - lo) * 5), 0, 4); };
+  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180; for (const i of I) { const a = LA(i), o = LO(i); la0 = Math.min(la0, a); la1 = Math.max(la1, a); lo0 = Math.min(lo0, o); lo1 = Math.max(lo1, o); }
+  el.classList.add('no-tiles');
+  el.innerHTML = `<div class="tiles"></div><svg aria-label="Route map"></svg><div class="ctrl"><button type="button" data-z="1" aria-label="Zoom in">+</button><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="0" aria-label="Fit route" style="font-size:13px">⤢</button></div><div class="attr" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div><div class="tip" hidden></div>`;
+  const tilesEl = el.querySelector('.tiles'), svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  let W = el.clientWidth, H = el.clientHeight, z, cx, cy;
+  const fit = () => { W = el.clientWidth; H = el.clientHeight; for (z = 18; z > 2; z--) if (wx(lo1, z) - wx(lo0, z) <= W - 60 && wy(la0, z) - wy(la1, z) <= H - 60) break; cx = (wx(lo0, z) + wx(lo1, z)) / 2; cy = (wy(la0, z) + wy(la1, z)) / 2; };
+  const unit = U(); let P = [];
+  const draw = () => {
+    const x0 = cx - W / 2, y0 = cy - H / 2, N = 2 ** z; let im = '';
+    for (let tx = Math.floor(x0 / 256); tx <= Math.floor((x0 + W) / 256); tx++) for (let ty = Math.floor(y0 / 256); ty <= Math.floor((y0 + H) / 256); ty++) {
+      if (ty < 0 || ty >= N) continue; const wxp = ((tx % N) + N) % N;
+      im += `<img alt="" draggable="false" src="https://tile.openstreetmap.org/${z}/${wxp}/${ty}.png" style="left:${tx * 256 - x0}px;top:${ty * 256 - y0}px">`;
+    }
+    tilesEl.innerHTML = im;
+    tilesEl.querySelectorAll('img').forEach(img => { img.onload = () => { el.classList.remove('no-tiles'); el.querySelector('.attr').hidden = false; }; img.onerror = () => img.remove(); });
+    P = I.map(i => [wx(LO(i), z) - x0, wy(LA(i), z) - y0, i]);
+    let halo = '', segs = '', cur = -1, d = '';
+    for (let k = 0; k < P.length; k++) {
+      const [x, y, i] = P[k], b = bin(i), gap = k && !r.mv[i] && !r.mv[P[k - 1][2]];
+      if (b !== cur || gap) { if (d) segs += `<path d="${d}" stroke="${ramp[cur]}"/>`; d = k && !gap ? `M${P[k - 1][0].toFixed(1)},${P[k - 1][1].toFixed(1)}` : ''; cur = b; }
+      d += (d ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+    }
+    if (d) segs += `<path d="${d}" stroke="${ramp[cur]}"/>`;
+    halo = `<path d="${P.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('')}" stroke="var(--surface)" stroke-width="7" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
+    let marks = ''; const total = r.d[n - 1] - r.d[0], every = total / unit > 30 ? 5 : 1;
+    if (z >= 13) for (let km = every; km * unit < total; km += every) { const p = P.find(q => r.d[q[2]] - r.d[0] >= km * unit); if (p) marks += `<g transform="translate(${p[0]},${p[1]})"><circle r="8" fill="var(--surface)" stroke="var(--ink2)" stroke-width="1.2"/><text text-anchor="middle" y="3.5" style="font:600 9px var(--mono);fill:var(--ink)">${km}</text></g>`; }
+    const s = P[0], e = P[P.length - 1];
+    svg.innerHTML = halo + `<g fill="none" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${segs}</g>` + marks +
+      `<circle cx="${e[0]}" cy="${e[1]}" r="7" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="7" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/><g class="hl"></g>`;
+  };
+  fit(); draw();
+  // interactions: drag to pan, buttons / double-click to zoom, hover for details
+  let drag = null;
+  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.setPointerCapture(ev.pointerId); el.style.cursor = 'grabbing'; });
+  el.addEventListener('pointerup', () => { drag = null; el.style.cursor = ''; });
+  el.addEventListener('pointermove', ev => {
+    if (drag) { cx = drag.cx - (ev.clientX - drag.x); cy = drag.cy - (ev.clientY - drag.y); draw(); tip.hidden = true; return; }
+    const rc = el.getBoundingClientRect(), px = ev.clientX - rc.left, py = ev.clientY - rc.top;
+    let best = null, bd = 26; for (const p of P) { const dd = Math.hypot(p[0] - px, p[1] - py); if (dd < bd) { bd = dd; best = p; } }
+    const hl = svg.querySelector('.hl'); if (!best) { tip.hidden = true; hl.innerHTML = ''; return; }
+    const i = best[2]; hl.innerHTML = `<circle cx="${best[0]}" cy="${best[1]}" r="6" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`;
+    tip.innerHTML = `<b>${fmtDist(r.d[i] - r.d[0])} ${uName()}</b> · ${fmtDur(i * DT)}<br>${sp[i] > 1 ? fmtPace(1000 / sp[i]) + '/' + uName() : '–'}${r.hr[i] > 0 ? ' · ' + Math.round(r.hr[i]) + ' bpm' : ''}${!isNaN(r.alt[i]) ? ' · ' + Math.round(r.alt[i]) + ' m' : ''}`;
+    tip.hidden = false; tip.style.left = Math.min(W - tip.offsetWidth - 4, best[0] + 12) + 'px'; tip.style.top = Math.max(4, best[1] - tip.offsetHeight - 10) + 'px';
+  });
+  el.addEventListener('pointerleave', () => { tip.hidden = true; });
+  const zoom = (dz, px = W / 2, py = H / 2) => { const nz = clamp(z + dz, 2, 18); if (nz === z) return; const f = 2 ** (nz - z); cx = (cx - W / 2 + px) * f - px + W / 2; cy = (cy - H / 2 + py) * f - py + H / 2; z = nz; draw(); };
+  el.querySelectorAll('.ctrl button').forEach(b => b.onclick = () => { const dz = +b.dataset.z; if (dz) zoom(dz); else { fit(); draw(); } });
+  el.addEventListener('dblclick', ev => { const rc = el.getBoundingClientRect(); zoom(1, ev.clientX - rc.left, ev.clientY - rc.top); });
+  return { lo, hi };
+}
+
+/* ---------- overview ---------- */
+function renderOverview() {
+  const u = st.user;
+  $('#hello').textContent = u ? `Hi, ${u.name.split(' ')[0]}` : 'Sample athlete';
+  if (!st.runs.length) { ['#tVo2', '#tEnd', '#tLoad', '#tRace'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see this</p>'); $('#latest').innerHTML = '<p class="empty">No workouts yet</p>'; ['#oVo2', '#oWeek', '#breakdown'].forEach(s => $(s).innerHTML = ''); $('#asof').textContent = ''; return; }
+  const days = st.days, D = days[days.length - 1], ago = dayAt(D.t - 28 * DAY);
+  $('#asof').textContent = (Date.now() - st.asOf > DAY ? 'As of your last workout, ' : 'Today, ') + fmtDate(st.asOf, { day: 'numeric', month: 'long', year: 'numeric' });
+  if (D.vo2) {
+    const cat = vo2Category(D.vo2), dv = ago && ago.vo2 && ago !== D ? D.vo2 - ago.vo2 : null;
+    $('#tVo2').innerHTML = `<span class="label">VO₂max</span><div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>
+      ${cat ? `<span class="chip ${cat.cls}"><i></i>${cat.name} for age ${st.S.age}</span>` : `<span class="chip">Add your age in Profile for a rating</span>`}
+      <div class="sub">${dv != null ? `<span class="${dv >= 0.05 ? 'delta-up' : dv <= -0.05 ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(1)}</span> in 4 weeks</span><br>` : ''}
+      Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${st.S.weight ? ` · <span class="num">${(D.vo2 * st.S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+  } else $('#tVo2').innerHTML = `<span class="label">VO₂max</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`;
+  if (D.end) {
+    const tier = tierOf(D.end), pos = clamp((D.end - 2000) / 11000, 0, 1) * 100, de = ago && ago.end && ago !== D ? D.end - ago.end : null;
+    $('#tEnd').innerHTML = `<span class="label">Endurance score</span><div class="big">${f0(D.end)}</div><span class="chip acc"><i></i>${tier}</span>
+      <div><div class="scale"><b style="left:${pos}%"></b></div><div class="scale-l"><span>Recreational</span><span>Trained</span><span>Elite</span></div></div>
+      ${de != null ? `<div class="sub"><span class="${de > 20 ? 'delta-up' : de < -20 ? 'delta-down' : ''}">${de >= 0 ? '▲' : '▼'} <span class="num">${f0(Math.abs(de))}</span> in 4 weeks</span></div>` : ''}`;
+  } else $('#tEnd').innerHTML = `<span class="label">Endurance score</span><p class="sub">Appears once a VO₂max estimate exists.</p>`;
+  const tsb = D.tsb, state = tsb > 5 ? ['Fresh', 'good'] : tsb > -10 ? ['Balanced', 'acc'] : tsb > -25 ? ['Building', 'warn'] : ['Overreaching', 'crit'];
+  $('#tLoad').innerHTML = `<span class="label">Training status</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${state[1]}"><i></i>${state[0]}</span>
+    <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
+  if (D.vo2) {
+    const k = Math.sqrt(fVol(D.H) * gLong(D.L));
+    $('#tRace').innerHTML = `<span class="label">Race predictions</span><dl class="kv">${RACES.map(([dist, name, pen]) => { const t = predictTime(dist, D.vo2) * (1 + pen * (1 - k)); return `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`; }).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
+  } else $('#tRace').innerHTML = `<span class="label">Race predictions</span><p class="sub">Appear once a VO₂max estimate exists.</p>`;
+  // latest workout
+  const li = st.runs.length - 1, r = st.runs[li], e = st.res[li], g = routeGlyph(r, 300, 18);
+  $('#latest').innerHTML = `<div class="ch"><h3>Latest workout</h3><a href="#w-${esc(r.id)}" class="sm">Open details →</a></div>
+    <div class="latest">${g ? `<a class="mini-map" href="#w-${esc(r.id)}" aria-label="Open route"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet"><path d="${g}" fill="none" stroke="var(--surface)" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"/><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg></a>` : ''}
+    <div><p style="margin:0;font-weight:700;font-size:18px">${esc(r.name)}</p><p class="muted sm" style="margin-bottom:12px">${new Date(r.start).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+    <dl class="kv"><dt>Distance</dt><dd>${fmtDist(e.dist)} ${uName()}</dd><dt>Time</dt><dd>${fmtDur(e.mov)}</dd><dt>Pace</dt><dd>${fmtPace(e.pace)}/${uName()}</dd><dt>Avg HR</dt><dd>${e.avgHR ? Math.round(e.avgHR) + ' bpm' : '–'}</dd><dt>VO₂max est.</dt><dd>${e.est ? f1(e.est) : '–'}</dd><dt>Load</dt><dd>${f0(e.load)}</dd></dl></div></div>`;
+  const xMax = D.t, xMin = Math.max(days[0].t, xMax - 182 * DAY), inR = t => t >= xMin - DAY && t <= xMax + DAY;
+  plot($('#oVo2'), { label: 'VO2max, last 6 months', xMin, xMax, height: 200, series: [{ name: 'VO₂max', kind: 'area', color: css('--accent'), pts: days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
+  const wpts = weekly().filter(p => p[0] >= xMax - 16 * 7 * DAY);
+  $('#oWkCap').textContent = `Last 16 weeks, ${uName()}`;
+  plot($('#oWeek'), { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMin, xMax: xMax + 3 * DAY, zero: true, height: 200, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
+  renderBreakdown(D);
+}
+function weekly() {
+  const wk = new Map();
+  st.runs.forEach((r, i) => { const d = new Date(dayStart(r.start)); const k = d.getTime() - ((d.getDay() + 6) % 7) * DAY; const w = wk.get(k) || { d: 0, n: 0, t: 0 }; w.d += st.res[i].dist || 0; w.t += st.res[i].mov || 0; w.n++; wk.set(k, w); });
+  return [...wk.entries()].sort((a, b) => a[0] - b[0]).map(([k, w]) => [k + 3.5 * DAY, w.d / U(), w.n, w.t]);
+}
+function renderBreakdown(D) {
+  if (!D || !D.vo2) { $('#breakdown').innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }
+  const items = [
+    ['Aerobic ceiling', `${f1(D.vo2)} ml/kg/min`, clamp((D.vo2 - 30) / 45, 0, 1), 'VO₂max. Raised by intervals and threshold work.'],
+    ['Training volume', `${fmtDur(D.H * 3600)} / week`, fVol(D.H), `At ${Math.round(fVol(D.H) * 100)}% of its ceiling. More easy hours lift it most.`],
+    ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
+    ['Durability', D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
+  ];
+  $('#breakdown').innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
+}
+
+/* ---------- workouts ledger ---------- */
+function renderLedger() {
+  const years = [...new Set(st.runs.map(r => new Date(r.start).getFullYear()))].sort((a, b) => b - a);
+  $('#yr').innerHTML = `<option value="all">All years</option>` + years.map(y => `<option value="${y}">${y}</option>`).join(''); $('#yr').value = years.includes(+st.yr) ? st.yr : 'all';
+  $('#q').value = st.q; $('#sort').value = st.sort;
+  const q = st.q.trim().toLowerCase();
+  let idx = st.runs.map((r, i) => i).filter(i => (st.yr === 'all' || new Date(st.runs[i].start).getFullYear() === +st.yr) && (!q || st.runs[i].name.toLowerCase().includes(q)));
+  const by = { new: (a, b) => st.runs[b].start - st.runs[a].start, old: (a, b) => st.runs[a].start - st.runs[b].start, dist: (a, b) => st.res[b].dist - st.res[a].dist, vo2: (a, b) => (st.res[b].est || 0) - (st.res[a].est || 0) };
+  idx.sort(by[st.sort]);
+  const totD = idx.reduce((s, i) => s + (st.res[i].dist || 0), 0), totT = idx.reduce((s, i) => s + (st.res[i].mov || 0), 0);
+  $('#runCount').textContent = `${idx.length} workouts · ${fmtDist(totD)} ${uName()} · ${fmtDur(totT)}`;
+  const head = `<div class="ledger-head"><span></span><span>Date</span><span>Workout</span><span>Dist ${uName()}</span><span>Time</span><span>Pace</span><span>Avg HR</span><span>VO₂ est.</span><span>Load</span></div>`;
+  const rows = idx.slice(0, st.shown).map(i => { const r = st.runs[i], e = st.res[i], g = routeGlyph(r);
+    return `<a class="row" href="#w-${esc(r.id)}"><span class="glyph">${g ? `<svg viewBox="0 0 34 34"><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 34 34"><path d="M7 21h5l3-8 4 10 2-5h6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}</span>
+      <span class="d">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}<span>${new Date(r.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span></span>
+      <span class="nm">${esc(r.name)}${r.summary ? '<small>CSV</small>' : ''}</span>
+      <span class="m"><em>Dist</em>${fmtDist(e.dist)}</span><span class="m"><em>Time</em>${fmtDur(e.mov)}</span><span class="m"><em>Pace</em>${fmtPace(e.pace)}</span>
+      <span class="m xs"><em>Avg HR</em>${e.avgHR ? Math.round(e.avgHR) : '–'}</span><span class="m xs"><em>VO₂ est.</em>${e.est ? f1(e.est) : '–'}</span><span class="m xs"><em>Load</em>${f0(e.load)}</span></a>`; }).join('');
+  $('#ledger').innerHTML = idx.length ? head + rows + (idx.length > st.shown ? `<button type="button" class="more" id="more">Show ${Math.min(30, idx.length - st.shown)} more</button>` : '') : '<p class="empty">No workouts match.</p>';
+  const mo = $('#more'); if (mo) mo.onclick = () => { st.shown += 30; renderLedger(); };
+}
+$('#q').addEventListener('input', ev => { st.q = ev.target.value; st.shown = 30; renderLedger(); });
+$('#yr').addEventListener('change', ev => { st.yr = ev.target.value; st.shown = 30; renderLedger(); });
+$('#sort').addEventListener('change', ev => { st.sort = ev.target.value; renderLedger(); });
+
+/* ---------- workout detail ---------- */
+function renderWorkout(id) {
+  const box = $('#v-workout'), i = st.idx ? st.idx.get(id) : undefined;
+  if (i == null) { box.innerHTML = `<a class="btn back" href="#workouts">← Workouts</a><p class="empty">This workout isn’t in the current profile.</p>`; return; }
+  const r = st.runs[i], e = st.res[i], S = st.S, D = dayAt(r.start);
+  const stat = (l, v, u = '') => `<div class="stat"><span>${l}</span><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`;
+  const when = new Date(r.start).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
+    <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
+    <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
+    ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
+    <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
+    ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName())}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) : '–', 'bpm')}
+    ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–')}
+    ${stat('Load (TRIMP)', f0(e.load))}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat')}
+    ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
+  if (r.summary) h += `<p class="sub" style="margin-top:12px">This workout came from the activity list CSV, so only totals are known. Import its .fit file for the map, charts and splits.</p>`;
+  else {
+    h += `<div class="wd-grid">
+      <div class="card span2"><div class="map-bar"><h3>Route</h3>${r.hasGPS ? `<div class="seg" id="mapMode" role="group" aria-label="Colour route by"><button type="button" data-m="pace">Pace</button><button type="button" data-m="hr">Heart rate</button><button type="button" data-m="elev">Elevation</button></div>` : ''}</div>
+        ${r.hasGPS ? `<div class="map" id="map"></div><div class="map-bar" style="margin:10px 0 0"><span class="ramp" id="ramp"></span><a class="sm" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${(r.lat0 + r.dla[0]).toFixed(5)}&mlon=${(r.lon0 + r.dlo[0]).toFixed(5)}#map=14/${(r.lat0 + r.dla[0]).toFixed(5)}/${(r.lon0 + r.dlo[0]).toFixed(5)}">Open start point in OpenStreetMap ↗</a></div>`
+          : `<p class="empty">${r.ver >= 2 ? 'No GPS in this file (treadmill or indoor run).' : 'Imported before maps were supported. Import the file again to add its route.'}</p>`}</div>
+      <div class="card chart-card"><h3>Pace</h3><p class="cap">Per ${uName()}, 30-second smoothing. Faster is higher.</p><div class="plot" id="dPace"></div></div>
+      <div class="card chart-card"><h3>Heart rate</h3><p class="cap">bpm with zone boundaries.</p><div class="plot" id="dHr"></div></div>
+      ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
+      <div class="card chart-card"><h3>How this run’s VO₂max was found</h3><p class="cap">Each dot is a steady 60-s window. The line runs from your resting point to max HR; where it ends is the estimate.</p><div class="plot" id="dFit"></div></div>
+      <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
+      <div class="card"><div class="ch"><h3>Time in heart-rate zones</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
+      ${e.efforts.length ? `<div class="card"><div class="ch"><h3>Best efforts in this run</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
+    </div>`;
+  }
+  box.innerHTML = h;
+  const del = $('#delW'); if (del) del.onclick = async () => {
+    if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = 'Tap again to delete'; return; }
+    try { await st.backend.deleteWorkout(r.id); st.runs = st.runs.filter(x => x.id !== r.id); glyphCache.clear(); setStatus(`Deleted “${r.name}”.`); location.hash = '#workouts'; compute(); renderChrome(); }
+    catch (err) { setStatus('Could not delete: ' + err.message); }
+  };
+  if (r.summary) return;
+  requestAnimationFrame(() => drawWorkout(r, e, S));
+}
+function drawWorkout(r, e, S) {
+  if (r.hasGPS) {
+    const syncMode = () => $$('#mapMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === st.mapMode)));
+    const paint = () => { const m = $('#map'); if (!m) return; const fresh = m.cloneNode(false); m.replaceWith(fresh); const rg = mapView(fresh, r, st.mapMode);
+      const lab = { pace: ['slower', 'faster', v => fmtPace(1000 / v)], hr: ['lower', 'higher', v => Math.round(v) + ' bpm'], elev: ['lower', 'higher', v => Math.round(v) + ' m'] }[st.mapMode];
+      if (rg) $('#ramp').innerHTML = `<span>${lab[0]} ${lab[2](rg.lo)}</span><i style="background:linear-gradient(90deg,var(--z1),var(--z2),var(--z3),var(--z4),var(--z5))"></i><span>${lab[2](rg.hi)} ${lab[1]}</span>`; };
+    $$('#mapMode button').forEach(b => b.onclick = () => { st.mapMode = b.dataset.m; syncMode(); paint(); });
+    syncMode(); paint();
+  }
+  const n = r.n, step = Math.max(1, Math.ceil(n / 500)), sp = smooth(Array.from(r.d, (x, i) => i ? (x - r.d[i - 1]) / DT : 0), 15), hrS = smooth(r.hr, 5);
+  const pace = [], hr = [], alt = []; const altS = r.hasAlt ? smooth(r.alt, 9) : null;
+  for (let i = 0; i < n; i += step) { const t = i * DT / 60; pace.push([t, r.mv[i] && sp[i] > 1.2 ? 1000 / sp[i] : null]); hr.push([t, hrS[i] > 0 ? hrS[i] : null]); if (altS) alt.push([t, altS[i]]); }
+  const tf = v => fmtDur(v * 60), pv = pace.filter(p => p[1] != null).map(p => p[1]).sort((a, b) => a - b);
+  const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
+  const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
+  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, series: [{ name: 'Pace', kind: 'line', color: css('--accent'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+  const hrr = q => S.hrRest + q * (S.hrMaxEff - S.hrRest);
+  plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
+    empty: 'No heart-rate data in this file.',
+    extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
+  if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }], yFmt: v => Math.round(v) }));
+  if (e.fit && e.windows.length) {
+    const a = e.fit.a, b = e.fit.b;
+    plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: S.hrRest - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est + 3, height: 220, label: 'Heart rate versus oxygen cost',
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--accent'), pts: e.windows.map(w => [w[0], w[1], w[2]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> → ${p[1].toFixed(1)} ml/kg/min` }],
+      yFmt: v => v.toFixed(0),
+      extra: (sx, sy) => `<line x1="${sx(S.hrRest)}" y1="${sy(a + b * S.hrRest)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="${sx(S.hrRest)}" cy="${sy(3.5)}" r="5" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/><text class="ax" x="${sx(S.hrRest) + 8}" y="${sy(3.5) - 6}">rest ${S.hrRest}</text>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+        <text x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end" style="font:600 13px var(--mono);fill:var(--ink)">${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
+  } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
+  const sp2 = splitsOf(r, U());
+  if (sp2.length) {
+    const ps = sp2.map(s => s.sec / (s.len / 1000)), pmin = Math.min(...ps), pmax = Math.max(...ps);
+    $('#dSplits').innerHTML = `<table class="tb"><thead><tr><th>${uName()}</th><th class="n">Pace</th><th class="n">GAP</th><th class="n">HR</th><th class="n">Elev</th><th class="n">Cad</th></tr></thead><tbody>${sp2.map((s, k) => {
+      const p = s.sec / (s.len / 1000), w = pmax > pmin ? 35 + 65 * (pmax - p) / (pmax - pmin) : 70;
+      return `<tr><td>${s.len < U() * 0.99 ? (s.len / U()).toFixed(2) : k + 1}</td><td class="n barcell"><i style="width:${w}%"></i><span>${fmtPace(p)}</span></td><td class="n">${fmtPace(s.gap / (s.len / 1000))}</td><td class="n">${s.hr ? Math.round(s.hr) : '–'}</td><td class="n">${s.elev != null ? (s.elev >= 0 ? '+' : '') + Math.round(s.elev) : '–'}</td><td class="n">${s.cad ? Math.round(s.cad) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+  } else $('#dSplits').innerHTML = '<p class="empty">Too short for splits.</p>';
+  if (e.zones) {
+    const tot = e.zones.reduce((a, b) => a + b, 0) || 1, lab = ['Z1 Recovery', 'Z2 Endurance', 'Z3 Tempo', 'Z4 Threshold', 'Z5 VO₂max'], lim = ['<60%', '60–70%', '70–80%', '80–90%', '>90%'];
+    $('#dZones').innerHTML = e.zones.map((z, k) => `<div class="bar-row"><span>${lab[k]} <span class="sub">${lim[k]}${k ? ' · ' + Math.round(hrr([0, 0.6, 0.7, 0.8, 0.9][k])) + '+ bpm' : ''}</span></span><span class="v">${fmtDur(z)} · ${Math.round(z / tot * 100)}%</span><div class="track"><i style="width:${Math.max(1, z / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('');
+  } else $('#dZones').innerHTML = '<p class="empty">No heart-rate data.</p>';
+  if ($('#dEff')) $('#dEff').innerHTML = effTable(e.efforts.map(x => ({ e: x, r })), false);
+}
+function effTable(rows, withRun = true) {
+  return `<table class="tb"><thead><tr><th>Distance</th><th class="n">Time</th><th class="n">Pace</th><th class="n">Avg HR</th><th class="n">VDOT</th>${withRun ? '<th>Workout</th>' : ''}</tr></thead><tbody>${rows.map(({ e, r }) =>
+    `<tr><td>${e.label}</td><td class="n">${fmtDur(e.sec)}</td><td class="n">${fmtPace(e.sec / (e.D / 1000))}</td><td class="n">${e.hr ? Math.round(e.hr) : '–'}</td><td class="n">${e.vdot ? f1(e.vdot) : '–'}</td>${withRun ? `<td><a href="#w-${esc(r.id)}">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}</a></td>` : ''}</tr>`).join('')}</tbody></table>`;
+}
+
+/* ---------- trends ---------- */
+function renderTrends() {
+  const days = st.days;
+  if (!days.length) { ['#cVo2', '#cEnd', '#cLoad', '#cWeek', '#cEf', '#cDec'].forEach(s => $(s).innerHTML = '<p class="empty">Import workouts to see trends.</p>'); $('#monthly').innerHTML = ''; return; }
+  const xMax = days[days.length - 1].t, xMin = st.range ? Math.max(days[0].t, xMax - st.range * DAY) : days[0].t;
+  const inR = t => t >= xMin - DAY && t <= xMax + DAY, dd = days.filter(d => inR(d.t));
+  const runPts = [], efPts = [], decPts = [];
+  st.runs.forEach((r, i) => { const e = st.res[i]; if (!inR(r.start)) return;
+    if (e.est) runPts.push([r.start, e.est, e.conf, r.name]);
+    if (e.ef && !r.summary) efPts.push([r.start, e.ef, 0, r.name]);
+    if (e.dec != null) decPts.push([r.start, clamp(e.dec, -5, 25), Math.min(1, e.mov / 7200), r.name]); });
+  const roll = pts => { const out = []; for (const p of pts) { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); out.push([p[0], w[w.length >> 1]]); } return out; };
+  plot($('#cVo2'), { label: 'VO2max over time', xMin, xMax, series: [
+    { name: 'Run estimate', kind: 'dots', color: css('--accent'), pts: runPts, r: p => 3 + 3 * p[2], op: 0.35, fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
+    { name: 'Blended VO₂max', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }], yFmt: v => v.toFixed(0) });
+  plot($('#cEnd'), { label: 'Endurance score over time', xMin, xMax, series: [{ name: 'Endurance score', kind: 'area', color: css('--accent'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }], yFmt: v => v >= 1000 ? (v / 1000) + 'k' : v,
+    extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
+  plot($('#cLoad'), { label: 'Fitness and fatigue', xMin, xMax, zero: true, series: [
+    { name: 'Fitness (42-day)', kind: 'line', color: css('--accent'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
+    { name: 'Fatigue (7-day)', kind: 'line', color: css('--s2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+  $('#capWeek').textContent = `Total running distance per week, ${uName()}.`;
+  plot($('#cWeek'), { label: 'Weekly distance', xMin, xMax: xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--accent'), pts: weekly().filter(p => inR(p[0])), fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
+  plot($('#cEf'), { label: 'Aerobic efficiency', xMin, xMax, empty: 'Needs runs with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--accent'), pts: efPts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
+    { name: '28-day median', kind: 'line', color: css('--accent'), w: 2.5, pts: roll(efPts), fmt: v => v.toFixed(2) }], yFmt: v => v.toFixed(2) });
+  plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, empty: 'Needs runs of 40+ minutes with heart rate.', series: [
+    { name: 'Run', kind: 'dots', color: css('--s2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: v => v + '%',
+    extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5%</text>` : '' });
+  // monthly
+  const mon = new Map();
+  st.runs.forEach((r, i) => { const dt = new Date(r.start), k = dt.getFullYear() * 12 + dt.getMonth(); const m = mon.get(k) || { n: 0, d: 0, t: 0, hs: 0, hc: 0, l: 0 }; const e = st.res[i];
+    m.n++; m.d += e.dist || 0; m.t += e.mov || 0; m.l += e.load || 0; if (e.avgHR) { m.hs += e.avgHR * e.mov; m.hc += e.mov; } mon.set(k, m); });
+  const ks = [...mon.keys()].sort((a, b) => b - a), dmax = Math.max(...ks.map(k => mon.get(k).d));
+  $('#monthly').innerHTML = `<table class="tb"><thead><tr><th>Month</th><th class="n">Runs</th><th class="n">Distance ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th><th class="n">Load</th><th class="n">VO₂max</th><th class="n">Endurance</th></tr></thead><tbody>${ks.map(k => {
+    const m = mon.get(k), y = Math.floor(k / 12), mo = k % 12, endT = Math.min(new Date(y, mo + 1, 0).getTime(), st.asOf), D = dayAt(endT);
+    return `<tr><td>${new Date(y, mo, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</td><td class="n">${m.n}</td><td class="n barcell"><i style="width:${m.d / dmax * 100}%"></i><span>${fmtDist(m.d)}</span></td><td class="n">${fmtDur(m.t)}</td><td class="n">${m.hc ? Math.round(m.hs / m.hc) : '–'}</td><td class="n">${f0(m.l)}</td><td class="n">${D && D.vo2 ? f1(D.vo2) : '–'}</td><td class="n">${D && D.end ? f0(D.end) : '–'}</td></tr>`; }).join('')}</tbody></table>`;
+}
+function syncRange() { $$('#range button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.d === st.range))); }
+$$('#range button').forEach(b => b.onclick = () => { st.range = +b.dataset.d; lsSet('pp-range', st.range); syncRange(); renderTrends(); });
+
+/* ---------- records ---------- */
+function renderRecords() {
+  if (!st.runs.length) { $('#recTop').innerHTML = '<p class="empty">Import workouts to see records.</p>'; $('#recBest').innerHTML = $('#recProg').innerHTML = ''; return; }
+  const best = {}, prog = [];
+  st.runs.forEach((r, i) => { for (const e of st.res[i].efforts) { if (e.label === 'Run') continue; const b = best[e.label]; if (!b || e.sec < b.e.sec) { if (b) prog.push({ e, r, prev: b.e.sec }); else prog.push({ e, r, prev: null }); best[e.label] = { e, r }; } } });
+  let longest = 0, mostUp = 0, totD = 0, totT = 0; st.res.forEach((e, i) => { if (e.dist > st.res[longest].dist) longest = i; if ((e.ascent || 0) > (st.res[mostUp].ascent || 0)) mostUp = i; totD += e.dist || 0; totT += e.mov || 0; });
+  const wk = weekly(), bw = wk.reduce((b, w) => w[1] > b[1] ? w : b, wk[0]);
+  let vmax = null, emax = null; for (const d of st.days) { if (d.vo2 && (!vmax || d.vo2 > vmax.vo2)) vmax = d; if (d.end && (!emax || d.end > emax.end)) emax = d; }
+  const card = (l, v, u, p, href) => `<div class="card rec"><span class="label">${l}</span><div class="val">${v}<small>${u}</small></div><p>${href ? `<a href="${href}">${p}</a>` : p}</p></div>`;
+  const R = i => st.runs[i];
+  $('#recTop').innerHTML =
+    card('Highest VO₂max', vmax ? f1(vmax.vo2) : '–', 'ml/kg/min', vmax ? fmtDate(vmax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Needs heart-rate data') +
+    card('Best endurance score', emax ? f0(emax.end) : '–', emax ? tierOf(emax.end) : '', emax ? fmtDate(emax.t, { day: 'numeric', month: 'short', year: 'numeric' }) : '') +
+    card('Longest run', fmtDist(st.res[longest].dist), uName(), `${esc(R(longest).name)} · ${fmtDate(R(longest).start, { day: 'numeric', month: 'short', year: 'numeric' })}`, '#w-' + R(longest).id) +
+    card('Biggest week', bw ? bw[1].toFixed(1) : '–', uName(), bw ? `Week of ${fmtDate(bw[0] - 3.5 * DAY, { day: 'numeric', month: 'short', year: 'numeric' })} · ${bw[2]} runs` : '') +
+    card('Most climbing', st.res[mostUp].ascent ? Math.round(st.res[mostUp].ascent) : '–', 'm', `${esc(R(mostUp).name)}`, '#w-' + R(mostUp).id) +
+    card('All time', fmtDist(totD), uName(), `${st.runs.length} workouts · ${fmtDur(totT)} since ${fmtDate(st.runs[0].start, { month: 'short', year: 'numeric' })}`);
+  const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
+  $('#recBest').innerHTML = rows.length ? effTable(rows) : '<p class="empty">No efforts found.</p>';
+  $('#recProg').innerHTML = prog.length ? `<table class="tb"><thead><tr><th>Date</th><th>Distance</th><th class="n">Time</th><th class="n">Improved by</th></tr></thead><tbody>${prog.slice().reverse().slice(0, 40).map(({ e, r, prev }) =>
+    `<tr><td><a href="#w-${esc(r.id)}">${fmtDate(r.start, { day: 'numeric', month: 'short', year: 'numeric' })}</a></td><td>${e.label}</td><td class="n">${fmtDur(e.sec)}</td><td class="n">${prev ? '−' + fmtDur(prev - e.sec) : 'first'}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">No efforts yet.</p>';
+}
+
+/* ---------- profile ---------- */
+function renderProfile() {
+  const u = st.user, b = st.backend;
+  const totD = st.res.reduce((s, e) => s + (e.dist || 0), 0);
+  $('#pCard').innerHTML = u ? `<div class="pc-head"><span class="avatar">${esc(initials(u.name))}</span><div><h3>${esc(u.name)}</h3><p>${esc(u.email || 'No email')} · ${esc(b.label)}</p></div></div>
+      <div class="pc-stats"><div><b>${st.runs.length}</b><span>workouts</span></div><div><b>${fmtDist(totD)}</b><span>${uName()} total</span></div><div><b>${st.runs.length ? fmtDate(st.runs[0].start, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div>
+      <form id="pEdit" class="form1" hidden><label for="pName">Name<input id="pName" required value="${esc(u.name)}"></label>${b.kind === 'local' ? `<label for="pEmail">Email<input id="pEmail" type="email" value="${esc(u.email || '')}"></label>` : ''}<div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="pCancel">Cancel</button></div></form>
+      <div class="btns" id="pBtns"><button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
+    : `<div class="pc-head"><span class="avatar guest">?</span><div><h3>Guest preview</h3><p>You’re viewing a sample athlete. Nothing is saved.</p></div></div>
+      <div class="btns" style="margin-top:16px"><button type="button" class="primary" id="pCreate">${b && b.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button></div>`;
+  if (u) {
+    $('#pEditB').onclick = () => { $('#pEdit').hidden = false; $('#pBtns').hidden = true; $('#pName').focus(); };
+    $('#pCancel').onclick = () => { $('#pEdit').hidden = true; $('#pBtns').hidden = false; };
+    $('#pEdit').onsubmit = async ev => { ev.preventDefault(); const patch = { name: $('#pName').value.trim() || u.name }; if ($('#pEmail')) patch.email = $('#pEmail').value.trim(); st.user = await b.updateProfile(patch); renderChrome(); renderProfile(); };
+    if ($('#pSwitch')) $('#pSwitch').onclick = () => showAuth();
+    $('#pOut').onclick = signOut;
+  } else $('#pCreate').onclick = () => showAuth();
+  // settings
+  const S = st.S;
+  $('#fHrMax').value = S.hrMax || ''; $('#fHrRest').value = S.hrRest; $('#fAge').value = S.age || ''; $('#fSex').value = S.sex; $('#fWeight').value = S.weight || ''; $('#fUnits').value = S.units;
+  $('#hrMaxHint').textContent = st.detectedMax ? `Empty = ${st.detectedMax} bpm, the highest 30-s average in your runs.` : 'Empty = detect from your runs.';
+  $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
+  renderStorage(); renderDataCard();
+}
+$('#setForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : null; };
+  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), units: $('#fUnits').value };
+  Object.assign(st.S, settings);
+  if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
+  glyphCache.clear(); compute(); renderChrome(); renderProfile();
+});
+function parseConfig(txt) {
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('Paste the firebaseConfig object, including the braces.');
+  const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
+  const c = JSON.parse(json); if (!c.apiKey || !c.projectId) throw new Error('The config needs at least apiKey and projectId.'); return c;
+}
+function renderStorage() {
+  const ch = storageChoice(), active = st.backend ? st.backend.kind : 'local';
+  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${active === 'firebase' ? 'good' : ''}"><i></i>Active: ${active === 'firebase' ? 'Firebase cloud' : 'This device'}</span></div>
+    <div class="stack">
+      <label class="radio"><input type="radio" name="bk" value="local" ${ch.kind !== 'firebase' ? 'checked' : ''}><span><b>This device</b><span>Profiles and workouts stay in this browser (IndexedDB). No account needed, no sync.</span></span></label>
+      <label class="radio"><input type="radio" name="bk" value="firebase" ${ch.kind === 'firebase' ? 'checked' : ''}><span><b>Firebase cloud</b><span>Email or Google sign-in, workouts in Firestore, synced across devices.</span></span></label>
+      <div id="fbBox" ${ch.kind === 'firebase' ? '' : 'hidden'} class="stack">
+        <label for="fbCfg" class="sm" style="font-weight:600;color:var(--ink2)">Firebase web config</label>
+        <textarea id="fbCfg" spellcheck="false" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${ch.config ? esc(JSON.stringify(ch.config, null, 2)) : ''}</textarea>
+        <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, and create a Firestore database.</p>
+        <p class="fine">Firebase needs the page served from a normal web address (for example Firebase Hosting). Inside the Claude preview, outside network calls are blocked, so the app falls back to this device.</p>
+        <details><summary>Firestore security rules</summary><div class="formula">rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /users/{uid}/{doc=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid;
+    }
+  }
+}</div></details>
+      </div>
+      <p class="form-err" id="fbErr" hidden></p>
+      <div class="foot" style="margin-top:4px"><button type="button" class="primary" id="bkSave">Use this storage</button></div>
+    </div>`;
+  $$('input[name="bk"]').forEach(x => x.onchange = () => { $('#fbBox').hidden = x.value !== 'firebase' || !x.checked; });
+  $('#bkSave').onclick = async () => {
+    const kind = $$('input[name="bk"]').find(x => x.checked).value; $('#fbErr').hidden = true;
+    try {
+      if (kind === 'firebase') { const config = parseConfig($('#fbCfg').value); if (st.user && st.backend.kind === 'local' && st.runs.length) lsSet('pp-migrate', st.user.id); lsSet('pp-backend', { kind, config }); }
+      else lsSet('pp-backend', { kind: 'local' });
+      await boot();
+    } catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
+  };
+}
+async function maybeOfferMigration() {
+  const pid = lsGet('pp-migrate', null); if (!pid || st.backend.kind !== 'firebase' || !st.user) return;
+  const prof = LocalBackend.accounts().find(p => p.id === pid); if (!prof) { lsSet('pp-migrate', null); return; }
+  await LocalBackend.init(); const saved = lsGet('pp-session', null); lsSet('pp-session', pid); const list = await LocalBackend.listWorkouts(); lsSet('pp-session', saved);
+  if (!list.length) { lsSet('pp-migrate', null); return; }
+  const bn = $('#banner'); bn.hidden = false; bn.className = 'banner';
+  bn.innerHTML = `<span class="grow"><b>${list.length} workouts</b> from the on-device profile “${esc(prof.name)}” can be copied to your Firebase account.</span><button type="button" class="primary" id="mgGo">Copy to cloud</button><button type="button" class="ghost" id="mgNo">Not now</button>`;
+  $('#mgNo').onclick = () => { lsSet('pp-migrate', null); renderChrome(); };
+  $('#mgGo').onclick = async () => { $('#mgGo').disabled = true; setStatus('Copying workouts to Firebase…');
+    try { await st.backend.putWorkouts(list); lsSet('pp-migrate', null); st.runs = await st.backend.listWorkouts(); setStatus(`Copied ${list.length} workouts to Firebase.`); refresh(); }
+    catch (e) { setStatus('Copy failed: ' + e.message); $('#mgGo').disabled = false; } };
+}
+function renderDataCard() {
+  const u = st.user;
+  const full = st.runs.filter(r => !r.summary).length, gps = st.runs.filter(r => r.hasGPS).length;
+  $('#dataCard').innerHTML = `<div class="ch"><h3>Your data</h3></div>
+    <dl class="kv"><dt>Workouts</dt><dd>${st.runs.length}</dd><dt>With full detail</dt><dd>${full}</dd><dt>With GPS route</dt><dd>${gps}</dd><dt>Date range</dt><dd>${st.runs.length ? fmtDate(st.runs[0].start, { day: 'numeric', month: 'short', year: '2-digit' }) + ' – ' + fmtDate(st.runs[st.runs.length - 1].start, { day: 'numeric', month: 'short', year: '2-digit' }) : '–'}</dd></dl>
+    <p class="fine" style="margin-top:12px">Each workout is dated by the start time inside its file, so re-importing never shifts your history. Importing the same workout twice replaces it.</p>
+    ${u ? `<div class="btns" style="margin-top:14px"><label class="btn" for="file">Import more</label><button type="button" class="danger" id="delAll">Delete all workouts</button><button type="button" class="danger" id="delAcct">Delete profile</button></div>` : ''}`;
+  const arm = (id, text, fn) => { const b = $(id); if (!b) return; b.onclick = async () => { if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = text; return; } b.disabled = true; try { await fn(); } catch (e) { setStatus(e.message); } }; };
+  arm('#delAll', 'Tap again to delete all', async () => { await st.backend.clearWorkouts(); st.runs = []; glyphCache.clear(); setStatus('All workouts deleted.'); refresh(); });
+  arm('#delAcct', 'Tap again to delete profile', async () => { await st.backend.deleteAccount(); st.user = null; setStatus(''); showAuth('Profile deleted.'); });
+}
+
+/* ---------- import ---------- */
+const setStatus = t => { $('#status').textContent = t; };
+async function importFiles(files) {
+  if (!st.user) { st.pending = files; showAuth(`Create a profile${st.backend.kind === 'firebase' ? ' or sign in' : ''} to keep the ${files.length} file${files.length === 1 ? '' : 's'} you chose. The import continues right after.`); return; }
+  const found = [], skipped = { other: 0, bad: 0 }; let seen = 0;
+  const handle = async (name, getBuf) => {
+    const ext = name.toLowerCase().split('.').pop();
+    if (!['fit', 'tcx', 'gpx', 'csv', 'zip'].includes(ext)) return;
+    seen++; if (seen % 5 === 0) { setStatus(`Reading files… ${seen} so far, ${found.length} runs found`); await new Promise(r => setTimeout(r)); }
+    try {
+      const buf = await getBuf();
+      if (ext === 'zip') { for (const en of zipEntries(buf)) await handle(en.name, () => inflateEntry(en)); return; }
+      if (ext === 'csv') { found.push(...parseCSV(new TextDecoder().decode(buf), st.S.units)); return; }
+      const raw = ext === 'fit' ? parseFIT(buf) : ext === 'tcx' ? parseTCX(new TextDecoder().decode(buf)) : parseGPX(new TextDecoder().decode(buf));
+      if (!raw) { skipped.bad++; return; }
+      if (raw.sport !== 'running') { skipped.other++; return; }
+      const g = buildGrid(raw, { src: ext.toUpperCase() }); if (g) found.push(g); else skipped.bad++;
+    } catch (err) { skipped.bad++; console.warn(name, err); }
+  };
+  setStatus('Reading files…');
+  for (const f of files) await handle(f.name, () => f.arrayBuffer());
+  const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
+  if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
+  const byId = new Map(st.runs.map(r => [r.id, r])), toSave = []; let added = 0, upd = 0;
+  for (const r of found) { const ex = byId.get(r.id); if (ex && !ex.summary && r.summary) continue; if (ex) upd++; else added++; byId.set(r.id, r); toSave.push(r); }
+  setStatus(`Saving ${toSave.length} workouts…`);
+  try { await st.backend.putWorkouts(toSave); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
+  st.runs = [...byId.values()]; glyphCache.clear(); st.shown = 30; refresh();
+  const lastNew = toSave.reduce((a, b) => (b.start > a.start ? b : a), toSave[0]);
+  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, updated ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${tail}${!st.S.hrMax ? ' Check your resting and max heart rate in Profile for best accuracy.' : ''}`);
+  if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
+}
+$('#file').addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); });
+let dragN = 0;
+addEventListener('dragenter', ev => { if ([...(ev.dataTransfer?.types || [])].includes('Files')) { dragN++; $('#drop').hidden = false; } });
+addEventListener('dragleave', () => { if (--dragN <= 0) { dragN = 0; $('#drop').hidden = true; } });
+addEventListener('dragover', ev => ev.preventDefault());
+addEventListener('drop', ev => { ev.preventDefault(); dragN = 0; $('#drop').hidden = true; const fs = [...(ev.dataTransfer?.files || [])]; if (fs.length) importFiles(fs); });
+
+/* ---------- resize / theme ---------- */
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends'].includes(st.view)) renderView(); }, 200); });
+const repaint = () => { if (!$('#shell').hidden) renderView(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', repaint);
+new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- boot ---------- */
+async function boot() {
+  const r = lsGet('pp-range', 182); if ([90, 182, 365, 0].includes(r)) st.range = r; syncRange();
+  if (!st.backend) enterGuest(); // instant first frame with the sample athlete
+  st.backend = await openBackend();
+  const u = st.backend.user();
+  if (u) await enterUser(u);
+  else if (st.backend.kind === 'firebase' || st.backend.accounts().length) showAuth();
+  else { renderChrome(); route(); }
+}
+boot();
