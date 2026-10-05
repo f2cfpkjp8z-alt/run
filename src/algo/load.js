@@ -1,4 +1,4 @@
-// ===== LOADalg1 — training load (Banister TRIMP) =====
+// ===== LOADalg2 — training load (Banister TRIMP) =====
 const LOAD = algo({
   key: 'load', id: 'LOADalg2', name: 'Training load (TRIMP)', since: 8,
   summary: 'How much training stress a workout carried: time weighted by how hard your heart worked.',

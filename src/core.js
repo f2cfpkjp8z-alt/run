@@ -318,7 +318,7 @@ function analyze(r, S, vo2ref) {
     if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
     if (hr[i] > 0) {
       hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
-      const q = clamp(hrrOf(hr[i]), 0, 1); load += LOAD.trimp(DT, q, S.sex); zones[ZONE.of(q)] += DT;
+      const q = clamp(hrrOf(hr[i]), 0, 1); load += LOAD.trimp(DT, q, S.sex); zones[ZONE.of(hr[i] / hrMax)] += DT;
     }
   }
   // ascent: smoothed altitude with 3 m hysteresis

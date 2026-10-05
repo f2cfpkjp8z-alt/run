@@ -178,6 +178,10 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
+/* clickable overview cards */
+.w > .card.go { cursor: pointer; transition: border-color .15s, transform .15s; }
+.w > .card.go:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.dash.editing .w > .card.go { cursor: default; }
 /* gauge */
 .gauge { width: 100%; max-width: 260px; display: block; margin: 0 auto; overflow: visible; }
 .gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }

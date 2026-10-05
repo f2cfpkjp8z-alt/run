@@ -22,7 +22,7 @@ $('#bnav').innerHTML = VIEWS.map(([k, l, ic]) => `<a href="#${k}" data-v="${k}">
 /* ---------- compute ---------- */
 function compute() {
   const runs = st.runs.sort((a, b) => a.start - b.start), S = st.S;
-  const hm = HRMAX.detect(runs.map(r => r.hrPeak || 0), S.age, S.hrMax); // HRMAXalg
+  const hm = HRMAX.detect(runs, S.age, S.hrMax); // HRMAXalg
   st.detectedMax = hm.detected; st.ageMax = hm.ageMax; S.hrMaxEff = hm.eff;
   S.hrRest = S.hrRest || 55;
   if (!runs.length) { st.res = []; st.days = []; return; }
@@ -124,11 +124,12 @@ function route() {
   let v = h, id = null;
   if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
   if (h.startsWith('s-')) { v = 'shared'; id = h.slice(2); }
-  if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (h.startsWith('m-')) { v = 'metric'; id = h.slice(2); if (st.view !== 'metric' || st.detail !== id) st.mRange = 7; } // always opens on 7 days
+  if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'metric', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
   if (st.view === 'shared' && v !== 'shared') renderChrome();
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
-  const tab = v === 'workout' ? 'workouts' : v;
+  const tab = v === 'workout' ? 'workouts' : v === 'metric' ? 'overview' : v;
   $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (v === 'shared') $('#banner').hidden = true;
   renderView();
@@ -144,6 +145,7 @@ function renderView() {
   else if (v === 'profile') renderProfile();
   else if (v === 'feed') renderFeed();
   else if (v === 'shared') renderShared(st.detail);
+  else if (v === 'metric') renderMetric(st.detail);
   addChartShare();
 }
 function refresh() { compute(); renderChrome(); route(); }
@@ -286,7 +288,7 @@ function renderWorkout(id) {
       ${r.hasAlt ? `<div class="card chart-card"><h3>Elevation</h3><p class="cap">Metres, smoothed.</p><div class="plot" id="dAlt"></div></div>` : ''}
       <div class="card chart-card"><h3>${al('vo2', 'How this run’s VO₂max was found')}</h3><p class="cap">Each dot is a steady 60-s window: its oxygen cost (from grade-adjusted pace) against heart rate. The dashed line is the median estimate; where it meets your max HR is this run’s VO₂max.</p><div class="plot" id="dFit"></div></div>
       <div class="card"><div class="ch"><h3>Splits</h3><span class="muted sm">per ${uName()}</span></div><div class="scroll-x" id="dSplits"></div></div>
-      <div class="card"><div class="ch"><h3>${al('zones', 'Time in heart-rate zones')}</h3><span class="muted sm">% of HR reserve</span></div><div class="bars" id="dZones"></div></div>
+      <div class="card"><div class="ch"><h3>${al('zones', 'Time in heart-rate zones')}</h3><span class="muted sm">% of max HR</span></div><div class="bars" id="dZones"></div></div>
       ${e.efforts.length ? `<div class="card"><div class="ch"><h3>${al('best', 'Best efforts in this run')}</h3></div><div class="scroll-x" id="dEff"></div></div>` : ''}
     </div>`;
   }
@@ -318,7 +320,7 @@ function drawWorkout(r, e, S) {
   const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
   const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
   plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
-  const hrr = q => S.hrRest + q * (S.hrMaxEff - S.hrRest);
+  const hrr = q => q * S.hrMaxEff; // ZONEalg2: zones are % of max HR
   plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', minSpan: 20, series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
     empty: 'No heart-rate data in this file.',
     extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
@@ -581,7 +583,7 @@ addEventListener('dragover', ev => ev.preventDefault());
 addEventListener('drop', ev => { ev.preventDefault(); dragN = 0; $('#drop').hidden = true; const fs = [...(ev.dataTransfer?.files || [])]; if (fs.length) importFiles(fs); });
 
 /* ---------- resize / theme ---------- */
-let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends', 'workout'].includes(st.view)) renderView(); }, 200); });
+let rz, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => { if (!$('#shell').hidden && ['overview', 'trends', 'workout', 'metric'].includes(st.view)) renderView(); }, 200); });
 const repaint = () => { if (!$('#shell').hidden) renderView(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', repaint);
 new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-size', 'data-font'] });

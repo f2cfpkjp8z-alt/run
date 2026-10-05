@@ -11,7 +11,7 @@ const RATE = algo({
     'Fitness age is the age at which the average (50th-percentile) VO₂max equals yours: the midpoint of the Fair and Good boundaries, followed across ages and extended past the table’s ends with its slope.',
   ],
   formula: 'boundary(age) = linear between the two nearest decade rows\nrating = highest boundary your VO₂max reaches\nfitness age: median(a) = (Fair(a) + Good(a)) / 2 = VO₂max, solved for a (20–90)',
-  inputs: 'VO₂max (VO2alg2), age and sex from your profile.',
+  inputs: 'VO₂max (VO2alg3), age and sex from your profile.',
   limits: 'Norms come from US treadmill tests; they rank you against the general population, not other runners.',
   history: [
     ['RATEalg1', 1, 'Step lookup by age decade.'],

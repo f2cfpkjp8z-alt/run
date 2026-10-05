@@ -3,6 +3,25 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v9 — 2026-10-05
+  Every overview card opens its own trend page (#m-…) with 7 days / 4 weeks / Year buttons, always starting
+    on 7 days: VO₂max, endurance, fitness/fatigue/form, race predictions, distance, training load,
+    intensity mix and efficiency, each with period stats, charts and the workouts behind them.
+  HRMAXalg2 → HRMAXalg3. Why: VO₂max still read 46 vs Garmin's 48 on the same files. Max HR is the biggest
+    lever (≈1 VO₂max point per 3 bpm). Peaks now use 6-second averages (30-second ones sat 2–4 bpm under
+    the real peak) and the age default is Garmin's 220 − age instead of Tanaka. With your age or Garmin's
+    max HR in Profile, VO₂max matches Garmin's; the files alone peak at 197 bpm, which gives 46.7.
+  ENDalg1 → ENDalg2. Why: the training factors multiplied the whole score, so VO₂max 48 with a few weeks of
+    history scored ~2,900 ("Recreational"). Now 100 × VO₂max is the base and training adds 0.85–1.6× on top
+    (same volume / long-run / durability factors); your files now score ~5,200 (Intermediate); the long-run and
+    weekly-hours factors are what move it.
+  ZONEalg1 → ZONEalg2. Why: Garmin's default zones are % of max HR (60/70/80/90); time in zones now
+    matches Garmin Connect. Resting HR is still used for training load (TRIMP needs heart-rate reserve).
+  ACWRalg1 → ACWRalg2. Why: plain 7/28-day sums jump when a hard day leaves the window; exponentially
+    weighted averages (Williams 2017) are smoother and the better injury-risk predictor.
+  Reviewed and kept: GAPalg1 (Minetti), LOADalg2 (Banister TRIMP), FFalg1 (42/7-day Banister model),
+    DRIFTalg2 (Friel Pa:HR), BESTalg2, RACEalg2, EFalg1, RATEalg2 (Cooper norms).
+
 v8 — 2026-10-05
   VO2alg2 → VO2alg3. Why: on 7 real Garmin files that Garmin rates ~48, VO2alg2 gave ~32. VO2alg2 reported on
     Daniels' VDOT (race-performance) scale, which sits far below lab and Garmin values for most recreational

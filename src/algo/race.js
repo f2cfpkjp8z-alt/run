@@ -1,4 +1,4 @@
-// ===== RACEalg1 — race time predictions =====
+// ===== RACEalg2 — race time predictions =====
 const RACES = [[5000, '5K', 0], [10000, '10K', 0.01], [21097.5, 'Half marathon', 0.04], [42195, 'Marathon', 0.10]];
 // time at which a race of distM needs exactly vo2max (same scale as VO2alg3)
 function predictTime(distM, vo2max) {
@@ -11,7 +11,7 @@ const RACE = algo({
   summary: 'Finish times your current VO₂max supports, slowed for long races when volume or long runs are short.',
   steps: [
     'Find the time at which the oxygen cost of race pace (ACSM) divided by the share of VO₂max that race length allows (Daniels–Gilbert) equals your VO₂max (VO2alg3).',
-    'Longer races get a penalty when training volume and long-run reach (from ENDalg1) are short: up to +1% (10K), +4% (half), +10% (marathon).',
+    'Longer races get a penalty when training volume and long-run reach (from ENDalg2) are short: up to +1% (10K), +4% (half), +10% (marathon).',
   ],
   formula: 'solve (3.5 + 0.2·d/t) / pct(t) = VO₂max for t\nt = that time · (1 + p·(1 − √(f(H)·g(L))))\np = 0 / 0.01 / 0.04 / 0.10 for 5K / 10K / half / marathon',
   inputs: 'VO₂max, weekly hours, longest run.',

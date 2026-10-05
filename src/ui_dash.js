@@ -134,6 +134,8 @@ const WIDGETS = {
     el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>', 'best') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
   } },
 };
+// where tapping each card goes: a metric page (#m-key), or a page hash
+const DASH_GO = {"vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
 const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'zones:M', 'drivers:M'];
 function dashCfg() {
   const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
@@ -168,6 +170,13 @@ function renderOverview() {
     const el = box.querySelector(`.w[data-k="${k}"] .card`), w = WIDGETS[id];
     if (!st.runs.length && !w.always) { el.innerHTML = (w.size === 'S' ? `<span class="label">${w.name}</span>` : head(w.name)) + '<p class="empty">Import workouts to see this</p>'; return; }
     try { w.render(el, size); } catch (e) { console.warn(id, e); el.innerHTML = head(w.name) + '<p class="empty">Could not draw this card.</p>'; }
+  });
+  box.querySelectorAll('.w > .card').forEach(el => {
+    const id = el.dataset.w, latest = id === 'latest' && st.runs.length ? '#w-' + st.runs[st.runs.length - 1].id : null, g = DASH_GO[id];
+    const href = latest || (g ? (g[0] === '#' ? g : '#m-' + g) : null); if (!href || !st.runs.length) return;
+    el.classList.add('go'); el.tabIndex = 0; el.setAttribute('role', 'link'); el.setAttribute('aria-label', WIDGETS[id].name + ' — open trends');
+    el.onclick = ev => { if (st.dashEdit || ev.target.closest('a, button, input, select, [data-algo]')) return; location.hash = href; };
+    el.onkeydown = ev => { if (ev.key === 'Enter' && ev.target === el && !st.dashEdit) location.hash = href; };
   });
   box.querySelectorAll('.w-ctl button').forEach(b => b.onclick = () => {
     const k = +b.closest('.w').dataset.k, c = dashCfg(), a = b.dataset.a;

@@ -20,7 +20,7 @@ const VO2 = algo({
     'Each run is resampled to 2-second steps; speed is converted to grade-adjusted (flat-equivalent) speed (GAPalg1).',
     'Only steady 60-second windows count: after a 5-minute warm-up, pace stable for 2 minutes (±8%), gradient under 8%, heart rate between 65% and 95% of max. Windows after 45 minutes weigh less because of cardiac drift.',
     'Oxygen cost of each window comes from the ACSM running equation: 3.5 + 0.2 ml/kg for every metre per minute.',
-    'Heart rate tells the share of VO₂max in use (Swain: %HRmax = 0.64 × %VO₂max + 37). VO₂max for the window = oxygen cost ÷ that share. Uses your max heart rate (HRMAXalg2); resting heart rate isn’t needed.',
+    'Heart rate tells the share of VO₂max in use (Swain: %HRmax = 0.64 × %VO₂max + 37). VO₂max for the window = oxygen cost ÷ that share. Uses your max heart rate (HRMAXalg3); resting heart rate isn’t needed.',
     'The run’s VO₂max is the weighted median of its windows (one odd window can’t swing it). Needs 6+ windows; confidence grows with the number of windows and how closely they agree.',
     'Daily VO₂max is the weighted 70th percentile of run estimates from the last 60 days (14-day half-life × confidence). Heat, fatigue and drift push single runs low far more often than high, so a hot or tired day can’t drag it down. Race-like efforts (BESTalg2) add a reading — oxygen cost of race pace ÷ the share of VO₂max that race length allows — by inverse-variance weighting; a race fades out over 60 days.',
   ],
@@ -29,7 +29,7 @@ const VO2 = algo({
   notes: [
     'Weight: VO₂max is already per kilogram, and running costs about the same oxygen per kilogram for everyone, so weight cancels out. Losing weight raises VO₂max because the same engine carries fewer kilograms — your runs then get faster at the same heart rate, and the estimate follows. Weight is only used to show absolute VO₂ in L/min.',
     'Height: no effect. Formulas that guess VO₂max without exercise use BMI, but your actual heart rate and pace measure it directly and far more accurately.',
-    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg2), which matters a lot: every 3 bpm of max HR moves VO₂max by about 1.',
+    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg3), which matters a lot: every 3 bpm of max HR moves VO₂max by about 1.',
   ],
   limits: 'Max heart rate matters most: enter a measured one (or the one Garmin shows) in Profile. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
   history: [
