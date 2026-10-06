@@ -16,6 +16,7 @@ Browser-only running analytics for Garmin Connect exports (FIT/TCX/GPX/ZIP/CSV).
 - theme.js: appearance (themes Volt/Ember/Glacier/Ultraviolet/Daylight/auto, font style, text size) per device in localStorage 'pp-ui'. Colour tokens live in head.html; chart series use --c1/--c2 (validated colourblind-safe per theme), zones/ramps --z1..--z5.
 - ai.js: Gemini AI coach (key + model in localStorage 'pp-ai', never synced); overview card + per-workout opinion, ≤4–5 lines.
 - ui_metric.js: per-metric trend pages (#m-vo2, end, ff, race, dist, load, zones, ef) with 7 days / 4 weeks / Year (default 7 days); overview cards link to them via DASH_GO in ui_dash.js.
+- ui_image.js: "Share image" for a workout — canvas card (map / route / none, 4:5 or 9:16) with switchable stats and laps.
 - ui_dash.js: customizable overview widgets (WIDGETS registry, layout saved in settings.dash as "id:S|M|L") and chart builders shared with Trends.
 - ui_shared.js / ui_main.js: formatting, SVG charts (plot: adaptive tick decimals, minSpan, clipping), tabs/router, map, views.
 - Font sizes in CSS are rem so the text-size setting scales them; don't add px font sizes.

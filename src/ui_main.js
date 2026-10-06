@@ -268,8 +268,8 @@ function renderWorkout(id) {
   let h = `<a class="btn back ghost" href="#workouts">← Workouts</a>
     <div class="wd-head"><div><h2>${esc(r.name)}</h2><p>${when} · from ${esc(r.src || 'file')}</p></div>
     <div class="btns">${i > 0 ? `<a class="btn" href="#w-${esc(st.runs[i - 1].id)}" aria-label="Previous workout">‹ Older</a>` : ''}${i < st.runs.length - 1 ? `<a class="btn" href="#w-${esc(st.runs[i + 1].id)}" aria-label="Next workout">Newer ›</a>` : ''}
-    <button type="button" id="aiW">✨ AI opinion</button>
-    ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
+    <button type="button" id="aiW">✨ AI opinion</button><button type="button" id="imgW">🖼 Share image</button>
+    ${online() ? `<button type="button" id="shareW">${ICON_SHARE}Share link</button><button type="button" class="${st.published && st.published.has(r.id) ? '' : 'primary'}" id="pubW">${st.published && st.published.has(r.id) ? 'In feed ✓' : 'Publish to feed'}</button>` : ''}
     ${st.user ? `<button type="button" class="danger" id="delW">Delete</button>` : ''}</div></div>
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
     ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName(), 'gap')}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) + (st.hm && st.hm.source === 'detected' && st.hm.run === r ? ' ★' : '') : '–', st.hm && st.hm.source === 'detected' && st.hm.run === r ? 'bpm · sets your max' : 'bpm', 'hrmax')}
@@ -293,6 +293,7 @@ function renderWorkout(id) {
     </div>`;
   }
   box.innerHTML = h;
+  $('#imgW').onclick = () => shareImageDlg(r, e);
   renderWorkoutAI($('#wAI'), r, e, false);
   $('#aiW').onclick = () => { renderWorkoutAI($('#wAI'), r, e, true); $('#wAI').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
   if ($('#shareW')) { $('#shareW').onclick = () => shareWorkout(r, e); $('#pubW').onclick = () => publishDlg(r, e); }

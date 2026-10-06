@@ -309,7 +309,7 @@ function analyze(r, S, vo2ref) {
   for (let i = 0; i < n; i++) { const a = Math.max(0, i - K), b = Math.min(n - 1, i + K); v[i] = b > a ? (d[b] - d[a]) / ((b - a) * DT) : 0; }
   const altS = r.hasAlt ? smooth(r.alt, 15) : null, g = GAP.grades(d, altS, n);
   const moving = i => mv[i] && v[i] > 0.8;
-  let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0;
+  let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0, desc = 0;
   const zones = [0, 0, 0, 0, 0];
   for (let i = 0; i < n; i++) {
     veq[i] = v[i] * GAP.ratio(g[i]); // grade-adjusted (flat-equivalent) speed
@@ -321,12 +321,12 @@ function analyze(r, S, vo2ref) {
       const q = clamp(hrrOf(hr[i]), 0, 1); load += LOAD.trimp(DT, q, S.sex); zones[ZONE.of(hr[i] / hrMax)] += DT;
     }
   }
-  // ascent: smoothed altitude with 3 m hysteresis
-  if (altS) { let ref = altS[0]; for (let i = 1; i < n; i++) { if (altS[i] - ref > 3) { asc += altS[i] - ref; ref = altS[i]; } else if (ref - altS[i] > 3) ref = altS[i]; } }
+  // ascent / descent: smoothed altitude with 3 m hysteresis
+  if (altS) { let ref = altS[0]; for (let i = 1; i < n; i++) { if (altS[i] - ref > 3) { asc += altS[i] - ref; ref = altS[i]; } else if (ref - altS[i] > 3) { desc += ref - altS[i]; ref = altS[i]; } } }
   const dist = d[n - 1] - d[0];
   const gapV = mov ? gapS / mov : 0;
   const out = { dist, mov, elapsed: (n - 1) * DT, avgHR: hn ? hs / hn : null, maxHR: hn ? maxHR : null,
-    ascent: altS ? asc : null, cad: cn ? cs / cn : null, pace: dist > 0 ? mov / (dist / 1000) : null,
+    ascent: altS ? asc : null, descent: altS ? desc : null, cad: cn ? cs / cn : null, pace: dist > 0 ? mov / (dist / 1000) : null,
     gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
   out.load = hn > n * 0.5 ? load : LOAD.noHR(mov, gapV, vo2ref, S.sex);
   out.ef = EF.of(gapV, out.avgHR);

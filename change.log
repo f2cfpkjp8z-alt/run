@@ -3,6 +3,16 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v11 — 2026-10-06
+  Import button icon changed to a file with a plus; the old up-arrow looked like the Share icon.
+  Workouts can be shared as an image (workout page → 🖼 Share image), no account needed: OpenStreetMap
+    map, route only or no map; 4:5 post or 9:16 story; distance, time, pace, avg HR, elevation gain and
+    loss, cadence, VO₂max estimate, laps (pace bars, fastest highlighted), name/date and app name — each can
+    be switched off. Share (phone share sheet) or download as PNG. Choices are remembered on the device.
+  Elevation loss (descent) is now computed for every run, alongside the existing gain.
+  The online "Share" button on a workout is renamed "Share link" to tell it apart.
+  Why: to post runs with a clean, customizable card.
+
 v10 — 2026-10-05
   Auto max heart rate now says where it comes from and when it changes. Profile shows the value in use
     ("200 bpm, auto — 220 − age" or "199 bpm, auto — detected in <run>, <date>"), the VO₂max card shows it,

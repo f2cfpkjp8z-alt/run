@@ -178,6 +178,11 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
+/* workout image */
+.img-prev { position: relative; display: grid; place-items: center; background: var(--sunk); border-radius: 12px; padding: 8px; }
+.img-prev canvas { max-width: 100%; max-height: 52dvh; width: auto; height: auto; border-radius: 8px; display: block; }
+.img-prev .ai-busy { position: absolute; top: 12px; right: 12px; }
+.chk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 10px; }
 /* clickable overview cards */
 .w > .card.go { cursor: pointer; transition: border-color .15s, transform .15s; }
 .w > .card.go:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
