@@ -39,6 +39,7 @@
   --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
   color-scheme: light;
 }
+:root { --hz1: #8b96a3; --hz2: var(--rt6); --hz3: var(--rt4); --hz4: var(--rt2); --hz5: var(--rt1); } /* Garmin heart-rate zone colours */
 :root { --rt1: #e5484d; --rt2: #f2994a; --rt3: #e3b341; --rt4: #3fb950; --rt5: #2bb3a3; --rt6: #3b82f6; --rt7: #a371f7; } /* Garmin-style rating colours (always shown with a label) */
 :root[data-theme="daylight"] { --rt1: #cf2e32; --rt2: #d9731f; --rt3: #b98a00; --rt4: #1f8a3a; --rt5: #11867a; --rt6: #2563c9; --rt7: #7c4dd1; }
 :root { --display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif; --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -197,6 +198,16 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }
 .gwrap { position: relative; width: 100%; max-width: 260px; margin: 0 auto; }
 .gwrap > .badge { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); }
+/* load focus + status strip */
+.lf { display: grid; gap: 12px; margin-top: 8px; }
+.lf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 0.875rem; }
+.lf-row .v { font-family: var(--mono); color: var(--ink2); font-size: 0.8125rem; }
+.lf-track { grid-column: 1 / -1; position: relative; height: 12px; border-radius: 6px; background: var(--sunk); overflow: hidden; }
+.lf-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.lf-tgt { position: absolute; top: 0; bottom: 0; border: 2px solid var(--ink2); border-radius: 6px; z-index: 1; opacity: .7; }
+.ts-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; height: 26px; }
+.ts-strip i { background: var(--bc, var(--muted)); border-radius: 3px; opacity: .9; }
+.race-kv dd span { font-size: 0.6875rem; margin-left: 6px; }
 /* Garmin-style training status */
 .ts-name { --bc: var(--muted); display: flex; align-items: center; gap: 10px; font: 700 2.1rem/1.05 var(--display); color: var(--bc); margin: 2px 0; }
 .ts-name i { width: 12px; height: 12px; border-radius: 50%; background: var(--bc); flex: none; }
@@ -290,6 +301,9 @@ a.row { text-decoration: none; }
 .stat { padding: 11px 13px; box-shadow: inset -1px -1px 0 var(--line); }
 .stat span { display: block; font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .stat b { font: 700 1.5rem/1.2 var(--display); }
+.stat b span { display: inline; font: inherit; text-transform: none; letter-spacing: 0; color: inherit; }
+.stat b .badge { display: inline-flex; font: 700 0.6875rem/1 var(--body); color: var(--ink); vertical-align: middle; }
+.stat b span.delta-up { color: var(--good-ink); } .stat b span.delta-down { color: var(--crit); }
 .stat b small { font: 500 0.75rem var(--body); color: var(--muted); margin-left: 3px; }
 .wd-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
 .span2 { grid-column: 1 / -1; }

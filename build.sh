@@ -7,7 +7,7 @@ AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   cat src/head.html src/body.html
   echo '<script>'
   echo "const BUILD = { v: $V, at: '$AT' };"
-  cat src/core.js src/algo/registry.js src/algo/gap.js src/algo/vo2max.js src/algo/rating.js src/algo/hrmax.js src/algo/load.js src/algo/zones.js src/algo/fitness.js src/algo/acwr.js src/algo/status.js src/algo/endurance.js src/algo/drift.js src/algo/efforts.js src/algo/race.js src/algo/efficiency.js \
+  cat src/core.js src/algo/registry.js src/algo/gap.js src/algo/vo2max.js src/algo/rating.js src/algo/hrmax.js src/algo/load.js src/algo/zones.js src/algo/fitness.js src/algo/acwr.js src/algo/status.js src/algo/loadfocus.js src/algo/endurance.js src/algo/drift.js src/algo/efforts.js src/algo/race.js src/algo/efficiency.js \
     src/store.js src/ui_shared.js src/theme.js src/ui_social.js src/ai.js src/ui_algo.js src/ui_dash.js src/ui_metric.js src/ui_image.js src/ui_main.js
   echo '</script></body></html>'; } > index.html
 echo "Built v$V at $AT"

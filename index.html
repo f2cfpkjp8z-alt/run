@@ -40,6 +40,7 @@
   --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
   color-scheme: light;
 }
+:root { --hz1: #8b96a3; --hz2: var(--rt6); --hz3: var(--rt4); --hz4: var(--rt2); --hz5: var(--rt1); } /* Garmin heart-rate zone colours */
 :root { --rt1: #e5484d; --rt2: #f2994a; --rt3: #e3b341; --rt4: #3fb950; --rt5: #2bb3a3; --rt6: #3b82f6; --rt7: #a371f7; } /* Garmin-style rating colours (always shown with a label) */
 :root[data-theme="daylight"] { --rt1: #cf2e32; --rt2: #d9731f; --rt3: #b98a00; --rt4: #1f8a3a; --rt5: #11867a; --rt6: #2563c9; --rt7: #7c4dd1; }
 :root { --display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif; --body: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -198,6 +199,16 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }
 .gwrap { position: relative; width: 100%; max-width: 260px; margin: 0 auto; }
 .gwrap > .badge { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); }
+/* load focus + status strip */
+.lf { display: grid; gap: 12px; margin-top: 8px; }
+.lf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 0.875rem; }
+.lf-row .v { font-family: var(--mono); color: var(--ink2); font-size: 0.8125rem; }
+.lf-track { grid-column: 1 / -1; position: relative; height: 12px; border-radius: 6px; background: var(--sunk); overflow: hidden; }
+.lf-track i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.lf-tgt { position: absolute; top: 0; bottom: 0; border: 2px solid var(--ink2); border-radius: 6px; z-index: 1; opacity: .7; }
+.ts-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; height: 26px; }
+.ts-strip i { background: var(--bc, var(--muted)); border-radius: 3px; opacity: .9; }
+.race-kv dd span { font-size: 0.6875rem; margin-left: 6px; }
 /* Garmin-style training status */
 .ts-name { --bc: var(--muted); display: flex; align-items: center; gap: 10px; font: 700 2.1rem/1.05 var(--display); color: var(--bc); margin: 2px 0; }
 .ts-name i { width: 12px; height: 12px; border-radius: 50%; background: var(--bc); flex: none; }
@@ -291,6 +302,9 @@ a.row { text-decoration: none; }
 .stat { padding: 11px 13px; box-shadow: inset -1px -1px 0 var(--line); }
 .stat span { display: block; font: 700 0.6875rem/1.2 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .stat b { font: 700 1.5rem/1.2 var(--display); }
+.stat b span { display: inline; font: inherit; text-transform: none; letter-spacing: 0; color: inherit; }
+.stat b .badge { display: inline-flex; font: 700 0.6875rem/1 var(--body); color: var(--ink); vertical-align: middle; }
+.stat b span.delta-up { color: var(--good-ink); } .stat b span.delta-down { color: var(--crit); }
 .stat b small { font: 500 0.75rem var(--body); color: var(--muted); margin-left: 3px; }
 .wd-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
 .span2 { grid-column: 1 / -1; }
@@ -654,7 +668,7 @@ img, a, svg { -webkit-user-drag: none; }
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 20, at: '2026-10-06T00:48:12Z' };
+const BUILD = { v: 21, at: '2026-10-06T00:53:05Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -967,7 +981,7 @@ function analyze(r, S, vo2ref) {
   const altS = r.hasAlt ? smooth(r.alt, 15) : null, g = GAP.grades(d, altS, n);
   const moving = i => mv[i] && v[i] > 0.8;
   let mov = 0, hs = 0, hn = 0, load = 0, gapS = 0, cs = 0, cn = 0, maxHR = 0, asc = 0, desc = 0;
-  const zones = [0, 0, 0, 0, 0];
+  const zones = [0, 0, 0, 0, 0], zload = [0, 0, 0, 0, 0];
   for (let i = 0; i < n; i++) {
     veq[i] = v[i] * GAP.ratio(g[i]); // grade-adjusted (flat-equivalent) speed
     if (!moving(i)) continue;
@@ -975,7 +989,7 @@ function analyze(r, S, vo2ref) {
     if (r.cad[i] > 0) { cs += r.cad[i]; cn++; }
     if (hr[i] > 0) {
       hs += hr[i]; hn++; maxHR = Math.max(maxHR, hr[i]);
-      const q = clamp(hrrOf(hr[i]), 0, 1); load += LOAD.trimp(DT, q, S.sex); zones[ZONE.of(hr[i] / hrMax)] += DT;
+      const q = clamp(hrrOf(hr[i]), 0, 1), tl = LOAD.trimp(DT, q, S.sex), z = ZONE.of(hr[i] / hrMax); load += tl; zones[z] += DT; zload[z] += tl;
     }
   }
   // ascent / descent: smoothed altitude with 3 m hysteresis
@@ -984,7 +998,7 @@ function analyze(r, S, vo2ref) {
   const gapV = mov ? gapS / mov : 0;
   const out = { dist, mov, elapsed: (n - 1) * DT, avgHR: hn ? hs / hn : null, maxHR: hn ? maxHR : null,
     ascent: altS ? asc : null, descent: altS ? desc : null, cad: cn ? cs / cn : null, pace: dist > 0 ? mov / (dist / 1000) : null,
-    gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null };
+    gapPace: gapV ? 1000 / gapV : null, zones: hn ? zones : null, zoneLoad: hn ? zload : null };
   out.load = hn > n * 0.5 ? load : LOAD.noHR(mov, gapV, vo2ref, S.sex);
   out.ef = EF.of(gapV, out.avgHR);
   Object.assign(out, VO2.fromRun({ n, hr, v, veq, g, moving, hrMax, hasHR: r.hasHR }));
@@ -1411,6 +1425,30 @@ const TS = algo({
     return { name, ratio: r, dv, load: L };
   },
 });
+// ===== LFalg1 — training load focus (Garmin-style low aerobic / high aerobic / anaerobic) =====
+const LF = algo({
+  key: 'lf', id: 'LFalg1', name: 'Load focus', since: 21,
+  summary: 'How your last 4 weeks of training load split between low aerobic, high aerobic and anaerobic work, against the balance that builds fitness best — like Garmin’s Training Load Focus.',
+  steps: [
+    'Every second of every run adds its training load (LOADalg2) to its heart-rate zone (ZONEalg2), grouped like Seiler’s 3-zone model around the two thresholds: low aerobic = Z1–Z3 (under 80% of max HR, easy and steady), high aerobic = Z4 (80–90%, tempo and threshold), anaerobic = Z5 (90%+, intervals).',
+    'The last 4 weeks are added up and shown as shares of the total, each against a target range: low aerobic 50–75%, high aerobic 20–40%, anaerobic 5–15%.',
+    'Status: “Balanced” when all three are in range; otherwise the category furthest below its range is a “shortage” (e.g. Low aerobic shortage), or the one most above its range a “focus”.',
+  ],
+  formula: 'share = load in category (28 days) / total load\ntargets: low aerobic 50–75% · high aerobic 20–40% · anaerobic 5–15%',
+  inputs: 'Heart rate of each run; max and resting heart rate.',
+  limits: 'Garmin uses EPOC from Firstbeat; this uses heart-rate load, which ranks efforts similarly. Target ranges are the app’s, set from polarized-training guidance.',
+  history: [['LFalg1', 21, 'Load per HR zone grouped into Garmin’s three focus categories (Seiler 3-zone split at 80% and 90% of max HR), 28-day window.']],
+  cats: [['Low aerobic', [0, 1, 2], 0.50, 0.75, 'var(--rt6)'], ['High aerobic', [3], 0.20, 0.40, 'var(--rt2)'], ['Anaerobic', [4], 0.05, 0.15, 'var(--rt7)']],
+  of(runs, res, asOf) {
+    const T = dayStart(asOf) + DAY, z = [0, 0, 0, 0, 0];
+    runs.forEach((r, i) => { const zl = res[i].zoneLoad; if (r.start >= T - 28 * DAY && r.start < T && zl) zl.forEach((v, k) => z[k] += v); });
+    const tot = z.reduce((a, b) => a + b, 0); if (!tot) return null;
+    const rows = LF.cats.map(([name, ks, lo, hi, col]) => { const share = ks.reduce((s, k) => s + z[k], 0) / tot; return { name, share, load: share * tot, lo, hi, col }; });
+    const below = rows.filter(r => r.share < r.lo).sort((a, b) => (a.share - a.lo) - (b.share - b.lo)), above = rows.filter(r => r.share > r.hi).sort((a, b) => (b.share - b.hi) - (a.share - a.hi));
+    const status = below.length ? [below[0].name + ' shortage', 'warn'] : above.length ? [above[0].name + ' focus', 'ok'] : ['Balanced', 'good'];
+    return { rows, total: tot, status };
+  },
+});
 // ===== ENDalg2 — endurance score =====
 const TIERS = [[0, 'Recreational'], [4000, 'Intermediate'], [5500, 'Trained'], [7000, 'Well-trained'], [8500, 'Expert'], [10000, 'Superior'], [11500, 'Elite']];
 const tierOf = e => { let t = TIERS[0]; for (const x of TIERS) if (e >= x[0]) t = x; return t[1]; };
@@ -1790,7 +1828,7 @@ function plot(el, o) {
   const minGap = 46 * rem; let lastX = -1e9;
   xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
   const yBase = sy(o.invert ? y1 : y0);
-  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">`;
+  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">` + (o.under ? o.under(sx, sy, { x0, x1, y0, y1, W, H, m }) : '');
   for (const s of series) {
     if (s.kind === 'bars') {
       const slot = s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length, bw = Math.max(2, Math.min(24, slot - 2));
@@ -2411,12 +2449,19 @@ function showHelp(card) {
 /* ---------- chart builders, shared by the dashboard and Trends ---------- */
 const lastDay = () => st.days[st.days.length - 1];
 const rangeOf = days => { const xMax = lastDay().t, xMin = days ? Math.max(st.days[0].t, xMax - days * DAY) : st.days[0].t; return { xMin, xMax, inR: t => t >= xMin - DAY && t <= xMax + DAY }; };
+// faint Poor…Superior bands behind VO₂max charts, like Garmin (needs age)
+function vo2Bands(sx, sy, b) {
+  if (!st.S.age) return ''; const bd = RATE.bounds(st.S.age, st.S.sex), edges = [-1e9, ...bd, 1e9]; let g = '';
+  for (let k = 0; k < 5; k++) { const lo = Math.max(edges[k], b.y0), hi = Math.min(edges[k + 1], b.y1); if (hi <= lo) continue;
+    g += `<rect x="${b.m.l}" width="${b.W - b.m.l - b.m.r}" y="${sy(hi)}" height="${sy(lo) - sy(hi)}" fill="${ratingCol(k, 5)}" fill-opacity=".09"/><text class="ax" x="${b.W - b.m.r - 4}" y="${sy(hi) + 12}" text-anchor="end">${RATE.names[k]}</text>`; }
+  return g;
+}
 function vo2Chart(el, days, withRuns, height) {
   const { xMin, xMax, inR } = rangeOf(days), series = [];
   if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
     pts: st.runs.map((r, i) => [r.start, st.res[i].est, st.res[i].conf, r.name]).filter(p => p[1] && inR(p[0])) });
   series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--c1'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
-  plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series });
+  plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series, under: vo2Bands });
 }
 function weekChart(el, weeks, height) {
   const xMax = lastDay().t, all = weekly(), wpts = weeks ? all.filter(p => p[0] >= xMax - weeks * 7 * DAY) : all;
@@ -2482,7 +2527,9 @@ const WIDGETS = {
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
-    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv">${RACE.predict(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub help">From VO₂max, adjusted for volume and long runs.</div>`;
+    const A = agoDay(), prev = A && A.vo2 ? RACE.predict(A) : null;
+    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv race-kv">${RACE.predict(D).map(([name, t, dist], k) => { const dt = prev ? t - prev[k][1] : 0;
+      return `<dt>${name.replace('Half marathon', 'Half')}</dt><dd>${fmtDur(t)}${Math.abs(dt) >= 1 ? `<span class="${dt < 0 ? 'delta-up' : 'delta-down'}" title="vs 4 weeks ago">${dt < 0 ? '▲' : '▼'}${fmtDur(Math.abs(dt))}</span>` : ''}<small class="help">${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`; }).join('')}</dl><div class="sub help">From VO₂max, adjusted for volume and long runs.</div>`;
   } },
   week: { name: 'This week', desc: 'Distance, time and runs, Monday to Sunday', size: 'S', render(el) {
     const now = st.asOf, d0 = (() => { const d = new Date(dayStart(now)); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; })();
@@ -2538,7 +2585,27 @@ const WIDGETS = {
     const verdict = easy >= 75 ? 'Close to the 80/20 balance most coaches aim for.' : mod > 25 ? 'A lot of moderate “grey zone” running — make easy days easier.' : 'Less easy running than the usual 80% target.', ev = STATUS.easy(easy);
     const lab = ZONE.labels;
     el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>', 'zones') + `<div class="btns" style="align-items:center;margin:0 0 10px">${badge(ev[0], ev[1])}<span class="sub"><b>${easy}%</b> easy · <b>${mod}%</b> mod · <b>${hard}%</b> hard</span></div><p class="sub help" style="margin:0 0 12px">${verdict}</p>
-      <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('')}</div>`;
+      <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--hz${k + 1})"></i></div></div>`).join('')}</div>`;
+  } },
+  focus: { name: 'Load focus', desc: 'Low aerobic, high aerobic and anaerobic load, like Garmin', size: 'M', render(el) {
+    const F = LF.of(st.runs, st.res, st.asOf);
+    if (!F) { el.innerHTML = head('Load focus', '', 'lf') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
+    el.innerHTML = head('Load focus', '<span class="muted sm">Last 4 weeks</span>', 'lf') + `<div class="ts-name b-${F.status[1]}" style="font-size:1.6rem"><i></i>${F.status[0]}</div>
+      <div class="lf">${F.rows.map(r => `<div class="lf-row"><span class="lf-n">${r.name}</span><span class="v">${Math.round(r.share * 100)}%<small class="help"> · ${f0(r.load)}</small></span>
+        <div class="lf-track"><span class="lf-tgt" style="left:${r.lo * 100}%;width:${(r.hi - r.lo) * 100}%"></span><i style="width:${Math.min(100, r.share * 100)}%;background:${r.col}"></i></div></div>`).join('')}</div>
+      <p class="sub help" style="margin-top:8px">Bars: share of your 4-week load. Outlined boxes: target range.</p>`;
+  } },
+  fage: { name: 'Fitness age', desc: 'Your fitness age against your real age, like Garmin', size: 'S', render(el) {
+    const D = lastDay(), S = st.S, lab = `<span class="label">${al('rating', 'Fitness age')}</span>`;
+    if (!S.age || !D.vo2) { el.innerHTML = lab + '<p class="sub">Add your age in Profile (and resting HR, height, weight).</p>'; return; }
+    const fa = RATE.fitnessAge(D.vo2, S.sex, S.hrRest, S.weight, S.height), d = S.age - fa, rt = RATE.rate(D.vo2, S.age, S.sex);
+    const bmi = S.weight && S.height ? S.weight / (S.height / 100) ** 2 : null, T = dayStart(st.asOf) + DAY;
+    let vig = 0; st.runs.forEach((r, i) => { const z = st.res[i].zones; if (r.start >= T - 28 * DAY && z) vig += (z[3] + z[4]) / 60; }); vig /= 4;
+    el.innerHTML = lab + `<div class="big">${fa}<small>years</small></div>${badge(d >= 1 ? 'good' : d > -1 ? 'ok' : 'warn', d >= 1 ? `${d} years younger than ${S.age}` : d > -1 ? `Same as your age` : `${-d} years older than ${S.age}`)}
+      <dl class="kv" style="margin-top:6px"><dt>${al('vo2', 'VO₂max')}</dt><dd>${f1(D.vo2)} ${badge(STATUS.rating(rt.k), rt.name)}</dd>
+      <dt>Resting HR</dt><dd>${S.hrRest} ${badge(S.hrRest < 55 ? 'good' : S.hrRest <= 70 ? 'ok' : 'warn', S.hrRest < 55 ? 'Good' : S.hrRest <= 70 ? 'Normal' : 'High')}</dd>
+      ${bmi ? `<dt>BMI</dt><dd>${bmi.toFixed(1)} ${badge(bmi < 18.5 ? 'warn' : bmi < 25 ? 'good' : bmi < 30 ? 'warn' : 'bad', bmi < 18.5 ? 'Low' : bmi < 25 ? 'Healthy' : bmi < 30 ? 'Over' : 'High')}</dd>` : ''}
+      <dt>Vigorous min/week</dt><dd>${Math.round(vig)} ${badge(vig >= 75 ? 'good' : 'warn', vig >= 75 ? 'On target' : 'Below 75')}</dd></dl>`;
   } },
   drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance', '', 'end') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
   records: { name: 'Personal bests', desc: 'Fastest 5K, 10K, half and marathon', size: 'M', render(el) {
@@ -2548,8 +2615,8 @@ const WIDGETS = {
   } },
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
-const DASH_GO = {"vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
-const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'zones:M', 'drivers:M'];
+const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
+const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
   const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
   return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));
@@ -2634,7 +2701,7 @@ const METRICS = {
     const a = first(P.days, 'vo2'), b = lastOf(P.days, 'vo2'), ests = P.idx.map(i => st.res[i].est).filter(Boolean), rt = b && RATE.rate(b, st.S.age, st.S.sex);
     return { html: `<div class="stats">${mStat('Now', b ? f1(b) : '–', 'ml/kg/min', 'vo2')}${mStat('Change', mChange(a, b, 1))}${mStat('Rating', rt ? badge(STATUS.rating(rt.k), rt.name) : '–', '', 'rating')}${mStat('Best run', ests.length ? f1(Math.max(...ests)) : '–')}${mStat('Runs with estimate', ests.length)}</div>
       <div class="wd-grid">${mCard('VO₂max', 'mc1', 'Line: daily value. Dots: single-run estimates (bigger = more confident).', 'vo2')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['VO₂ est.', (r, e) => e.est ? f1(e.est) : '–'], ['Conf.', (r, e) => e.est ? Math.round(e.conf * 100) + '%' : '–']])}</div></div>`,
-      draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, series: [
+      draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, under: vo2Bands, series: [
         { name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
         { name: 'VO₂max', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
   } },
@@ -2647,7 +2714,7 @@ const METRICS = {
   ff: { title: 'Fitness, fatigue & form', key: 'ff', render(P) {
     const D = P.days[P.days.length - 1], s = D ? FF.status(D.tsb) : null;
     return { html: `<div class="stats">${mStat('Fitness', D ? f0(D.ctl) : '–', '', 'ff')}${mStat('Fatigue', D ? f0(D.atl) : '–', '', 'ff')}${mStat('Form', D ? (D.tsb >= 0 ? '+' : '') + Math.round(D.tsb) : '–', '', 'ff')}${(() => { const T = TS.of(st.days, st.runs, st.res, st.asOf); return mStat('Training status', badge(TS.styles[T.name], T.name), '', 'ts'); })()}${mStat('Fitness change', mChange(first(P.days, 'ctl'), D && D.ctl, 0))}</div>
-      <div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
+      <div class="card" style="margin-top:12px"><h3 style="margin-bottom:10px">${al('ts', 'Training status history')}</h3>${tsStrip(P)}</div><div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
       draw() {
         plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--c2'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
         plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
@@ -2686,7 +2753,7 @@ const METRICS = {
     const z = [0, 0, 0, 0, 0]; P.idx.forEach(i => { const e = st.res[i]; if (e.zones) e.zones.forEach((s, k) => z[k] += s); });
     const tot = z.reduce((a, b) => a + b, 0), pc = x => tot ? Math.round(x / tot * 100) : 0;
     return { html: `<div class="stats">${mStat('Easy Z1–2', pc(z[0] + z[1]), '%', 'zones')}${tot ? mStat('Balance', badge(...STATUS.easy(pc(z[0] + z[1])))) : ''}${mStat('Moderate Z3', pc(z[2]), '%', 'zones')}${mStat('Hard Z4–5', pc(z[3] + z[4]), '%', 'zones')}${mStat('Time with HR', fmtDur(tot))}</div>
-      <div class="wd-grid"><div class="card"><h3 style="margin-bottom:10px">${al('zones', 'Time in zones')}</h3><div class="bars">${tot ? z.map((s, k) => `<div class="bar-row"><span>${ZONE.labels[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('') : '<p class="empty">No heart-rate data in this period.</p>'}</div></div>
+      <div class="wd-grid">${lfCard(P)}<div class="card"><h3 style="margin-bottom:10px">${al('zones', 'Time in zones')}</h3><div class="bars">${tot ? z.map((s, k) => `<div class="bar-row"><span>${ZONE.labels[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--hz${k + 1})"></i></div></div>`).join('') : '<p class="empty">No heart-rate data in this period.</p>'}</div></div>
       <div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['Easy', (r, e) => e.zones ? pcOf(e.zones, 0, 2) : '–'], ['Hard', (r, e) => e.zones ? pcOf(e.zones, 3, 5) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>` };
   } },
   ef: { title: 'Aerobic efficiency', key: 'ef', render(P) {
@@ -2698,6 +2765,19 @@ const METRICS = {
 };
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };
 
+// Garmin-style strip: one coloured cell per day with that day's training status
+function tsStrip(P) {
+  const cells = []; for (let i = 0; i < st.days.length; i++) { const d = st.days[i]; if (d.t < P.t0 || d.t > P.t1) continue;
+    const T = TS.of(st.days.slice(0, i + 1), st.runs.filter(r => r.start < d.t + DAY), st.res.filter((e, k) => st.runs[k].start < d.t + DAY), d.t); cells.push([d.t, T.name]); }
+  const used = [...new Set(cells.map(c => c[1]))];
+  return `<div class="ts-strip">${cells.map(([t, n]) => `<i class="b-${TS.styles[n]}" title="${fmtDate(t, { weekday: 'short', day: 'numeric', month: 'short' })}: ${n}"></i>`).join('')}</div>
+    <div class="btns" style="margin-top:10px">${used.map(n => badge(TS.styles[n], n)).join('')}</div>`;
+}
+// load focus for the selected period (same categories as LFalg1)
+function lfCard(P) {
+  const F = LF.of(st.runs, st.res, P.t1); if (!F) return '';
+  return `<div class="card"><h3 style="margin-bottom:10px">${al('lf', 'Load focus · last 4 weeks')}</h3>${badge(F.status[1], F.status[0])}<div class="lf" style="margin-top:10px">${F.rows.map(r => `<div class="lf-row"><span class="lf-n">${r.name}</span><span class="v">${Math.round(r.share * 100)}%</span><div class="lf-track"><span class="lf-tgt" style="left:${r.lo * 100}%;width:${(r.hi - r.lo) * 100}%"></span><i style="width:${Math.min(100, r.share * 100)}%;background:${r.col}"></i></div></div>`).join('')}</div></div>`;
+}
 function renderMetric(key) {
   const box = $('#v-metric'), m = METRICS[key];
   if (!m) { location.hash = '#overview'; return; }
@@ -3183,7 +3263,7 @@ function drawWorkout(r, e, S) {
   const hrr = q => q * S.hrMaxEff; // ZONEalg2: zones are % of max HR
   plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', minSpan: 20, series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
     empty: 'No heart-rate data in this file.',
-    extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--z${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
+    extra: (sx, sy, b) => [0.6, 0.7, 0.8, 0.9].map((q, k) => { const y = hrr(q); return y > b.y0 && y < b.y1 ? `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(y) - 3}" text-anchor="end">Z${k + 2}</text><line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(y)}" y2="${sy(y)}" stroke="var(--hz${k + 2})" stroke-dasharray="2 4"/>` : ''; }).join('') }));
   if (altS) plot($('#dAlt'), Object.assign({}, xo, { label: 'Elevation over time', minSpan: 20, series: [{ name: 'Elevation', kind: 'area', color: css('--elev'), end: false, pts: alt, fmt: v => Math.round(v) + ' m' }] }));
   if (e.est && e.windows.length) {
     // VO2alg3: each window's oxygen cost against heart rate; the Swain line runs from 37% of max HR (zero) to max HR (= VO₂max)
@@ -3203,7 +3283,7 @@ function drawWorkout(r, e, S) {
   } else $('#dSplits').innerHTML = '<p class="empty">Too short for splits.</p>';
   if (e.zones) {
     const tot = e.zones.reduce((a, b) => a + b, 0) || 1, lab = ZONE.labels, lim = ['<60%', '60–70%', '70–80%', '80–90%', '>90%'];
-    $('#dZones').innerHTML = e.zones.map((z, k) => `<div class="bar-row"><span>${lab[k]} <span class="sub">${lim[k]}${k ? ' · ' + Math.round(hrr([0, 0.6, 0.7, 0.8, 0.9][k])) + '+ bpm' : ''}</span></span><span class="v">${fmtDur(z)} · ${Math.round(z / tot * 100)}%</span><div class="track"><i style="width:${Math.max(1, z / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('');
+    $('#dZones').innerHTML = e.zones.map((z, k) => `<div class="bar-row"><span>${lab[k]} <span class="sub">${lim[k]}${k ? ' · ' + Math.round(hrr([0, 0.6, 0.7, 0.8, 0.9][k])) + '+ bpm' : ''}</span></span><span class="v">${fmtDur(z)} · ${Math.round(z / tot * 100)}%</span><div class="track"><i style="width:${Math.max(1, z / tot * 100)}%;background:var(--hz${k + 1})"></i></div></div>`).join('');
   } else $('#dZones').innerHTML = '<p class="empty">No heart-rate data.</p>';
   if ($('#dEff')) $('#dEff').innerHTML = effTable(e.efforts.map(x => ({ e: x, r })), false);
 }

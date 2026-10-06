@@ -22,7 +22,7 @@ const METRICS = {
     const a = first(P.days, 'vo2'), b = lastOf(P.days, 'vo2'), ests = P.idx.map(i => st.res[i].est).filter(Boolean), rt = b && RATE.rate(b, st.S.age, st.S.sex);
     return { html: `<div class="stats">${mStat('Now', b ? f1(b) : '–', 'ml/kg/min', 'vo2')}${mStat('Change', mChange(a, b, 1))}${mStat('Rating', rt ? badge(STATUS.rating(rt.k), rt.name) : '–', '', 'rating')}${mStat('Best run', ests.length ? f1(Math.max(...ests)) : '–')}${mStat('Runs with estimate', ests.length)}</div>
       <div class="wd-grid">${mCard('VO₂max', 'mc1', 'Line: daily value. Dots: single-run estimates (bigger = more confident).', 'vo2')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['VO₂ est.', (r, e) => e.est ? f1(e.est) : '–'], ['Conf.', (r, e) => e.est ? Math.round(e.conf * 100) + '%' : '–']])}</div></div>`,
-      draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, series: [
+      draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, under: vo2Bands, series: [
         { name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
         { name: 'VO₂max', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
   } },
@@ -35,7 +35,7 @@ const METRICS = {
   ff: { title: 'Fitness, fatigue & form', key: 'ff', render(P) {
     const D = P.days[P.days.length - 1], s = D ? FF.status(D.tsb) : null;
     return { html: `<div class="stats">${mStat('Fitness', D ? f0(D.ctl) : '–', '', 'ff')}${mStat('Fatigue', D ? f0(D.atl) : '–', '', 'ff')}${mStat('Form', D ? (D.tsb >= 0 ? '+' : '') + Math.round(D.tsb) : '–', '', 'ff')}${(() => { const T = TS.of(st.days, st.runs, st.res, st.asOf); return mStat('Training status', badge(TS.styles[T.name], T.name), '', 'ts'); })()}${mStat('Fitness change', mChange(first(P.days, 'ctl'), D && D.ctl, 0))}</div>
-      <div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
+      <div class="card" style="margin-top:12px"><h3 style="margin-bottom:10px">${al('ts', 'Training status history')}</h3>${tsStrip(P)}</div><div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
       draw() {
         plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--c2'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
         plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
@@ -74,7 +74,7 @@ const METRICS = {
     const z = [0, 0, 0, 0, 0]; P.idx.forEach(i => { const e = st.res[i]; if (e.zones) e.zones.forEach((s, k) => z[k] += s); });
     const tot = z.reduce((a, b) => a + b, 0), pc = x => tot ? Math.round(x / tot * 100) : 0;
     return { html: `<div class="stats">${mStat('Easy Z1–2', pc(z[0] + z[1]), '%', 'zones')}${tot ? mStat('Balance', badge(...STATUS.easy(pc(z[0] + z[1])))) : ''}${mStat('Moderate Z3', pc(z[2]), '%', 'zones')}${mStat('Hard Z4–5', pc(z[3] + z[4]), '%', 'zones')}${mStat('Time with HR', fmtDur(tot))}</div>
-      <div class="wd-grid"><div class="card"><h3 style="margin-bottom:10px">${al('zones', 'Time in zones')}</h3><div class="bars">${tot ? z.map((s, k) => `<div class="bar-row"><span>${ZONE.labels[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('') : '<p class="empty">No heart-rate data in this period.</p>'}</div></div>
+      <div class="wd-grid">${lfCard(P)}<div class="card"><h3 style="margin-bottom:10px">${al('zones', 'Time in zones')}</h3><div class="bars">${tot ? z.map((s, k) => `<div class="bar-row"><span>${ZONE.labels[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--hz${k + 1})"></i></div></div>`).join('') : '<p class="empty">No heart-rate data in this period.</p>'}</div></div>
       <div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['Easy', (r, e) => e.zones ? pcOf(e.zones, 0, 2) : '–'], ['Hard', (r, e) => e.zones ? pcOf(e.zones, 3, 5) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>` };
   } },
   ef: { title: 'Aerobic efficiency', key: 'ef', render(P) {
@@ -86,6 +86,19 @@ const METRICS = {
 };
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };
 
+// Garmin-style strip: one coloured cell per day with that day's training status
+function tsStrip(P) {
+  const cells = []; for (let i = 0; i < st.days.length; i++) { const d = st.days[i]; if (d.t < P.t0 || d.t > P.t1) continue;
+    const T = TS.of(st.days.slice(0, i + 1), st.runs.filter(r => r.start < d.t + DAY), st.res.filter((e, k) => st.runs[k].start < d.t + DAY), d.t); cells.push([d.t, T.name]); }
+  const used = [...new Set(cells.map(c => c[1]))];
+  return `<div class="ts-strip">${cells.map(([t, n]) => `<i class="b-${TS.styles[n]}" title="${fmtDate(t, { weekday: 'short', day: 'numeric', month: 'short' })}: ${n}"></i>`).join('')}</div>
+    <div class="btns" style="margin-top:10px">${used.map(n => badge(TS.styles[n], n)).join('')}</div>`;
+}
+// load focus for the selected period (same categories as LFalg1)
+function lfCard(P) {
+  const F = LF.of(st.runs, st.res, P.t1); if (!F) return '';
+  return `<div class="card"><h3 style="margin-bottom:10px">${al('lf', 'Load focus · last 4 weeks')}</h3>${badge(F.status[1], F.status[0])}<div class="lf" style="margin-top:10px">${F.rows.map(r => `<div class="lf-row"><span class="lf-n">${r.name}</span><span class="v">${Math.round(r.share * 100)}%</span><div class="lf-track"><span class="lf-tgt" style="left:${r.lo * 100}%;width:${(r.hi - r.lo) * 100}%"></span><i style="width:${Math.min(100, r.share * 100)}%;background:${r.col}"></i></div></div>`).join('')}</div></div>`;
+}
 function renderMetric(key) {
   const box = $('#v-metric'), m = METRICS[key];
   if (!m) { location.hash = '#overview'; return; }

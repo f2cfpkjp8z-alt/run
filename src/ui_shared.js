@@ -100,7 +100,7 @@ function plot(el, o) {
   const minGap = 46 * rem; let lastX = -1e9;
   xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
   const yBase = sy(o.invert ? y1 : y0);
-  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">`;
+  g += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${yBase}" y2="${yBase}"/><g clip-path="url(#${cid})">` + (o.under ? o.under(sx, sy, { x0, x1, y0, y1, W, H, m }) : '');
   for (const s of series) {
     if (s.kind === 'bars') {
       const slot = s.bw ? s.bw / (x1 - x0) * iw : iw / s.pts.length, bw = Math.max(2, Math.min(24, slot - 2));

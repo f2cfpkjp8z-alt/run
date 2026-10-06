@@ -4,12 +4,19 @@
 /* ---------- chart builders, shared by the dashboard and Trends ---------- */
 const lastDay = () => st.days[st.days.length - 1];
 const rangeOf = days => { const xMax = lastDay().t, xMin = days ? Math.max(st.days[0].t, xMax - days * DAY) : st.days[0].t; return { xMin, xMax, inR: t => t >= xMin - DAY && t <= xMax + DAY }; };
+// faint Poor…Superior bands behind VO₂max charts, like Garmin (needs age)
+function vo2Bands(sx, sy, b) {
+  if (!st.S.age) return ''; const bd = RATE.bounds(st.S.age, st.S.sex), edges = [-1e9, ...bd, 1e9]; let g = '';
+  for (let k = 0; k < 5; k++) { const lo = Math.max(edges[k], b.y0), hi = Math.min(edges[k + 1], b.y1); if (hi <= lo) continue;
+    g += `<rect x="${b.m.l}" width="${b.W - b.m.l - b.m.r}" y="${sy(hi)}" height="${sy(lo) - sy(hi)}" fill="${ratingCol(k, 5)}" fill-opacity=".09"/><text class="ax" x="${b.W - b.m.r - 4}" y="${sy(hi) + 12}" text-anchor="end">${RATE.names[k]}</text>`; }
+  return g;
+}
 function vo2Chart(el, days, withRuns, height) {
   const { xMin, xMax, inR } = rangeOf(days), series = [];
   if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
     pts: st.runs.map((r, i) => [r.start, st.res[i].est, st.res[i].conf, r.name]).filter(p => p[1] && inR(p[0])) });
   series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--c1'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
-  plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series });
+  plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series, under: vo2Bands });
 }
 function weekChart(el, weeks, height) {
   const xMax = lastDay().t, all = weekly(), wpts = weeks ? all.filter(p => p[0] >= xMax - weeks * 7 * DAY) : all;
@@ -75,7 +82,9 @@ const WIDGETS = {
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
-    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv">${RACE.predict(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub help">From VO₂max, adjusted for volume and long runs.</div>`;
+    const A = agoDay(), prev = A && A.vo2 ? RACE.predict(A) : null;
+    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv race-kv">${RACE.predict(D).map(([name, t, dist], k) => { const dt = prev ? t - prev[k][1] : 0;
+      return `<dt>${name.replace('Half marathon', 'Half')}</dt><dd>${fmtDur(t)}${Math.abs(dt) >= 1 ? `<span class="${dt < 0 ? 'delta-up' : 'delta-down'}" title="vs 4 weeks ago">${dt < 0 ? '▲' : '▼'}${fmtDur(Math.abs(dt))}</span>` : ''}<small class="help">${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`; }).join('')}</dl><div class="sub help">From VO₂max, adjusted for volume and long runs.</div>`;
   } },
   week: { name: 'This week', desc: 'Distance, time and runs, Monday to Sunday', size: 'S', render(el) {
     const now = st.asOf, d0 = (() => { const d = new Date(dayStart(now)); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; })();
@@ -131,7 +140,27 @@ const WIDGETS = {
     const verdict = easy >= 75 ? 'Close to the 80/20 balance most coaches aim for.' : mod > 25 ? 'A lot of moderate “grey zone” running — make easy days easier.' : 'Less easy running than the usual 80% target.', ev = STATUS.easy(easy);
     const lab = ZONE.labels;
     el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>', 'zones') + `<div class="btns" style="align-items:center;margin:0 0 10px">${badge(ev[0], ev[1])}<span class="sub"><b>${easy}%</b> easy · <b>${mod}%</b> mod · <b>${hard}%</b> hard</span></div><p class="sub help" style="margin:0 0 12px">${verdict}</p>
-      <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('')}</div>`;
+      <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--hz${k + 1})"></i></div></div>`).join('')}</div>`;
+  } },
+  focus: { name: 'Load focus', desc: 'Low aerobic, high aerobic and anaerobic load, like Garmin', size: 'M', render(el) {
+    const F = LF.of(st.runs, st.res, st.asOf);
+    if (!F) { el.innerHTML = head('Load focus', '', 'lf') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
+    el.innerHTML = head('Load focus', '<span class="muted sm">Last 4 weeks</span>', 'lf') + `<div class="ts-name b-${F.status[1]}" style="font-size:1.6rem"><i></i>${F.status[0]}</div>
+      <div class="lf">${F.rows.map(r => `<div class="lf-row"><span class="lf-n">${r.name}</span><span class="v">${Math.round(r.share * 100)}%<small class="help"> · ${f0(r.load)}</small></span>
+        <div class="lf-track"><span class="lf-tgt" style="left:${r.lo * 100}%;width:${(r.hi - r.lo) * 100}%"></span><i style="width:${Math.min(100, r.share * 100)}%;background:${r.col}"></i></div></div>`).join('')}</div>
+      <p class="sub help" style="margin-top:8px">Bars: share of your 4-week load. Outlined boxes: target range.</p>`;
+  } },
+  fage: { name: 'Fitness age', desc: 'Your fitness age against your real age, like Garmin', size: 'S', render(el) {
+    const D = lastDay(), S = st.S, lab = `<span class="label">${al('rating', 'Fitness age')}</span>`;
+    if (!S.age || !D.vo2) { el.innerHTML = lab + '<p class="sub">Add your age in Profile (and resting HR, height, weight).</p>'; return; }
+    const fa = RATE.fitnessAge(D.vo2, S.sex, S.hrRest, S.weight, S.height), d = S.age - fa, rt = RATE.rate(D.vo2, S.age, S.sex);
+    const bmi = S.weight && S.height ? S.weight / (S.height / 100) ** 2 : null, T = dayStart(st.asOf) + DAY;
+    let vig = 0; st.runs.forEach((r, i) => { const z = st.res[i].zones; if (r.start >= T - 28 * DAY && z) vig += (z[3] + z[4]) / 60; }); vig /= 4;
+    el.innerHTML = lab + `<div class="big">${fa}<small>years</small></div>${badge(d >= 1 ? 'good' : d > -1 ? 'ok' : 'warn', d >= 1 ? `${d} years younger than ${S.age}` : d > -1 ? `Same as your age` : `${-d} years older than ${S.age}`)}
+      <dl class="kv" style="margin-top:6px"><dt>${al('vo2', 'VO₂max')}</dt><dd>${f1(D.vo2)} ${badge(STATUS.rating(rt.k), rt.name)}</dd>
+      <dt>Resting HR</dt><dd>${S.hrRest} ${badge(S.hrRest < 55 ? 'good' : S.hrRest <= 70 ? 'ok' : 'warn', S.hrRest < 55 ? 'Good' : S.hrRest <= 70 ? 'Normal' : 'High')}</dd>
+      ${bmi ? `<dt>BMI</dt><dd>${bmi.toFixed(1)} ${badge(bmi < 18.5 ? 'warn' : bmi < 25 ? 'good' : bmi < 30 ? 'warn' : 'bad', bmi < 18.5 ? 'Low' : bmi < 25 ? 'Healthy' : bmi < 30 ? 'Over' : 'High')}</dd>` : ''}
+      <dt>Vigorous min/week</dt><dd>${Math.round(vig)} ${badge(vig >= 75 ? 'good' : 'warn', vig >= 75 ? 'On target' : 'Below 75')}</dd></dl>`;
   } },
   drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance', '', 'end') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
   records: { name: 'Personal bests', desc: 'Fastest 5K, 10K, half and marathon', size: 'M', render(el) {
@@ -141,8 +170,8 @@ const WIDGETS = {
   } },
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
-const DASH_GO = {"vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
-const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'zones:M', 'drivers:M'];
+const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
+const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
   const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
   return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));

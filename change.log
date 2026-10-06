@@ -4,6 +4,20 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v21 — 2026-10-06
+  In short: More Garmin-style views: load focus, fitness age card, zone colours, VO₂max bands.
+  New LFalg1 Load focus card (Garmin's Training Load Focus): your 4-week load split into low aerobic,
+    high aerobic and anaerobic (Seiler 3-zone split: under 80% / 80–90% / over 90% of max HR), each against a target range, with "Balanced" or "… shortage". Also on the
+    Intensity trend page.
+  New Fitness age card: fitness age vs your real age ("5 years younger"), with VO₂max, resting HR, BMI and
+    vigorous minutes per week, each with its status badge.
+  Heart-rate zones use Garmin's colours everywhere: Z1 grey, Z2 blue, Z3 green, Z4 orange, Z5 red.
+  VO₂max charts show the Poor…Superior bands for your age behind the line, like Garmin.
+  Race predictions show ▲ faster / ▼ slower than 4 weeks ago.
+  Fitness trend page: a training status history strip (one coloured cell per day).
+  Per-run load is now also kept per heart-rate zone (needed for load focus); all other numbers unchanged.
+  Why: to make every view read like Garmin Connect.
+
 v20 — 2026-10-06
   In short: Garmin-style training status, and one status per gauge.
   New TSalg1 (training status), like Garmin: Productive, Maintaining, Recovery, Peaking, Unproductive,
