@@ -113,7 +113,12 @@ textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
   .bnav svg { width: 40px; height: 26px; padding: 2px 9px; }
   .main { padding-bottom: calc(var(--bnav-h) + 24px + env(safe-area-inset-bottom, 0px)) !important; }
 }
-.main { padding-block: 8px 48px; }
+.main { padding-block: 8px 24px; }
+/* the page always fills the screen, so the version line sits at the bottom even on short pages */
+#shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+#shell > .main { flex: 1 0 auto; width: 100%; display: flex; flex-direction: column; }
+#shell > .main > * { width: 100%; }
+#shell > .main > .ver { margin-top: auto; padding-top: 28px; }
 .banner { margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); font-size: 0.875rem; }
 .banner .grow { flex: 1 1 260px; min-width: 0; }
 .banner.warn { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
