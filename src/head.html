@@ -192,6 +192,17 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .cal i { display: block; aspect-ratio: 1; border-radius: 3px; background: var(--sunk); max-height: 22px; }
 .cal-leg { display: flex; align-items: center; gap: 4px; justify-content: flex-end; font-size: 0.6875rem; color: var(--muted); margin-top: 8px; }
 .cal-leg i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.goals { display: grid; gap: 18px; }
+.goal { display: grid; gap: 6px; }
+.goal-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.goal-h b { font: 700 1.2rem/1.2 var(--display); letter-spacing: .01em; margin-right: 6px; }
+.goal-h .pct { font-weight: 600; font-size: 1rem; }
+.gbar { height: 12px; border-radius: 6px; background: var(--sunk); overflow: hidden; }
+.gbar i { display: block; height: 100%; border-radius: 6px; background: var(--pace); transition: width .4s; }
+.gbar.wt i { background: var(--accent); }
+.gbar.done i { background: var(--good); }
+.gstats { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 14px; font-size: 0.8125rem; color: var(--muted); }
+.gstats a { color: var(--ink2); }
 .meter { position: relative; height: 10px; border-radius: 5px; background: var(--sunk); margin: 8px 0 4px; overflow: hidden; }
 .meter .opt { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--good) 30%, transparent); }
 .meter b { position: absolute; top: -2px; width: 4px; height: 14px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); }

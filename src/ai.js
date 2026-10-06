@@ -57,7 +57,7 @@ function aiSystem(lines) {
   let lang = navigator.language || 'en'; try { lang = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang) || lang; } catch (e) { }
   return `You are a concise, encouraging running coach. You review numbers that the app "Pace & Pulse" computed from the runner's Garmin files.
 Reply with ${lines} short lines at most (use 5 only if there is a lot that matters). Each line: one emoji, then one plain sentence of at most 110 characters.
-Cover what they did well, what is missing or risky, and one concrete next step. Quote the numbers that matter. No heading, no preamble, no markdown, no medical diagnosis.
+Cover what they did well, what is missing or risky, and one concrete next step. If the runner has goals, say whether they are on track and make the next step serve the goal (e.g. the workout or weekly volume that closes the gap; for weight, a sensible rate of about 0.5 kg per week at most). Quote the numbers that matter. No heading, no preamble, no markdown, no medical diagnosis.
 VO2max is estimated like Garmin/Firstbeat (comparable to Garmin's number). Load is Banister TRIMP. Write in ${lang}.`;
 }
 function aiAthlete() {
@@ -66,6 +66,14 @@ function aiAthlete() {
 }
 function aiRunLine(r, e) {
   return `${new Date(r.start).toDateString()} | ${r.name} | ${fmtDist(e.dist)} ${uName()} | ${fmtDur(e.mov)} | pace ${fmtPace(e.pace)} | GAP ${fmtPace(e.gapPace)} | avgHR ${e.avgHR ? Math.round(e.avgHR) : '-'} | maxHR ${e.maxHR ? Math.round(e.maxHR) : '-'} | load ${Math.round(e.load || 0)} | VO2 est ${e.est ? e.est.toFixed(1) : '-'} | HR drift ${e.dec != null ? e.dec.toFixed(1) + '%' : '-'} | ascent ${e.ascent != null ? Math.round(e.ascent) + ' m' : '-'}`;
+}
+function aiGoals() { // the runner's goals and where they stand, in plain text
+  const S = st.S, out = [], when = d => { const n = goalDays(d); return n == null ? 'no date' : n < 0 ? 'date passed' : `by ${d} (${n} days, ${(n / 7).toFixed(1)} weeks away)`; };
+  if (goalOn(S.goal)) { const g = S.goal, P = goalProgress(g), n = P.now;
+    out.push(`Running goal: ${goalName(g.dist)} (${(g.dist / 1000).toFixed(2)} km) in ${fmtDur(P.target)} = ${fmtPace(g.pace)}/${uName()}, ${when(g.date)}. Now: ${n.sec ? fmtDur(n.sec) + ' (' + fmtPace(n.sec / (g.dist / 1000)) + '/' + uName() + ')' : 'unknown'}; race prediction ${n.pred ? fmtDur(n.pred) : '-'}; best in 12 weeks ${n.best ? fmtDur(n.best.sec) : '-'}; PR ${n.pr ? fmtDur(n.pr.sec) : '-'}; when the goal was set ${g.start ? fmtDur(g.start) : '-'}. Progress ${P.pct == null ? '-' : Math.round(P.pct * 100) + '%'}.`); }
+  if (wgoalOn(S.wgoal)) { const w = S.wgoal, P = weightProgress(w), log = (S.wlog || []).slice(-6).map(([t, kg]) => `${fmtDate(t)} ${kg}`).join(', ');
+    out.push(`Weight goal: ${w.kg} kg ${when(w.date)}; started at ${P.start || '-'} kg, now ${P.now || '-'} kg. Progress ${P.pct == null ? '-' : Math.round(P.pct * 100) + '%'}.${log ? ' Weight log: ' + log + '.' : ''}`); }
+  return out.length ? out.join('\n') : 'No goals set.';
 }
 function aiOverviewPrompt() {
   const D = lastDay(), a4 = dayAt(D.t - 28 * DAY), a12 = dayAt(D.t - 84 * DAY), T = dayStart(st.asOf) + DAY;
@@ -85,8 +93,9 @@ Race predictions: ${D.vo2 ? RACE.predict(D).map(([n, t]) => n + ' ' + fmtDur(t))
 Best efforts: ${Object.entries(best).map(([l, b]) => `${l} ${fmtDur(b.sec)} (${new Date(b.t).toDateString()})`).join(', ') || '-'}.
 Recent workouts, newest first:
 ${recent}
+${aiGoals()}
 
-Give your read on this runner's training.`;
+Give your read on this runner's training and their progress toward their goals.`;
 }
 function aiWorkoutPrompt(r, e) {
   const sp = r.summary ? [] : splitsOf(r, U()), D = dayAt(r.start);
@@ -98,10 +107,11 @@ Workout: ${aiRunLine(r, e)}
 ${e.zones ? 'Time in zones Z1-Z5: ' + e.zones.map(s => Math.round(s / zt * 100) + '%').join(' / ') : 'No heart rate.'}
 ${splits ? 'Splits per ' + uName() + ' (pace @HR, elevation): ' + splits : ''}
 ${e.efforts.length ? 'Best efforts in this run: ' + e.efforts.map(x => x.label + ' ' + fmtDur(x.sec)).join(', ') : ''}
+${aiGoals()}
 Recent workouts before it:
 ${st.runs.map((x, i) => [x, st.res[i]]).filter(([x]) => x.start < r.start && x.start > r.start - 21 * DAY).slice(-6).reverse().map(([x, y]) => aiRunLine(x, y)).join('\n') || 'none'}
 
-Give your read on this one workout: execution, pacing, effort and what it means for training.`;
+Give your read on this one workout: execution, pacing, effort and what it means for training and for their goals.`;
 }
 function aiLines(text, max = 5) {
   return text.split(/\n+/).map(l => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').replace(/\*\*|__|`/g, '').replace(/^#+\s*/, '').trim()).filter(Boolean).slice(0, max);
@@ -111,7 +121,7 @@ function aiList(text) {
     return `<li><span aria-hidden="true">${m ? m[1] : '•'}</span><span>${esc(m ? m[2] : l)}</span></li>`; }).join('')}</ul>`;
 }
 const aiAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : fmtDate(t, { day: 'numeric', month: 'short' }); };
-const aiSig = () => st.runs.length + ':' + (st.runs.length ? st.runs[st.runs.length - 1].id : '') + ':' + st.S.hrMaxEff + ':' + st.S.hrRest;
+const aiSig = () => st.runs.length + ':' + (st.runs.length ? st.runs[st.runs.length - 1].id : '') + ':' + st.S.hrMaxEff + ':' + st.S.hrRest + ':' + JSON.stringify([st.S.goal, st.S.wgoal, st.S.weight]);
 
 /* ---------- overview card ---------- */
 function renderAICard(el, busy, err) {

@@ -4,6 +4,19 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v28 — 2026-10-06
+  In short: Set running and weight goals in Profile — see your progress and get coaching toward them.
+  Profile → Goals: a running goal (5K / 10K / half / marathon or any distance, target pace like 6:00/km, optional
+    race date) and a weight goal (target and starting weight, optional date). Progress bars show how far you've
+    come (running counts from your level 12 weeks before the goal was set): running uses your current level (the faster of the race prediction and your best
+    effort at that distance in the last 12 weeks); weight uses your current weight. Also shows your PR.
+  New "Goals" card on the overview (added once to saved layouts too); "Edit →" jumps to the Profile card.
+  The AI coach now gets your goals, progress, time left and recent weight log, and aims its advice at them.
+  Weight changes are now logged (settings.wlog) so the trend is known.
+  RACEalg2 gains RACE.at() for any distance (penalty interpolated on log distance); the 5K/10K/half/marathon
+    predictions are unchanged, so the id stays RACEalg2.
+  Why: requested goal parameters the AI can use, with progress bars for running and weight.
+
 v27 — 2026-10-06
   In short: Google sign-in now works from the home-screen app.
   In the app saved to the iPhone home screen, "Continue with Google" opened Google in a separate window that

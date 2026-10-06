@@ -79,6 +79,10 @@ const WIDGETS = {
       ${bar}<p class="sub help">${TS.why[T.name]}</p>
       <dl class="kv help"><dt>${al('ff', 'Fitness')}</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue</dt><dd>${f0(D.atl)}</dd><dt>Form</dt><dd>${D.tsb >= 0 ? '+' : ''}${Math.round(D.tsb)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
   } },
+  goals: { name: 'Goals', desc: 'Progress to your race and weight goals', size: 'M', always: true, render(el) {
+    const b = goalBlocks();
+    el.innerHTML = head('Goals', '<a class="sm" href="#profile" data-goto="goalCard">' + (b ? 'Edit' : 'Set goals') + ' →</a>') + (b ? `<div class="goals">${b}</div>` : '<p class="sub" style="margin:0">Set a race goal like 10K at 6:00/km, or a weight goal, in Profile. You’ll see progress here and the AI coach plans around it.</p>');
+  } },
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
@@ -171,14 +175,16 @@ const WIDGETS = {
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
 const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
-const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
+const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'goals:M', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
-  const raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
+  let raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
+  // layouts saved before the Goals card existed get it once, after race predictions (dashV marks layouts saved since)
+  if (raw !== DASH_DEFAULT && !st.S.dashV && !raw.some(x => String(x).startsWith('goals:'))) { const k = raw.findIndex(x => String(x).startsWith('race:')); raw = raw.slice(); raw.splice(k + 1, 0, 'goals:M'); }
   return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));
 }
 function saveDash(cfg) {
-  st.S.dash = cfg.map(([id, s]) => id + ':' + s);
-  if (st.user) st.backend.updateProfile({ settings: { dash: st.S.dash } }).then(u => { if (u) st.user = u; }).catch(e => setStatus('Could not save the layout: ' + e.message));
+  st.S.dash = cfg.map(([id, s]) => id + ':' + s); st.S.dashV = 2;
+  if (st.user) st.backend.updateProfile({ settings: { dash: st.S.dash, dashV: 2 } }).then(u => { if (u) st.user = u; }).catch(e => setStatus('Could not save the layout: ' + e.message));
 }
 function renderBreakdown(D, box) {
   if (!D || !D.vo2) { box.innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }

@@ -479,12 +479,13 @@ function renderProfile() {
   $('#hrMaxHint').innerHTML = st.hm ? 'In use: ' + HRMAX.describe(st.hm) + '.' : 'Empty = automatic.';
   $('#fHrMax').placeholder = st.hm && !S.hrMax ? 'Auto ' + Math.round(S.hrMaxEff) : 'Auto';
   $('#setSaved').textContent = u ? '' : 'Guest changes are not saved.';
-  renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
+  renderGoals(); renderStorage(); renderDataCard(); renderLook(); renderAISettings(); renderMethods();
 }
 $('#setForm').addEventListener('submit', async ev => {
   ev.preventDefault();
   const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : null; };
-  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: v('#fWeight'), height: v('#fHeight'), units: $('#fUnits').value };
+  setWeight(v('#fWeight'));
+  const settings = { hrMax: v('#fHrMax'), hrRest: v('#fHrRest') || 55, age: v('#fAge'), sex: $('#fSex').value, weight: st.S.weight, wlog: st.S.wlog || [], height: v('#fHeight'), units: $('#fUnits').value };
   Object.assign(st.S, settings);
   if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
   glyphCache.clear(); compute(); renderChrome(); renderProfile();
