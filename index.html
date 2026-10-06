@@ -106,7 +106,7 @@ textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
   :root { --bnav-h: 64px; }
   .tabs { display: none; }
   .hide-sm { display: none; }
-  .bnav { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  .bnav { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 0.6875rem/1 var(--body); }
@@ -668,7 +668,7 @@ img, a, svg { -webkit-user-drag: none; }
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 21, at: '2026-10-06T00:53:05Z' };
+const BUILD = { v: 22, at: '2026-10-06T01:09:37Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -3029,6 +3029,8 @@ async function signOut() { await st.backend.signOut(); st.user = null; st.publis
 
 /* ---------- account menu ---------- */
 function renderChrome() {
+  // the feed needs an online account: its tab only appears once the account is saved online
+  $$('#tabs [data-v="feed"], #bnav [data-v="feed"]').forEach(a => a.hidden = !online());
   const u = st.user, av = $('#avatar');
   av.textContent = u ? initials(u.name) : '?'; av.classList.toggle('guest', !u);
   $('#menu').innerHTML = u
@@ -3061,6 +3063,7 @@ function route() {
   if (h.startsWith('m-')) { v = 'metric'; id = h.slice(2); if (st.view !== 'metric' || st.detail !== id) st.mRange = 7; } // always opens on 7 days
   if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'metric', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
   if (st.view === 'shared' && v !== 'shared') renderChrome();
+  if (v === 'feed' && !online()) { location.replace('#overview'); return; }
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
   const tab = v === 'workout' ? 'workouts' : v === 'metric' ? 'overview' : v;

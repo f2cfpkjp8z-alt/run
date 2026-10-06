@@ -95,6 +95,8 @@ async function signOut() { await st.backend.signOut(); st.user = null; st.publis
 
 /* ---------- account menu ---------- */
 function renderChrome() {
+  // the feed needs an online account: its tab only appears once the account is saved online
+  $$('#tabs [data-v="feed"], #bnav [data-v="feed"]').forEach(a => a.hidden = !online());
   const u = st.user, av = $('#avatar');
   av.textContent = u ? initials(u.name) : '?'; av.classList.toggle('guest', !u);
   $('#menu').innerHTML = u
@@ -127,6 +129,7 @@ function route() {
   if (h.startsWith('m-')) { v = 'metric'; id = h.slice(2); if (st.view !== 'metric' || st.detail !== id) st.mRange = 7; } // always opens on 7 days
   if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'metric', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
   if (st.view === 'shared' && v !== 'shared') renderChrome();
+  if (v === 'feed' && !online()) { location.replace('#overview'); return; }
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
   const tab = v === 'workout' ? 'workouts' : v === 'metric' ? 'overview' : v;

@@ -105,7 +105,7 @@ textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
   :root { --bnav-h: 64px; }
   .tabs { display: none; }
   .hide-sm { display: none; }
-  .bnav { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  .bnav { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
   .bnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: var(--bnav-h); color: var(--muted); text-decoration: none; font: 600 0.6875rem/1 var(--body); }
