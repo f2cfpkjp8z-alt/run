@@ -616,5 +616,7 @@ async function checkUpdate() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 setTimeout(checkUpdate, 3000);
+// installable app (home screen / Chrome install): offline copy via the service worker
+if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 initSocial(); initDash(); initAlgo();
 boot();

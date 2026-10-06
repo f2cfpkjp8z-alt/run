@@ -3,6 +3,14 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v13 — 2026-10-06
+  Installable web app. "Add to Home Screen" on iPhone/iPad and "Install app" in Chrome/Android/desktop now
+    use the Pace & Pulse icon and name and open full-screen without browser bars: web app manifest, icons
+    (180 px Apple touch icon, 192/512 px, maskable 512 px for Android's shapes, SVG and 32 px favicons),
+    iOS meta tags, and a service worker that serves the last loaded version when offline (network first,
+    so updates still arrive; map tiles, Firebase and Gemini are never cached).
+  Why: to save the app to the home screen like a normal app.
+
 v12 — 2026-10-06
   Update check: a few seconds after opening (and whenever you return to the tab) the app asks GitHub Pages
     for the latest version, bypassing the browser cache. If it is newer, a banner offers "Update now".
