@@ -1,12 +1,33 @@
-// ===== AI COACH (Google Gemini) — the API key stays on this device; data is sent only when the runner asks =====
-const AI_DEFAULT_MODEL = 'gemini-2.5-flash';
+// ===== AI COACH (Google Gemini) — data is sent only when the runner asks =====
+// With an online account the key, model and saved opinions live in the private users/{uid} Firestore doc
+// (fields ai and aiCache), so they follow the runner to every device. On-device profiles keep them in this browser.
+const AI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+const AI_OLD_DEFAULTS = ['gemini-2.5-flash']; // earlier defaults move to the current one
 const AI_API = 'https://generativelanguage.googleapis.com/v1beta/';
-function aiCfg() { return Object.assign({ key: '', model: AI_DEFAULT_MODEL }, lsGet('pp-ai', {})); }
+function aiCfg() {
+  const c = Object.assign({ key: '', model: AI_DEFAULT_MODEL }, online() ? st.user.ai || {} : lsGet('pp-ai', {}));
+  if (!c.model || AI_OLD_DEFAULTS.includes(c.model)) c.model = AI_DEFAULT_MODEL; return c;
+}
+async function aiSave(v) {
+  if (online()) st.user = await st.backend.updateProfile({ ai: v }); else lsSet('pp-ai', v);
+}
+// first online sign-in on a device that already had a key: move it into the account and off the device
+async function aiAdopt() {
+  if (!online()) return; const loc = lsGet('pp-ai', null);
+  if (!loc || !loc.key) return;
+  try { if (!(st.user.ai && st.user.ai.key)) st.user = await st.backend.updateProfile({ ai: { key: loc.key, model: loc.model || AI_DEFAULT_MODEL } }); localStorage.removeItem('pp-ai'); } catch (e) { console.warn(e); }
+}
 const aiPid = () => st.user ? st.user.id : 'guest';
-function aiCache() { const c = lsGet('pp-ai-cache', {}); return c[aiPid()] || { overview: null, w: {} }; }
-function aiCacheSet(fn) { const all = lsGet('pp-ai-cache', {}), c = all[aiPid()] || { overview: null, w: {} }; fn(c);
+function aiCache() {
+  const c = online() ? st.user.aiCache : lsGet('pp-ai-cache', {})[aiPid()];
+  return c ? { overview: c.overview || null, w: Object.assign({}, c.w) } : { overview: null, w: {} };
+}
+function aiCacheSet(fn) {
+  const c = aiCache(); fn(c);
   const ids = Object.keys(c.w); if (ids.length > 40) ids.sort((a, b) => c.w[a].at - c.w[b].at).slice(0, ids.length - 40).forEach(k => delete c.w[k]);
-  all[aiPid()] = c; lsSet('pp-ai-cache', all); }
+  if (online()) { st.user.aiCache = c; st.backend.updateProfile({ aiCache: c }).then(u => { if (u) st.user = u; }).catch(e => console.warn('Could not save the opinion', e)); return; }
+  const all = lsGet('pp-ai-cache', {}); all[aiPid()] = c; lsSet('pp-ai-cache', all);
+}
 
 async function gemini(prompt, system) {
   const c = aiCfg(); if (!c.key) throw new Error('Add a Gemini API key in Profile → AI coach first.');
@@ -144,23 +165,24 @@ function renderAISettings() {
     <p class="sub" style="margin:0 0 12px">Uses Google Gemini. Create a free API key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and paste it here.</p>
     <form class="form1" id="aiForm" autocomplete="off">
       <label for="aiKey">Gemini API key<div class="linkrow"><input id="aiKey" type="password" spellcheck="false" placeholder="AIza…" value="${esc(c.key)}"><button type="button" id="aiShow">Show</button></div></label>
-      <label for="aiModel">Model<select id="aiModel">${[...new Set([c.model, AI_DEFAULT_MODEL, 'gemini-2.5-flash-lite', 'gemini-2.5-pro'])].map(m => `<option${m === c.model ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select><span class="hint">“Check key” lists the models your key can use. Flash models are fast and free-tier friendly.</span></label>
+      <label for="aiModel">Model<select id="aiModel">${[...new Set([c.model, AI_DEFAULT_MODEL, 'gemini-3.5-flash', 'gemini-2.5-flash-lite'])].map(m => `<option${m === c.model ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select><span class="hint">“Check key” lists the models your key can use. Flash models are fast and free-tier friendly.</span></label>
       <p class="form-err" id="aiErr" hidden></p>
       <div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="aiCheck">Check key</button>${c.key ? '<button type="button" class="danger" id="aiDel">Remove key</button>' : ''}</div>
     </form>
-    <p class="fine" style="margin-top:12px">The key is stored only in this browser. When you ask for an opinion, your settings, computed stats and recent workout summaries (no GPS routes) are sent to Google.</p>`;
+    <p class="fine" style="margin-top:12px">${online() ? 'The key is saved in your private online account, so it works on every device you sign in on.' : 'The key is stored only in this browser.'} When you ask for an opinion, your settings, computed stats and recent workout summaries (no GPS routes) are sent to Google.</p>`;
   const msg = (t, ok) => { const e = $('#aiErr'); e.textContent = t; e.hidden = !t; e.style.color = ok ? 'var(--good-ink)' : ''; };
   $('#aiShow').onclick = () => { const k = $('#aiKey'); k.type = k.type === 'password' ? 'text' : 'password'; $('#aiShow').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
-  $('#aiForm').onsubmit = ev => { ev.preventDefault(); lsSet('pp-ai', { key: $('#aiKey').value.trim(), model: $('#aiModel').value }); renderAISettings(); msg('Saved.', true); };
+  $('#aiForm').onsubmit = async ev => { ev.preventDefault();
+    try { await aiSave({ key: $('#aiKey').value.trim(), model: $('#aiModel').value }); renderAISettings(); msg(online() ? 'Saved to your account.' : 'Saved.', true); } catch (e) { msg('Could not save: ' + e.message); } };
   $('#aiCheck').onclick = async () => {
     const key = $('#aiKey').value.trim(); if (!key) { msg('Paste a key first.'); return; }
     msg('Checking…', true);
     try { const ms = await geminiModels(key); if (!ms.length) throw new Error('This key has no Gemini text models.');
-      const cur = $('#aiModel').value, pick = ms.includes(cur) ? cur : ms.find(m => /^gemini-[\d.]+-flash$/.test(m)) || ms[0];
+      const cur = $('#aiModel').value, pick = ms.includes(cur) ? cur : ms.includes(AI_DEFAULT_MODEL) ? AI_DEFAULT_MODEL : ms.find(m => /^gemini-[\d.]+-flash$/.test(m)) || ms[0];
       $('#aiModel').innerHTML = ms.map(m => `<option${m === pick ? ' selected' : ''}>${esc(m)}</option>`).join('');
-      lsSet('pp-ai', { key, model: pick }); msg(`Key works. ${ms.length} models available; using ${pick}.`, true);
+      await aiSave({ key, model: pick }); msg(`Key works. ${ms.length} models available; using ${pick}.`, true);
     } catch (e) { msg(e.message); }
   };
-  if ($('#aiDel')) $('#aiDel').onclick = () => { lsSet('pp-ai', { key: '', model: aiCfg().model }); renderAISettings(); };
+  if ($('#aiDel')) $('#aiDel').onclick = async () => { try { await aiSave({ key: '', model: aiCfg().model }); renderAISettings(); } catch (e) { msg('Could not remove: ' + e.message); } };
 }
 // ===== END AI COACH =====

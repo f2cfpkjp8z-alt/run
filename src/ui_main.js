@@ -28,12 +28,40 @@ function compute() {
   if (!runs.length) { st.res = []; st.days = []; return; }
   const last = runs[runs.length - 1].start;
   st.asOf = Date.now() - last < 14 * DAY ? Date.now() : last;
-  st.res = runs.map(r => analyze(r, S, 45));
+  const sig = anSig(S), dirty = [];
+  st.res = runs.map(r => analyzed(r, S, 45, sig, dirty, !!(r.hasHR || r.avgHR)));
   st.days = buildTimeline(runs, st.res, st.asOf);
   const ref = st.days[st.days.length - 1].vo2 || 45; let changed = false;
-  runs.forEach((r, i) => { if (!(r.hasHR || r.avgHR)) { st.res[i] = analyze(r, S, ref); changed = true; } });
+  runs.forEach((r, i) => { if (!(r.hasHR || r.avgHR)) { st.res[i] = analyzed(r, S, ref, sig, dirty, true); changed = true; } });
   if (changed) st.days = buildTimeline(runs, st.res, st.asOf);
   st.idx = new Map(runs.map((r, i) => [r.id, i]));
+  if (dirty.length && st.user && !st.sample) saveAnalysisSoon(dirty);
+}
+/* ---------- saved analysis: each workout keeps its computed results (r.an) with the key they were made with ---------- */
+// The key holds every algorithm version and every setting analyze() reads, so results are reused on every page
+// load and recomputed only when a new algorithm version ships or max HR / resting HR / sex changes.
+const anSig = S => Object.values(ALGOS).map(a => a.id).join(',') + '|' + [S.hrMaxEff, S.hrRest, S.sex].join(',');
+const anFix = (k, v) => typeof v === 'number' && !isFinite(v) ? { __n: String(v) } : v; // JSON has no NaN/Infinity
+const anRev = (k, v) => v && typeof v === 'object' && v.__n !== undefined && Object.keys(v).length === 1 ? Number(v.__n) : v;
+const anMem = new WeakMap(); // parsed results, kept out of the stored row
+function analyzed(r, S, ref, sig, dirty, keep) {
+  const key = sig + '|' + ref, m = anMem.get(r);
+  if (r.an && r.an.k === key) {
+    if (m && m.k === key) return m.res;
+    try { const res = JSON.parse(r.an.j, anRev); anMem.set(r, { k: key, res }); return res; } catch (e) { }
+  }
+  const res = analyze(r, S, ref);
+  if (keep) { r.an = { k: key, j: JSON.stringify(res, anFix) }; anMem.set(r, { k: key, res }); if (!dirty.includes(r)) dirty.push(r); }
+  return res;
+}
+let anTimer = null, anQueue = new Set();
+function saveAnalysisSoon(list) {
+  list.forEach(r => anQueue.add(r)); clearTimeout(anTimer);
+  anTimer = setTimeout(async () => {
+    const rows = [...anQueue].filter(r => st.runs.includes(r)); anQueue.clear();
+    if (!rows.length || !st.user) return;
+    try { await st.backend.saveAnalysis(rows); } catch (e) { console.warn('Could not save computed results', e); }
+  }, 1500);
 }
 const dayAt = t => { const d = st.days; if (!d.length) return null; let lo = 0, hi = d.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (d[m].t <= t) lo = m; else hi = m - 1; } return d[lo]; };
 
@@ -48,11 +76,14 @@ async function enterUser(u) {
   setShell(true); st.shown = 30; refresh();
   if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
   maybeOfferMigration(); loadPublished();
+  if (online()) { aiAdopt(); if (st.user.ui) setUI(st.user.ui, true); else uiSync(uiPrefs()); }
 }
+// appearance follows the online account
+function uiSync(p) { if (online()) st.backend.updateProfile({ ui: p }).then(u => { if (u) st.user = u; }).catch(e => console.warn(e)); }
 function showAuth(note) {
   const b = st.backend, local = b.kind === 'local';
   $('#authNote').hidden = !note; $('#authNote').textContent = note || '';
-  $('#authLocal').hidden = !local; $('#authFire').hidden = local; $('#goOnline').hidden = !fbConfig();
+  $('#authLocal').hidden = !local; $('#authFire').hidden = local; $('#goOnline').hidden = false;
   if (local) {
     const accts = b.accounts();
     $('#profilePick').hidden = !accts.length;
@@ -66,7 +97,7 @@ function showAuth(note) {
 function setAuthMode(m) {
   st.authMode = m; const up = m === 'up';
   $('#tabIn').setAttribute('aria-selected', String(!up)); $('#tabUp').setAttribute('aria-selected', String(up));
-  $('#lName').hidden = !up; $('#aSubmit').textContent = up ? 'Create account' : 'Sign in';
+  $('#lName').hidden = !up; $('#aReset').hidden = up; $('#aSubmit').textContent = up ? 'Create account' : 'Sign in';
   $('#aPass').autocomplete = up ? 'new-password' : 'current-password';
 }
 $('#tabIn').onclick = () => setAuthMode('in'); $('#tabUp').onclick = () => setAuthMode('up');
@@ -80,7 +111,17 @@ $('#fCreate').addEventListener('submit', async ev => {
 });
 const fireMsg = e => ({ 'auth/invalid-credential': 'Email or password is wrong.', 'auth/wrong-password': 'Email or password is wrong.', 'auth/user-not-found': 'No account with that email. Create one instead.',
   'auth/email-already-in-use': 'That email already has an account. Sign in instead.', 'auth/weak-password': 'Use at least 6 characters for the password.', 'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
-  'auth/network-request-failed': 'Firebase could not be reached. Check your connection.' }[e.code] || e.message);
+  'auth/network-request-failed': 'Firebase could not be reached. Check your connection.', 'auth/invalid-email': 'That email address doesn’t look right.',
+  'auth/too-many-requests': 'Too many attempts. Wait a minute and try again.', 'auth/popup-blocked': 'The browser blocked the Google window. Allow pop-ups and try again.',
+  'auth/operation-not-allowed': 'This sign-in method is not switched on for the app yet.', 'auth/unauthorized-domain': 'This web address is not allowed to sign in to the app yet.',
+  'permission-denied': 'The online database refused this. Try signing in again.' }[e.code] || e.message);
+$('#aReset').onclick = async () => {
+  const email = $('#aEmail').value.trim(), err = $('#aErr');
+  if (!email) { err.textContent = 'Type your email above, then tap “Forgot password?” again.'; err.hidden = false; $('#aEmail').focus(); return; }
+  try { await st.backend.auth.sendPasswordResetEmail(email); err.textContent = 'Check your inbox: a password reset link is on its way.'; }
+  catch (e) { err.textContent = fireMsg(e); }
+  err.hidden = false;
+};
 $('#fFire').addEventListener('submit', async ev => {
   ev.preventDefault(); $('#aErr').hidden = true;
   try {
@@ -102,7 +143,7 @@ function renderChrome() {
   $('#menu').innerHTML = u
     ? `<div class="who"><b>${esc(u.name)}</b><span>${esc(u.email || 'Local profile')} · ${esc(st.backend.label)}</span></div>
        <button type="button" role="menuitem" data-a="profile">Profile &amp; settings</button>
-       ${st.backend.kind === 'local' && fbConfig() ? '<button type="button" role="menuitem" data-a="online">Save account online</button>' : ''}
+       ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="online">Save account online</button>' : ''}
        ${st.backend.kind === 'local' ? '<button type="button" role="menuitem" data-a="switch">Switch profile</button>' : ''}
        <button type="button" role="menuitem" data-a="out">${st.backend.kind === 'local' ? 'Sign out of profile' : 'Sign out'}</button>`
     : `<div class="who"><b>Guest preview</b><span>Sample athlete, nothing is saved</span></div>
@@ -419,7 +460,7 @@ function renderProfile() {
   $('#pCard').innerHTML = u ? `<div class="pc-head"><span class="avatar">${esc(initials(u.name))}</span><div><h3>${esc(u.name)}</h3><p>${esc(u.email || 'No email')} · ${esc(b.label)}</p></div></div>
       <div class="pc-stats"><div><b>${st.runs.length}</b><span>workouts</span></div><div><b>${fmtDist(totD)}</b><span>${uName()} total</span></div><div><b>${st.runs.length ? fmtDate(st.runs[0].start, { month: 'short', year: '2-digit' }) : '–'}</b><span>first workout</span></div></div>
       <form id="pEdit" class="form1" hidden><label for="pName">Name<input id="pName" required value="${esc(u.name)}"></label>${b.kind === 'local' ? `<label for="pEmail">Email<input id="pEmail" type="email" value="${esc(u.email || '')}"></label>` : ''}<div class="btns"><button type="submit" class="primary">Save</button><button type="button" id="pCancel">Cancel</button></div></form>
-      <div class="btns" id="pBtns">${b.kind === 'local' && fbConfig() ? '<button type="button" class="primary" id="pOnline">Save account online</button>' : ''}${online() ? `<button type="button" class="primary" id="pShare">${ICON_SHARE}Share profile</button>` : ''}<button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
+      <div class="btns" id="pBtns">${b.kind === 'local' ? '<button type="button" class="primary" id="pOnline">Save account online</button>' : ''}${online() ? `<button type="button" class="primary" id="pShare">${ICON_SHARE}Share profile</button>` : ''}<button type="button" id="pEditB">Edit details</button>${b.kind === 'local' ? '<button type="button" id="pSwitch">Switch profile</button>' : ''}<button type="button" id="pOut">Sign out</button></div>`
     : `<div class="pc-head"><span class="avatar guest">?</span><div><h3>Guest preview</h3><p>You’re viewing a sample athlete. Nothing is saved.</p></div></div>
       <div class="btns" style="margin-top:16px"><button type="button" class="primary" id="pCreate">${b && b.kind === 'firebase' ? 'Sign in or create account' : 'Create or choose a profile'}</button></div>`;
   if (u) {
@@ -448,11 +489,6 @@ $('#setForm').addEventListener('submit', async ev => {
   if (st.user) { try { st.user = await st.backend.updateProfile({ settings }); $('#setSaved').textContent = 'Saved. All workouts recalculated.'; } catch (e) { $('#setSaved').textContent = 'Could not save: ' + e.message; } }
   glyphCache.clear(); compute(); renderChrome(); renderProfile();
 });
-function parseConfig(txt) {
-  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error('Paste the firebaseConfig object, including the braces.');
-  const json = m[0].replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}');
-  const c = JSON.parse(json); if (!c.apiKey || !c.projectId) throw new Error('The config needs at least apiKey and projectId.'); return c;
-}
 const RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
@@ -477,30 +513,16 @@ service cloud.firestore {
   }
 }`;
 function renderStorage() {
-  const b = st.backend, isOn = b && b.kind === 'firebase', cfg = fbConfig();
-  const setup = FIREBASE_CONFIG ? '' : `<details${cfg ? '' : ' open'}><summary>Online account setup (Firebase)</summary><div class="stack" style="margin-top:10px">
-      <textarea id="fbCfg" spellcheck="false" aria-label="Firebase web config" placeholder="{ apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, appId: &quot;…&quot; }">${cfg ? esc(JSON.stringify(cfg, null, 2)) : ''}</textarea>
-      <p class="fine">Firebase console → Project settings → Your apps → Web app → Config. Turn on Email/Password (and Google) under Authentication, create a Firestore database, and add this site’s domain to Authentication → Authorized domains. To offer it to everyone, put the config in FIREBASE_CONFIG in store.js.</p>
-      <p class="form-err" id="fbErr" hidden></p>
-      <div class="btns"><button type="button" id="cfgSave">Save config</button></div>
-      <details><summary>Firestore security rules</summary><div class="formula">${esc(RULES)}</div></details></div></details>`;
-  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${isOn ? 'good' : ''}"><i></i>${isOn ? 'Online account' : 'This device'}</span></div>
+  const b = st.backend, isOn = b && b.kind === 'firebase';
+  $('#storeCard').innerHTML = `<div class="ch"><h3>Storage &amp; sync</h3><span class="chip ${isOn ? 'good' : 'warn'}"><i></i>${isOn ? 'Online account' : 'This device only'}</span></div>
     <div class="stack">
-      ${isOn ? `<p class="sub">Signed in online. Workouts sync to every device you sign in on. Your profile is private; only what you share or publish can be seen by others.</p>
-        <div class="btns"><button type="button" id="goLocalP">Use on-device profiles</button></div>`
-      : `<p class="sub">Profiles and workouts are stored in this browser only. Save the account online to sync between devices, share links and use the feed.</p>
-        ${st.user && cfg ? '<div class="btns"><button type="button" class="primary" id="saveOn">Save account online</button></div>' : ''}
-        ${!st.user && cfg ? '<div class="btns"><button type="button" id="goOnP">Sign in to an online account</button></div>' : ''}`}
-      ${setup}
+      ${isOn ? `<p class="sub">Everything is saved in your private online account: profile, settings, AI key, workouts and their computed results. Sign in on any device; only what you share or publish can be seen by others.</p>`
+      : `<p class="sub">This profile is stored in this browser only. Save it online to keep it safe, sync between devices, share links and use the feed.</p>
+        <div class="btns">${st.user ? '<button type="button" class="primary" id="saveOn">Save account online</button>' : '<button type="button" class="primary" id="goOnP">Sign in or create an account</button>'}</div>`}
+      <details class="help"><summary>Firestore security rules</summary><div class="formula">${esc(RULES)}</div></details>
     </div>`;
   if ($('#saveOn')) $('#saveOn').onclick = saveOnlineDlg;
   if ($('#goOnP')) $('#goOnP').onclick = () => useBackend('firebase');
-  if ($('#goLocalP')) $('#goLocalP').onclick = async () => { await st.backend.signOut(); useBackend('local'); };
-  if ($('#cfgSave')) $('#cfgSave').onclick = () => {
-    $('#fbErr').hidden = true;
-    try { lsSet('pp-fbconfig', parseConfig($('#fbCfg').value)); setStatus('Firebase config saved. “Save account online” is now available.'); renderChrome(); renderProfile(); }
-    catch (e) { $('#fbErr').textContent = e.message; $('#fbErr').hidden = false; }
-  };
 }
 async function maybeOfferMigration() {
   const pid = lsGet('pp-migrate', null); if (!pid || st.backend.kind !== 'firebase' || !st.user) return;

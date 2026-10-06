@@ -131,10 +131,8 @@ function shareProfile() {
 /* ---------- shared view (#s-<id>) ---------- */
 async function renderShared(id) {
   const box = $('#v-shared'); box.innerHTML = '<p class="empty">Loading…</p>';
-  const cfg = fbConfig();
-  if (!cfg) { box.innerHTML = '<p class="empty">Sharing is not set up in this copy of the app.</p>'; return; }
   let s;
-  try { await FirebaseBackend.init(cfg); s = await FirebaseBackend.getShare(id); }
+  try { await FirebaseBackend.init(FIREBASE_CONFIG); s = await FirebaseBackend.getShare(id); }
   catch (e) { if (st.detail === id) box.innerHTML = `<p class="empty">Could not open this link. ${esc(fireMsg(e))}</p>`; return; }
   if (st.view !== 'shared' || st.detail !== id) return;
   if (!s) { box.innerHTML = '<p class="empty">This link was removed by its owner.</p>'; return; }
@@ -176,9 +174,8 @@ async function renderShared(id) {
 
 /* ---------- save account online ---------- */
 function saveOnlineDlg() {
-  const cfg = fbConfig(), u = st.user;
-  if (!cfg) { openDlg('<h2>Online accounts aren’t set up</h2><p>This copy of the app has no Firebase project yet. Add one under Profile → Storage → Online account setup.</p>'); return; }
-  const ready = FirebaseBackend.init(cfg).catch(e => e); // load the SDK now so Google’s popup opens straight from the click
+  const u = st.user;
+  const ready = FirebaseBackend.init(FIREBASE_CONFIG).catch(e => e); // load the SDK now so Google’s popup opens straight from the click
   let mode = 'up';
   const draw = () => {
     const up = mode === 'up';
@@ -257,7 +254,7 @@ async function renderFeed() {
   const box = $('#feedList');
   if (!online()) {
     box.innerHTML = `<div class="card"><h3 style="margin-bottom:8px">Join the feed</h3><p class="muted" style="margin-bottom:14px">The feed shows workouts that runners publish — name, time, distance, heart rate and route. It needs an online account; your profile itself stays private.</p>
-      ${st.user && fbConfig() ? '<button type="button" class="primary" id="fdSave">Save account online</button>' : fbConfig() ? '<button type="button" class="primary" id="fdIn">Sign in or create an online account</button>' : '<p class="fine">Online accounts are not set up in this copy of the app.</p>'}</div>`;
+      ${st.user ? '<button type="button" class="primary" id="fdSave">Save account online</button>' : '<button type="button" class="primary" id="fdIn">Sign in or create an online account</button>'}</div>`;
     if ($('#fdSave')) $('#fdSave').onclick = saveOnlineDlg;
     if ($('#fdIn')) $('#fdIn').onclick = () => useBackend('firebase');
     return;

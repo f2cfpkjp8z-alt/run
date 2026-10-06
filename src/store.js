@@ -3,10 +3,18 @@
 //   init() · user() · accounts() · signIn(cred) · signUp(info) · signOut()
 //   updateProfile(patch) · deleteAccount()
 //   listWorkouts() · putWorkouts(list) · deleteWorkout(id) · clearWorkouts()
-// Paste your Firebase web-app config here (Firebase console → Project settings → Your apps →
-// SDK setup and configuration → Config) to offer online accounts, sharing and the feed.
-// On-device profiles stay the default; users opt in with "Save account online".
-const FIREBASE_CONFIG = null; // e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }
+//   saveAnalysis(list) — stores each workout's computed results (r.an) so pages don't re-run the algorithms
+// The app's own Firebase project. Every user signs in here (Firebase Authentication) and their profile,
+// settings, AI key and workouts live in Firestore. This web config is public by design; access is
+// enforced by the Firestore rules (RULES in ui_main.js).
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDNcmETNQKDUWeF6sLxQM7CoJiIgD5BcJE',
+  authDomain: 'pacepulse-585f6.firebaseapp.com',
+  projectId: 'pacepulse-585f6',
+  storageBucket: 'pacepulse-585f6.firebasestorage.app',
+  messagingSenderId: '716070831460',
+  appId: '1:716070831460:web:f653ccb59c89ca01536671',
+};
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
 
 const DEFAULT_SETTINGS = { hrMax: null, hrRest: 55, age: null, sex: 'm', units: 'km', weight: null, height: null };
@@ -74,6 +82,7 @@ const LocalBackend = {
     if (!this.db) { rows.forEach(r => this.mem.set(r.key, r)); return; }
     await this._tx('readwrite', os => { rows.forEach(r => os.put(r)); });
   },
+  async saveAnalysis(list) { return this.putWorkouts(list); },
   async deleteWorkout(id) { const u = this.user(); if (!u) return; const k = u.id + '|' + id; if (!this.db) { this.mem.delete(k); return; } await this._tx('readwrite', os => { os.delete(k); }); },
   async clearWorkouts() { const list = await this.listWorkouts(); for (const r of list) await this.deleteWorkout(r.id); },
 };
@@ -89,6 +98,7 @@ const FirebaseBackend = {
     if (!window.firebase) for (const m of ['app', 'auth', 'firestore']) await loadScript(FIREBASE_SDK + 'firebase-' + m + '-compat.js');
     if (!firebase.apps.length) firebase.initializeApp(config);
     this.auth = firebase.auth(); this.fs = firebase.firestore();
+    try { this.fs.settings({ ignoreUndefinedProperties: true }); } catch (e) { } // a stray undefined never blocks a save
     await new Promise(res => { const un = this.auth.onAuthStateChanged(() => { un(); res(); }); });
     if (this.auth.currentUser) await this._loadProfile();
   },
@@ -113,7 +123,8 @@ const FirebaseBackend = {
   async signOut() { await this.auth.signOut(); this.profile = null; },
   async updateProfile(patch) {
     this.profile = Object.assign({}, this.profile, patch, { settings: Object.assign({}, this.profile.settings, patch.settings || {}) });
-    await this.fs.collection('users').doc(this.auth.currentUser.uid).set(this.profile, { merge: true }); return this.user();
+    // the whole doc is written (no merge), so trimmed maps such as the saved AI opinions really shrink
+    await this.fs.collection('users').doc(this.auth.currentUser.uid).set(this.profile); return this.user();
   },
   async deleteAccount() {
     const me = this.auth.currentUser.uid;
@@ -127,6 +138,9 @@ const FirebaseBackend = {
     for (let i = 0; i < list.length; i += 20) { // small batches keep each commit well under Firestore's 10 MB request cap
       const b = this.fs.batch(); list.slice(i, i + 20).forEach(r => b.set(this._col().doc(r.id), this._enc(r))); await b.commit();
     }
+  },
+  async saveAnalysis(list) { // only the small `an` field changes, so the streams aren't re-uploaded
+    for (let i = 0; i < list.length; i += 400) { const b = this.fs.batch(); list.slice(i, i + 400).forEach(r => b.update(this._col().doc(r.id), { an: r.an })); await b.commit(); }
   },
   async deleteWorkout(id) { await this._col().doc(id).delete(); },
   async clearWorkouts() { const qs = await this._col().get(); for (let i = 0; i < qs.docs.length; i += 400) { const b = this.fs.batch(); qs.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit(); } },
@@ -149,9 +163,14 @@ const FirebaseBackend = {
 };
 
 /* ---------- backend selection ---------- */
-// On-device storage is always the default. 'pp-backend' = { kind: 'firebase' } once a user moves online.
-function fbConfig() { const c = lsGet('pp-backend', null); return FIREBASE_CONFIG || lsGet('pp-fbconfig', null) || (c && c.config) || null; }
-function storageChoice() { const c = lsGet('pp-backend', null); return c && c.kind === 'firebase' && fbConfig() ? { kind: 'firebase', config: fbConfig() } : { kind: 'local' }; }
+// The online account (Firebase) is the default. On-device profiles remain only for browsers that already
+// have some (until they save them online) or for runners who explicitly pick "this device".
+// 'pp-backend' = { kind: 'firebase' | 'local' } remembers that choice.
+function storageChoice() {
+  const c = lsGet('pp-backend', null);
+  const kind = c && c.kind ? c.kind : lsGet('pp-profiles', []).length ? 'local' : 'firebase';
+  return kind === 'local' ? { kind: 'local' } : { kind: 'firebase', config: FIREBASE_CONFIG };
+}
 async function openBackend() {
   const c = storageChoice(); LocalBackend.fallbackError = null;
   if (c.kind === 'firebase') {

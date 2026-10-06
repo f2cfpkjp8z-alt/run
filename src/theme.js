@@ -1,4 +1,5 @@
-// ===== APPEARANCE: theme, font style, text size — stored per device, applied before first paint =====
+// ===== APPEARANCE: theme, font style, text size — applied before first paint from this device's copy;
+// with an online account the choice is also saved in the profile (field ui) and follows the runner =====
 // [id, name, mode, page background, accent] — colour tokens live in head.html under :root[data-theme=…]
 const THEMES = [
   ['volt', 'Volt', 'dark', '#0b0f13', '#c6f24e'],
@@ -35,7 +36,7 @@ function applyUI(p = uiPrefs()) {
   if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
   meta.content = t[3];
 }
-function setUI(patch) { const p = Object.assign(uiPrefs(), patch); lsSet('pp-ui', p); applyUI(p); }
+function setUI(patch, fromAccount) { const p = Object.assign(uiPrefs(), patch); lsSet('pp-ui', p); applyUI(p); if (!fromAccount && typeof uiSync === 'function') uiSync(p); }
 applyUI();
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (uiPrefs().theme === 'auto') applyUI(); });
 // ===== END APPEARANCE =====

@@ -4,6 +4,22 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v26 — 2026-10-06
+  In short: Sign in with your Pace & Pulse account — everything is saved online, and pages open faster.
+  The app now has its own Firebase project built in: sign up / sign in uses Firebase Authentication
+    (email + password with "Forgot password?", or Google). New visitors start at sign-in; the option to paste
+    your own Firebase config is gone. On-device profiles still work for browsers that have them, with
+    "Save account online" to move them up.
+  Saved in the private online account (users/{uid}): profile, settings, overview layout, appearance
+    (theme, font, text size), the Gemini API key and model, and the saved AI opinions. A key that was
+    saved in this browser moves into the account on first online sign-in.
+  Computed results are saved with each workout (field an): imported runs are analysed once and the results
+    are reused on every page load. They are recalculated only when an algorithm version changes or when
+    max HR, resting HR or sex changes. No algorithm changed — the numbers are identical (all ids unchanged).
+  AI coach default model is now Gemini 3.5 Flash-Lite (gemini-3.5-flash-lite); saved 2.5 Flash moves to it.
+  Why: one shared online account for all users, with nothing lost when the browser is cleared, and less
+    work on every page load.
+
 v25 — 2026-10-06
   In short: New Asphalt theme — dark grey with orange, and every chart in its own colour.
   Asphalt (Profile → Appearance) is a flat neutral-grey dark theme with an orange accent, without the tinted glow.
