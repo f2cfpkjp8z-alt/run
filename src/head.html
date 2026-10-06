@@ -392,6 +392,13 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .algo-steps { padding-left: 1.2em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.875rem; color: var(--ink2); }
 .algo-hist { padding-left: 1.1em; margin: 8px 0 0; display: grid; gap: 8px; font-size: 0.8125rem; color: var(--ink2); }
 .dlg .chip { font-size: 0.75rem; }
+/* update toast + pull-to-refresh */
+.toast { position: fixed; left: 50%; bottom: calc(var(--bnav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 60;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.ptr { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translate(-50%, -50px); opacity: 0; z-index: 35; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--raise); border: 1px solid var(--line); box-shadow: 0 4px 12px rgb(0 0 0 / .3); pointer-events: none; }
+.ptr .ai-busy { animation-play-state: paused; } .ptr.ready .ai-busy { animation-play-state: running; border-top-color: var(--accent); }
+.ver { cursor: pointer; }
 /* ---------- native-app feel ---------- */
 /* no page zoom (pinch / double-tap) — text size lives in Profile → Appearance; no grey tap flash, no long-press menus */
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }

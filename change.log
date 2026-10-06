@@ -3,6 +3,15 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v15 — 2026-10-06
+  The app updates itself — useful when it runs from the iPhone home screen, where there is no reload button.
+    It checks for a new version when opened, when you come back to it, every 15 minutes while open, and when
+    you pull down at the top of any page (pull-to-refresh, which also redraws your data). When a new version
+    is found it shows "Updating to version N…" and restarts on its own; if you are busy (a dialog is open,
+    an import is running, you are customizing the overview or typing) it waits with an "Update now" banner.
+    The version line at the bottom also has "Check for updates".
+  Why: home-screen apps on iOS can't be reloaded, so new versions only arrived after closing the app.
+
 v14 — 2026-10-06
   Feels like a native app on phones:
     - no page zoom: pinch and double-tap zoom are blocked (iOS ignores the viewport setting, so its pinch

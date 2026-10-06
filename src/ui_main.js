@@ -540,7 +540,8 @@ function renderLook() {
 
 /* ---------- import ---------- */
 const setStatus = t => { $('#status').textContent = t; };
-async function importFiles(files) {
+async function importFiles(files) { st.importing = true; try { await importFilesNow(files); } finally { st.importing = false; } }
+async function importFilesNow(files) {
   if (!st.user) { st.pending = files; showAuth(`Create a profile${st.backend.kind === 'firebase' ? ' or sign in' : ''} to keep the ${files.length} file${files.length === 1 ? '' : 's'} you chose. The import continues right after.`); return; }
   const found = [], skipped = { other: 0, bad: 0 }; let seen = 0;
   const handle = async (name, getBuf) => {
@@ -608,19 +609,38 @@ async function boot() {
   else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
   else { renderChrome(); route(); }
 }
-if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
+if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.onclick = () => checkUpdate(true); el.setAttribute('role', 'button'); el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at + ' — tap to check for updates'; el.insertAdjacentHTML('beforeend', ' · <u>Check for updates</u>'); });
 /* ---------- update check: GitHub Pages lets browsers cache the page for 10 min; offer the newer version ---------- */
-async function checkUpdate() {
-  if (typeof BUILD === 'undefined' || !/^https?:/.test(location.protocol)) return;
+// The app updates itself: on open, when you come back to it, every 15 minutes and on pull-down / "Check for updates".
+// It reloads straight away unless you are in the middle of something (a dialog, an import, editing, typing) —
+// then a banner waits for you.
+const busy = () => $('#dlg').open || st.importing || st.dashEdit || (document.activeElement && document.activeElement.matches('input, textarea, select'));
+function toast(t, ms = 2200) {
+  let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), ms);
+}
+const applyUpdate = v => { toast(`Updating to version ${v}…`, 5000); setTimeout(() => location.replace(location.pathname + '?v=' + v + location.hash), 700); };
+async function checkUpdate(manual) {
+  if (typeof BUILD === 'undefined' || !/^https?:/.test(location.protocol)) { if (manual) toast('Updates are checked when the app runs from the web.'); return; }
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text(), m = t.match(/const BUILD = \{ v: (\d+)/);
-    if (!m || +m[1] <= BUILD.v || $('#upd')) return;
-    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is available.</b> You are on version ${BUILD.v}.</span><button type="button" class="primary">Update now</button>`;
-    d.querySelector('button').onclick = () => location.replace(location.pathname + '?v=' + m[1] + location.hash); $('#main').prepend(d);
-  } catch (e) { /* offline */ }
+    if (!m || +m[1] <= BUILD.v) { if (manual) toast(`You have the latest version (${BUILD.v}).`); return; }
+    if (!busy()) return applyUpdate(m[1]);
+    if ($('#upd')) return;
+    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is ready.</b> You are on version ${BUILD.v}.</span><button type="button" class="primary">Update now</button>`;
+    d.querySelector('button').onclick = () => applyUpdate(m[1]); $('#main').prepend(d);
+  } catch (e) { if (manual) toast('No connection — try again later.'); }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
-setTimeout(checkUpdate, 3000);
+addEventListener('pageshow', ev => { if (ev.persisted) checkUpdate(); }); // iOS restores home-screen apps from memory
+setTimeout(checkUpdate, 3000); setInterval(() => { if (!document.hidden) checkUpdate(); }, 15 * 60000);
+// pull down at the top of the page: check for updates and redraw, like a native app's pull-to-refresh
+(() => {
+  let y0 = null, dy = 0; const ind = document.createElement('div'); ind.className = 'ptr'; ind.innerHTML = '<span class="ai-busy"></span>'; document.body.appendChild(ind);
+  document.addEventListener('touchstart', e => { y0 = scrollY <= 0 && e.touches.length === 1 && !$('#dlg').open && !(e.target.closest && e.target.closest('.map, .plot, .smap, input, textarea')) ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  document.addEventListener('touchmove', e => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); ind.style.transform = `translate(-50%, ${Math.min(dy, 110) - 50}px)`; ind.classList.toggle('ready', dy > 80); ind.style.opacity = Math.min(1, dy / 80); }, { passive: true });
+  document.addEventListener('touchend', () => { if (y0 == null) return; const go = dy > 80; y0 = null; ind.style.transform = ''; ind.style.opacity = 0; ind.classList.remove('ready'); if (go) { checkUpdate(true); if (!$('#shell').hidden) refresh(); } });
+})();
 // native feel: iOS Safari ignores user-scalable=no, so block its pinch gestures directly (the route map has its own pinch)
 ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
