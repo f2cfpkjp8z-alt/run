@@ -23,7 +23,7 @@ Browser-only running analytics for Garmin Connect exports (FIT/TCX/GPX/ZIP/CSV).
 - Font sizes in CSS are rem so the text-size setting scales them; don't add px font sizes.
 
 ## Rules
-- Every update: add an entry at the top of change.log (version = VERSION + 1, date, what changed and why) before running ./build.sh.
+- Every update: add an entry at the top of change.log (version = VERSION + 1, date, a first line "  In short: …" — one short sentence the app shows in its update message — then what changed and why) before running ./build.sh.
 - Changing how a measurement is calculated = a new algorithm version: bump its id (e.g. VO2alg2 → VO2alg3) and `since`, add a history line with the reason, and name both ids in change.log. Pure refactors must keep numbers identical.
 - Any new place that shows a measurement wraps its label in al('<key>', text).
 - Workout dates always come from the file, never the import time. Workout id = 'a' + start minute.

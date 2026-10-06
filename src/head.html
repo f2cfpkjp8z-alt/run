@@ -219,7 +219,7 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
-.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
+.tip { position: absolute; pointer-events: none; background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; border-radius: 10px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
 .tip b { font-weight: 700; } .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .empty { color: var(--muted); font-size: 0.875rem; padding: 24px 0; text-align: center; margin: 0; }
 
@@ -394,7 +394,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .dlg .chip { font-size: 0.75rem; }
 /* update toast + pull-to-refresh */
 .toast { position: fixed; left: 50%; bottom: calc(var(--bnav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 60;
-  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
+  background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; padding: 10px 16px; border-radius: 18px; max-width: min(92vw, 520px); text-align: center; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 .ptr { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translate(-50%, -50px); opacity: 0; z-index: 35; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--raise); border: 1px solid var(--line); box-shadow: 0 4px 12px rgb(0 0 0 / .3); pointer-events: none; }
 .ptr .ai-busy { animation-play-state: paused; } .ptr.ready .ai-busy { animation-play-state: running; border-top-color: var(--accent); }

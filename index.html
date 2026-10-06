@@ -220,7 +220,7 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
-.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
+.tip { position: absolute; pointer-events: none; background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; border-radius: 10px; padding: 8px 10px; font-size: 0.75rem; line-height: 1.45; white-space: nowrap; z-index: 5; box-shadow: 0 8px 22px rgb(0 0 0 / .3); }
 .tip b { font-weight: 700; } .tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .empty { color: var(--muted); font-size: 0.875rem; padding: 24px 0; text-align: center; margin: 0; }
 
@@ -395,7 +395,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .dlg .chip { font-size: 0.75rem; }
 /* update toast + pull-to-refresh */
 .toast { position: fixed; left: 50%; bottom: calc(var(--bnav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 60;
-  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
+  background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; padding: 10px 16px; border-radius: 18px; max-width: min(92vw, 520px); text-align: center; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 .ptr { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translate(-50%, -50px); opacity: 0; z-index: 35; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--raise); border: 1px solid var(--line); box-shadow: 0 4px 12px rgb(0 0 0 / .3); pointer-events: none; }
 .ptr .ai-busy { animation-play-state: paused; } .ptr.ready .ai-busy { animation-play-state: running; border-top-color: var(--accent); }
@@ -622,7 +622,7 @@ img, a, svg { -webkit-user-drag: none; }
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 16, at: '2026-10-06T00:32:40Z' };
+const BUILD = { v: 17, at: '2026-10-06T00:33:54Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -3365,18 +3365,33 @@ function toast(t, ms = 2200) {
   let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
   el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), ms);
 }
-const applyUpdate = v => { toast(`Updating to version ${v}…`, 5000); setTimeout(() => location.replace(location.pathname + '?v=' + v + location.hash), 700); };
+// one-line "In short:" summaries of every version after ours, from change.log
+async function whatsNew(from, to) {
+  try {
+    const log = await (await fetch(location.pathname.replace(/[^/]*$/, '') + 'change.log?check=' + Date.now(), { cache: 'no-store' })).text(), out = [];
+    for (let v = to; v > from && out.length < 3; v--) { const m = log.match(new RegExp('\\nv' + v + ' — [^\\n]*\\n([\\s\\S]*?)(?=\\nv\\d+ — |$)')); if (!m) continue;
+      const short = (m[1].match(/In short:\s*(.+)/) || [, m[1].trim().split('\n')[0].replace(/\s+/g, ' ').slice(0, 120)])[1]; out.push([v, short.trim()]); }
+    return out;
+  } catch (e) { return []; }
+}
+const newsText = news => news.map(([v, t]) => (news.length > 1 ? `v${v}: ` : '') + t).join(' · ');
+const applyUpdate = (v, news) => { lsSet('pp-updated', { v: +v, news }); toast(`Updating to version ${v}…${news.length ? ' ' + newsText(news) : ''}`, 6000); setTimeout(() => location.replace(location.pathname + '?v=' + v + location.hash), 1600); };
 async function checkUpdate(manual) {
   if (typeof BUILD === 'undefined' || !/^https?:/.test(location.protocol)) { if (manual) toast('Updates are checked when the app runs from the web.'); return; }
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text(), m = t.match(/const BUILD = \{ v: (\d+)/);
     if (!m || +m[1] <= BUILD.v) { if (manual) toast(`You have the latest version (${BUILD.v}).`); return; }
-    if (!busy()) return applyUpdate(m[1]);
+    const news = await whatsNew(BUILD.v, +m[1]);
+    if (!busy()) return applyUpdate(m[1], news);
     if ($('#upd')) return;
-    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is ready.</b> You are on version ${BUILD.v}.</span><button type="button" class="primary">Update now</button>`;
-    d.querySelector('button').onclick = () => applyUpdate(m[1]); $('#main').prepend(d);
+    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is ready.</b> ${esc(newsText(news))}</span><button type="button" class="primary">Update now</button>`;
+    d.querySelector('button').onclick = () => applyUpdate(m[1], news); $('#main').prepend(d);
   } catch (e) { if (manual) toast('No connection — try again later.'); }
 }
+// after an update: show once what it brought
+setTimeout(() => { const u = lsGet('pp-updated', null); if (!u || typeof BUILD === 'undefined' || u.v !== BUILD.v) return; lsSet('pp-updated', null);
+  const d = document.createElement('div'); d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Updated to version ${u.v}.</b> ${esc(newsText(u.news || []))}</span><button type="button" class="ghost">OK</button>`;
+  d.querySelector('button').onclick = () => d.remove(); $('#main').prepend(d); }, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 addEventListener('pageshow', ev => { if (ev.persisted) checkUpdate(); }); // iOS restores home-screen apps from memory
 setTimeout(checkUpdate, 3000); setInterval(() => { if (!document.hidden) checkUpdate(); }, 15 * 60000);

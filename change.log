@@ -1,9 +1,20 @@
 Pace & Pulse — change log
 =========================
 Newest first. One entry per published version (the number shown at the bottom of every page).
-Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
+Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
+Algorithm changes name the old and new algorithm ids.
+
+v17 — 2026-10-06
+  In short: Update messages say what's new; chart tooltips are dark.
+  The update banner and the "Updating…" message now include a one-line summary of what changed, read from this
+    change.log ("In short:" lines; several versions are listed if you skipped some). After an automatic update
+    a "What's new" banner shows it once.
+  Chart and map tooltips and the update toast use a dark background in every theme (they were white on dark
+    themes).
+  Why: to know what an update brings; white pop-ups were glaring.
 
 v16 — 2026-10-06
+  In short: Fitness age now counts resting heart rate and BMI like Garmin.
   RATEalg2 → RATEalg3 (fitness age). Why: it compared VO₂max with Cooper medians, which barely change from
     20 to 39, so 46.8 at age 37 showed fitness age 20 while Garmin shows 32. Now, like Garmin, it also counts
     resting heart rate (+0.155 ml/kg/min per bpm below average, NTNU fitness model) and BMI (+0.75 per point
@@ -13,6 +24,7 @@ v16 — 2026-10-06
     Set resting HR, height and weight in Profile.
 
 v15 — 2026-10-06
+  In short: The app updates itself; pull down to check for updates.
   The app updates itself — useful when it runs from the iPhone home screen, where there is no reload button.
     It checks for a new version when opened, when you come back to it, every 15 minutes while open, and when
     you pull down at the top of any page (pull-to-refresh, which also redraws your data). When a new version
@@ -22,6 +34,7 @@ v15 — 2026-10-06
   Why: home-screen apps on iOS can't be reloaded, so new versions only arrived after closing the app.
 
 v14 — 2026-10-06
+  In short: Feels like a native app: no page zoom, pinch-zoom on maps, press feedback.
   Feels like a native app on phones:
     - no page zoom: pinch and double-tap zoom are blocked (iOS ignores the viewport setting, so its pinch
       gesture is blocked in code); text boxes are 16 px+ so iOS no longer zooms in when you tap one.
@@ -34,6 +47,7 @@ v14 — 2026-10-06
   Why: so the app behaves like an installed app, not a web page.
 
 v13 — 2026-10-06
+  In short: Add to Home Screen / Install app with the Pace & Pulse icon.
   Installable web app. "Add to Home Screen" on iPhone/iPad and "Install app" in Chrome/Android/desktop now
     use the Pace & Pulse icon and name and open full-screen without browser bars: web app manifest, icons
     (180 px Apple touch icon, 192/512 px, maskable 512 px for Android's shapes, SVG and 32 px favicons),
@@ -42,6 +56,7 @@ v13 — 2026-10-06
   Why: to save the app to the home screen like a normal app.
 
 v12 — 2026-10-06
+  In short: Shows a banner when a newer version is published.
   Update check: a few seconds after opening (and whenever you return to the tab) the app asks GitHub Pages
     for the latest version, bypassing the browser cache. If it is newer, a banner offers "Update now".
     Why: GitHub Pages lets browsers keep the page for 10 minutes, so new versions didn't show right away.

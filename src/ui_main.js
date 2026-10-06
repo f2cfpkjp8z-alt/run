@@ -619,18 +619,33 @@ function toast(t, ms = 2200) {
   let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
   el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), ms);
 }
-const applyUpdate = v => { toast(`Updating to version ${v}…`, 5000); setTimeout(() => location.replace(location.pathname + '?v=' + v + location.hash), 700); };
+// one-line "In short:" summaries of every version after ours, from change.log
+async function whatsNew(from, to) {
+  try {
+    const log = await (await fetch(location.pathname.replace(/[^/]*$/, '') + 'change.log?check=' + Date.now(), { cache: 'no-store' })).text(), out = [];
+    for (let v = to; v > from && out.length < 3; v--) { const m = log.match(new RegExp('\\nv' + v + ' — [^\\n]*\\n([\\s\\S]*?)(?=\\nv\\d+ — |$)')); if (!m) continue;
+      const short = (m[1].match(/In short:\s*(.+)/) || [, m[1].trim().split('\n')[0].replace(/\s+/g, ' ').slice(0, 120)])[1]; out.push([v, short.trim()]); }
+    return out;
+  } catch (e) { return []; }
+}
+const newsText = news => news.map(([v, t]) => (news.length > 1 ? `v${v}: ` : '') + t).join(' · ');
+const applyUpdate = (v, news) => { lsSet('pp-updated', { v: +v, news }); toast(`Updating to version ${v}…${news.length ? ' ' + newsText(news) : ''}`, 6000); setTimeout(() => location.replace(location.pathname + '?v=' + v + location.hash), 1600); };
 async function checkUpdate(manual) {
   if (typeof BUILD === 'undefined' || !/^https?:/.test(location.protocol)) { if (manual) toast('Updates are checked when the app runs from the web.'); return; }
   try {
     const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text(), m = t.match(/const BUILD = \{ v: (\d+)/);
     if (!m || +m[1] <= BUILD.v) { if (manual) toast(`You have the latest version (${BUILD.v}).`); return; }
-    if (!busy()) return applyUpdate(m[1]);
+    const news = await whatsNew(BUILD.v, +m[1]);
+    if (!busy()) return applyUpdate(m[1], news);
     if ($('#upd')) return;
-    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is ready.</b> You are on version ${BUILD.v}.</span><button type="button" class="primary">Update now</button>`;
-    d.querySelector('button').onclick = () => applyUpdate(m[1]); $('#main').prepend(d);
+    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is ready.</b> ${esc(newsText(news))}</span><button type="button" class="primary">Update now</button>`;
+    d.querySelector('button').onclick = () => applyUpdate(m[1], news); $('#main').prepend(d);
   } catch (e) { if (manual) toast('No connection — try again later.'); }
 }
+// after an update: show once what it brought
+setTimeout(() => { const u = lsGet('pp-updated', null); if (!u || typeof BUILD === 'undefined' || u.v !== BUILD.v) return; lsSet('pp-updated', null);
+  const d = document.createElement('div'); d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Updated to version ${u.v}.</b> ${esc(newsText(u.news || []))}</span><button type="button" class="ghost">OK</button>`;
+  d.querySelector('button').onclick = () => d.remove(); $('#main').prepend(d); }, 600);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 addEventListener('pageshow', ev => { if (ev.persisted) checkUpdate(); }); // iOS restores home-screen apps from memory
 setTimeout(checkUpdate, 3000); setInterval(() => { if (!document.hidden) checkUpdate(); }, 15 * 60000);
