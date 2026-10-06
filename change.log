@@ -4,6 +4,17 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v27 — 2026-10-06
+  In short: Google sign-in now works from the home-screen app.
+  In the app saved to the iPhone home screen, "Continue with Google" opened Google in a separate window that
+    could not hand the result back, so nothing happened. The home-screen app now goes to Google in the same
+    window and Google returns straight to the app, which signs you in (Firebase Authentication with the Google
+    token). "Save account online" with Google finishes the upload of your workouts and settings on return.
+    A cancelled sign-in says so. Browsers keep the Google popup.
+  Needs once: the app address https://f2cfpkjp8z-alt.github.io/run/ as an Authorized redirect URI of the
+    project's Google OAuth web client.
+  Why: Google sign-in did nothing in the installed app.
+
 v26 — 2026-10-06
   In short: Sign in with your Pace & Pulse account — everything is saved online, and pages open faster.
   The app now has its own Firebase project built in: sign up / sign in uses Firebase Authentication

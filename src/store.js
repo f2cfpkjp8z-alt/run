@@ -16,6 +16,13 @@ const FIREBASE_CONFIG = {
   appId: '1:716070831460:web:f653ccb59c89ca01536671',
 };
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+// Google sign-in for the home-screen app: popups can't report back there and Safari blocks Firebase's redirect
+// helper (third-party storage), so the app sends the whole window to Google and Google returns an ID token
+// straight to the app's own address. That address must be an "Authorized redirect URI" of this OAuth client
+// (Google Cloud console → APIs & Services → Credentials → Web client (auto created by Google Service)).
+const GOOGLE_CLIENT_ID = '716070831460-3d3ci7rcp35l9r0k7e8fikqaok1v4geg.apps.googleusercontent.com';
+const standaloneApp = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const appUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
 const DEFAULT_SETTINGS = { hrMax: null, hrRest: 55, age: null, sex: 'm', units: 'km', weight: null, height: null };
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -121,6 +128,21 @@ const FirebaseBackend = {
     await this.fs.collection('users').doc(cred.user.uid).set(this.profile); return this.user();
   },
   async signOut() { await this.auth.signOut(); this.profile = null; },
+  // full-window Google sign-in (see GOOGLE_CLIENT_ID); `after` is remembered until the app comes back
+  googleRedirect(after) {
+    const rnd = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+    const state = rnd(), nonce = rnd();
+    lsSet('pp-greturn', { state, after: after || {}, at: Date.now() });
+    location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, redirect_uri: appUrl(),
+      response_type: 'id_token', scope: 'openid email profile', nonce, state, prompt: 'select_account' }));
+  },
+  async finishGoogle(hash) {
+    const h = new URLSearchParams(hash.replace(/^#/, '')), pend = lsGet('pp-greturn', null); lsSet('pp-greturn', null);
+    if (h.get('error')) throw Object.assign(new Error(h.get('error') === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in failed (' + h.get('error') + ').'), { after: pend && pend.after });
+    if (!pend || pend.state !== h.get('state') || Date.now() - pend.at > 15 * 60e3) throw new Error('That Google sign-in expired. Please try again.');
+    await this.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(h.get('id_token')));
+    await this._loadProfile(); return pend.after;
+  },
   async updateProfile(patch) {
     this.profile = Object.assign({}, this.profile, patch, { settings: Object.assign({}, this.profile.settings, patch.settings || {}) });
     // the whole doc is written (no merge), so trimmed maps such as the saved AI opinions really shrink

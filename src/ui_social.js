@@ -192,7 +192,13 @@ function saveOnlineDlg() {
       <button type="button" class="wide" id="soG" style="margin-top:8px">Continue with Google</button>`);
     $('#soUp').onclick = () => { mode = 'up'; draw(); }; $('#soIn').onclick = () => { mode = 'in'; draw(); };
     $('#soF').onsubmit = ev => { ev.preventDefault(); go({ name: $('#soName') ? $('#soName').value.trim() : '', email: $('#soEmail').value.trim(), password: $('#soPass').value }); };
-    $('#soG').onclick = () => go({ google: true });
+    $('#soG').onclick = () => {
+      if (standaloneApp()) { // the home-screen app leaves for Google and comes back; the upload finishes on return
+        lsSet('pp-backend', { kind: 'firebase' }); lsSet('pp-migrate', u.id);
+        FirebaseBackend.googleRedirect({ save: u.id, settings: Object.assign({}, DEFAULT_SETTINGS, u.settings || {}) }); return;
+      }
+      go({ google: true });
+    };
   };
   const go = async c => {
     const err = $('#soErr'), btns = $$('#dlgBody button'); err.hidden = true; btns.forEach(b => b.disabled = true);

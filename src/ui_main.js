@@ -130,7 +130,7 @@ $('#fFire').addEventListener('submit', async ev => {
     enterUser(u);
   } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; }
 });
-$('#aGoogle').onclick = async () => { try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
+$('#aGoogle').onclick = async () => { if (standaloneApp()) { st.backend.googleRedirect({}); return; } try { enterUser(await st.backend.signIn({ google: true })); } catch (e) { $('#aErr').textContent = fireMsg(e); $('#aErr').hidden = false; } };
 $('#btnGuest').onclick = () => { st.pending = null; enterGuest(); location.hash = '#overview'; };
 async function signOut() { await st.backend.signOut(); st.user = null; st.published = new Set(); closeMenu(); showAuth(); }
 
@@ -532,9 +532,19 @@ async function maybeOfferMigration() {
   const bn = $('#banner'); bn.hidden = false; bn.className = 'banner';
   bn.innerHTML = `<span class="grow"><b>${list.length} workouts</b> from the on-device profile “${esc(prof.name)}” can be copied to your Firebase account.</span><button type="button" class="primary" id="mgGo">Copy to cloud</button><button type="button" class="ghost" id="mgNo">Not now</button>`;
   $('#mgNo').onclick = () => { lsSet('pp-migrate', null); renderChrome(); };
-  $('#mgGo').onclick = async () => { $('#mgGo').disabled = true; setStatus('Copying workouts to Firebase…');
-    try { await st.backend.putWorkouts(list); lsSet('pp-migrate', null); st.runs = await st.backend.listWorkouts(); setStatus(`Copied ${list.length} workouts to Firebase.`); refresh(); }
-    catch (e) { setStatus('Copy failed: ' + e.message); $('#mgGo').disabled = false; } };
+  $('#mgGo').onclick = () => { $('#mgGo').disabled = true; migrateLocal(pid); };
+}
+// copy an on-device profile's workouts (and, for a brand-new account, its settings) into the online account
+async function migrateLocal(pid, settings, auto) {
+  setStatus('Copying workouts to your online account…');
+  try {
+    await LocalBackend.init(); const saved = lsGet('pp-session', null); lsSet('pp-session', pid); const list = await LocalBackend.listWorkouts(); lsSet('pp-session', saved);
+    const had = st.runs.length;
+    if (settings && !had) st.user = await st.backend.updateProfile({ settings });
+    for (let i = 0; i < list.length; i += 20) await st.backend.putWorkouts(list.slice(i, i + 20));
+    lsSet('pp-migrate', null); st.runs = await st.backend.listWorkouts(); if (settings && !had) st.S = Object.assign({}, DEFAULT_SETTINGS, st.user.settings);
+    refresh(); setStatus(auto ? `Account saved online. ${list.length} workout${list.length === 1 ? '' : 's'} uploaded.` : `Copied ${list.length} workouts to your online account.`);
+  } catch (e) { setStatus('Copy failed: ' + (e.message || e)); maybeOfferMigration(); }
 }
 function renderDataCard() {
   const u = st.user;
@@ -643,10 +653,21 @@ new MutationObserver(repaint).observe(document.documentElement, { attributes: tr
 document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', () => { clearTimeout(rz); rz = setTimeout(repaint, 150); });
 
 /* ---------- boot ---------- */
+// Google sends the home-screen app back with #id_token=…; take it off the address straight away
+const G_RETURN = /^#(.*&)?(id_token|error)=/.test(location.hash) && lsGet('pp-greturn', null) ? location.hash : null;
+if (G_RETURN) history.replaceState(null, '', location.pathname + location.search);
 async function boot() {
   const r = lsGet('pp-range', 182); if ([90, 182, 365, 0].includes(r)) st.range = r; syncRange();
   if (!st.backend) enterGuest(); // instant first frame with the sample athlete
   st.backend = await openBackend();
+  if (G_RETURN && st.backend.kind === 'firebase') {
+    let after = null;
+    try { after = await st.backend.finishGoogle(G_RETURN); }
+    catch (e) { showAuth(fireMsg(e)); if (e.after && e.after.save) { lsSet('pp-backend', { kind: 'local' }); lsSet('pp-migrate', null); st.backend = await openBackend(); const u = st.backend.user(); if (u) await enterUser(u); setStatus(fireMsg(e)); } return; }
+    await enterUser(st.backend.user());
+    if (after && after.save) migrateLocal(after.save, after.settings, true);
+    return;
+  }
   const u = st.backend.user();
   if (u) await enterUser(u);
   else if (!location.hash.startsWith('#s-') && (st.backend.kind === 'firebase' || st.backend.accounts().length)) showAuth();
