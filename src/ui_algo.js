@@ -22,4 +22,27 @@ function initAlgo() {
   document.addEventListener('click', ev => { const t = ev.target.closest('[data-algo]'); if (t) { ev.preventDefault(); ev.stopPropagation(); showAlgo(t.dataset.algo); } }, true);
   document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('.algo-l')) { ev.preventDefault(); showAlgo(ev.target.dataset.algo); } });
 }
+/* ---------- phone: explanations hide behind a “?” on each card ---------- */
+// Captions (.cap), hints (.hint), fine print (.fine) and anything marked .help are hidden on phones by CSS;
+// each card that has some gets a ? button that shows them (plus “How it’s calculated” when the card has one).
+const HELP_SEL = '.cap, .hint, .fine, .help';
+function addHelp() {
+  $$('.view:not([hidden]) .card, #v-overview .card').forEach(card => {
+    if (card.closest('.dlg')) return;
+    const items = [...card.querySelectorAll(HELP_SEL)].filter(x => x.textContent.trim());
+    let b = card.querySelector(':scope > .help-btn, :scope > .ch > .help-btn');
+    if (!items.length) { if (b) b.remove(); return; }
+    if (!b) {
+      b = document.createElement('button'); b.type = 'button'; b.className = 'help-btn'; b.textContent = '?'; b.setAttribute('aria-label', 'Explain');
+      const row = card.querySelector(':scope > .ch'); if (row) row.appendChild(b); else card.appendChild(b);
+    }
+    b.onclick = ev => { ev.stopPropagation(); showHelp(card); };
+  });
+}
+function showHelp(card) {
+  const t = card.querySelector('h3, .label'), algoEl = card.querySelector('[data-algo]');
+  const items = [...card.querySelectorAll(HELP_SEL)].filter(x => x.textContent.trim());
+  openDlg(`<h2>${esc(t ? t.textContent : 'About this')}</h2>${items.map(x => `<p>${x.innerHTML}</p>`).join('')}
+    ${algoEl ? `<div class="btns"><button type="button" class="primary" data-algo="${algoEl.dataset.algo}">How it’s calculated</button></div>` : ''}`);
+}
 // ===== END ALGORITHM INFO =====

@@ -8,6 +8,19 @@ const fmtDate = (ms, o = { day: 'numeric', month: 'short' }) => new Date(ms).toL
 const f1 = x => x == null || !isFinite(x) ? '–' : x.toFixed(1);
 const f0 = x => x == null || !isFinite(x) ? '–' : Math.round(x).toLocaleString();
 
+/* ---------- status badges: one colour language for good / normal / bad everywhere ---------- */
+// levels: top (purple) · exc (blue) · good (green) · ok (grey, "normal") · warn (orange) · bad (red) — always with a word
+const badge = (lv, label) => `<span class="badge b-${lv}"><i></i>${label}</span>`;
+const STATUS = {
+  rating: k => ['bad', 'warn', 'good', 'exc', 'top'][k],                         // Poor … Superior
+  tier: k => ['bad', 'warn', 'ok', 'good', 'good', 'exc', 'top'][k],             // endurance tiers
+  form: t => t > 5 ? 'good' : t > -10 ? 'ok' : t > -25 ? 'ok' : 'bad',            // Fresh · Balanced · Building · Overreaching
+  load: r => r == null ? 'ok' : r < 0.8 ? 'warn' : r <= 1.3 ? 'good' : r <= 1.5 ? 'warn' : 'bad',
+  drift: d => d < 5 ? ['good', 'Solid'] : d < 8 ? ['ok', 'Normal'] : d < 12 ? ['warn', 'High'] : ['bad', 'Very high'],
+  easy: p => p >= 75 ? ['good', 'Balanced 80/20'] : p >= 65 ? ['ok', 'Slightly hard'] : ['warn', 'Too little easy'],
+  factor: f => f >= 0.8 ? ['good', 'Strong'] : f >= 0.55 ? ['ok', 'Fair'] : f >= 0.3 ? ['warn', 'Low'] : ['bad', 'Very low'],
+};
+
 /* ---------- gauge: Garmin-style arc of bands with an arrow at your value ---------- */
 // bands: [[from, to, label, colour]], value; returns SVG markup. Bands outside the current one are dimmed.
 function gauge(o) {

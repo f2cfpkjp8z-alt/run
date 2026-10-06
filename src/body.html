@@ -135,7 +135,7 @@
 
   <!-- FEED -->
   <section class="view" id="v-feed" data-view="feed" hidden>
-    <div class="vh"><div><h2>Feed</h2><p class="muted">Workouts runners chose to publish. Profiles stay private.</p></div>
+    <div class="vh"><div><h2>Feed</h2><p class="muted help">Workouts runners chose to publish. Profiles stay private.</p></div>
       <div class="seg" id="feedMode" role="group" aria-label="Show">
         <button type="button" data-f="all">Everyone</button><button type="button" data-f="following">Following</button><button type="button" data-f="mine">Mine</button>
       </div>
@@ -156,7 +156,7 @@
       <div class="card" id="pCard"></div>
       <form class="card" id="setForm">
         <div class="ch"><h3>Physiology</h3></div>
-        <p class="muted sm">Heart-rate limits drive every estimate. Measured values beat formulas.</p>
+        <p class="muted sm help">Heart-rate limits drive every estimate. Measured values beat formulas.</p>
         <div class="form">
           <label for="fHrMax"><span>Max heart rate · <span class="algo-l" role="button" tabindex="0" data-algo="hrmax">how it’s chosen</span></span><input id="fHrMax" type="number" min="120" max="230" inputmode="numeric" placeholder="Auto"><span class="hint" id="hrMaxHint">Empty = detect from your runs.</span></label>
           <label for="fHrRest">Resting heart rate<input id="fHrRest" type="number" min="30" max="100" inputmode="numeric" required><span class="hint">Morning, lying down.</span></label>
@@ -173,7 +173,7 @@
       <div class="card" id="storeCard"></div>
       <div class="card" id="dataCard"></div>
     </div>
-    <div class="vh" style="margin-top:28px"><div><h2>How the numbers are made</h2><p class="muted sm">Each measurement has its own versioned algorithm. Tap one — or any underlined label in the app — to see exactly how it is calculated.</p></div></div>
+    <div class="vh" style="margin-top:28px"><div><h2>How the numbers are made</h2><p class="muted sm help">Each measurement has its own versioned algorithm. Tap one — or any underlined label in the app — to see exactly how it is calculated.</p></div></div>
     <div class="algo-list" id="algoList"></div>
     <div class="method" style="margin-top:12px">
       <div class="card">

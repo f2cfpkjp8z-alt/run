@@ -146,7 +146,7 @@ function renderView() {
   else if (v === 'feed') renderFeed();
   else if (v === 'shared') renderShared(st.detail);
   else if (v === 'metric') renderMetric(st.detail);
-  addChartShare();
+  addChartShare(); addHelp();
 }
 function refresh() { compute(); renderChrome(); route(); }
 
@@ -279,7 +279,7 @@ function renderWorkout(id) {
     <div class="stats">${stat('Distance', fmtDist(e.dist), uName())}${stat('Moving time', fmtDur(e.mov))}${stat('Avg pace', fmtPace(e.pace), '/' + uName())}
     ${stat('Grade-adj. pace', fmtPace(e.gapPace), '/' + uName(), 'gap')}${stat('Avg HR', e.avgHR ? Math.round(e.avgHR) : '–', 'bpm')}${stat('Max HR', e.maxHR ? Math.round(e.maxHR) + (st.hm && st.hm.source === 'detected' && st.hm.run === r ? ' ★' : '') : '–', st.hm && st.hm.source === 'detected' && st.hm.run === r ? 'bpm · sets your max' : 'bpm', 'hrmax')}
     ${stat('VO₂max est.', e.est ? f1(e.est) : '–', e.est ? `${Math.round(e.conf * 100)}% conf.` : '', 'vo2')}${stat('VO₂max that day', D && D.vo2 ? f1(D.vo2) : '–', '', 'vo2')}${stat('Endurance that day', D && D.end ? f0(D.end) : '–', '', 'end')}
-    ${stat('Load (TRIMP)', f0(e.load), '', 'load')}${stat('HR drift', e.dec != null ? f1(e.dec) : '–', e.dec != null ? '%' : '', 'drift')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat', 'ef')}
+    ${stat('Load (TRIMP)', f0(e.load), '', 'load')}${stat('HR drift', e.dec != null ? f1(e.dec) + '% ' + badge(...STATUS.drift(e.dec)) : '–', '', 'drift')}${stat('Efficiency', e.ef ? e.ef.toFixed(2) : '–', 'm/beat', 'ef')}
     ${stat('Ascent', e.ascent != null ? Math.round(e.ascent) : '–', 'm')}${stat('Cadence', e.cad ? Math.round(e.cad) : '–', 'spm')}</div>`;
   h += `<div class="card" id="wAI" style="margin-top:12px" hidden></div>`;
   if (r.summary) h += `<p class="sub" style="margin-top:12px">This workout came from the activity list CSV, so only totals are known. Import its .fit file for the map, charts and splits.</p>`;

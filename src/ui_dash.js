@@ -51,25 +51,25 @@ const WIDGETS = {
       g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),
         bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ratingCol(k, 5)]) }); }
     el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
-      ${rt ? `<span class="chip acc">${al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)}</span>` : `<span class="chip">Add age &amp; sex in Profile for a rating</span>`}
-      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) + '<br>' : ''}${al('hrmax', 'Max HR')} <span class="num">${Math.round(S.hrMaxEff)}</span> ${S.hrMax ? '(yours)' : st.hm && st.hm.source === 'detected' ? '(auto, from a run)' : st.hm && st.hm.source === 'age' ? '(auto, 220 − age)' : '(default)'}<br>Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
+      ${rt ? badge(STATUS.rating(rt.k), al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)) : `<span class="chip help">Add age &amp; sex in Profile for a rating</span>`}
+      <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) : ''}</div><div class="sub help">${al('hrmax', 'Max HR')} <span class="num">${Math.round(S.hrMaxEff)}</span> ${S.hrMax ? '(yours)' : st.hm && st.hm.source === 'detected' ? '(auto, from a run)' : st.hm && st.hm.source === 'age' ? '(auto, 220 − age)' : '(default)'}<br>Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
     if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
     const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ratingCol(k, 7)]);
     el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands })}
-      ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
+      ${badge(STATUS.tier(TIERS.findIndex(t => t[1] === tierOf(D.end))), tierOf(D.end))}${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
   status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
     const D = lastDay(), tsb = D.tsb, s = FF.status(tsb);
-    el.innerHTML = `<span class="label">${al('ff', 'Training status')}</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div><span class="chip ${s[1]}"><i></i>${s[0]}</span>
+    el.innerHTML = `<span class="label">${al('ff', 'Training status')}</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div>${badge(STATUS.form(tsb), s[0])}
       <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
   } },
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><p class="sub">Appear once a VO₂max estimate exists.</p>`; return; }
-    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv">${RACE.predict(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub">From VO₂max, adjusted for volume and long runs.</div>`;
+    el.innerHTML = `<span class="label">${al('race', 'Race predictions')}</span><dl class="kv">${RACE.predict(D).map(([name, t, dist]) => `<dt>${name}</dt><dd>${fmtDur(t)}<small>${fmtPace(t / (dist / 1000))}/${uName()}</small></dd>`).join('')}</dl><div class="sub help">From VO₂max, adjusted for volume and long runs.</div>`;
   } },
   week: { name: 'This week', desc: 'Distance, time and runs, Monday to Sunday', size: 'S', render(el) {
     const now = st.asOf, d0 = (() => { const d = new Date(dayStart(now)); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; })();
@@ -87,7 +87,7 @@ const WIDGETS = {
     if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
     const bands = [[0, 0.8, 'Low', 'var(--rt6)'], [0.8, 1.3, 'Optimal', 'var(--rt4)'], [1.3, 1.5, 'High', 'var(--rt2)'], [1.5, 2, 'Very high', 'var(--rt1)']];
     el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands })
-      + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}<br>${L.status[2]}</div>`;
+      + badge(STATUS.load(L.ratio), L.status[0]) + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}</div><div class="sub help">${L.status[2]}</div>`;
   } },
   ai: { name: 'AI coach', desc: 'A short Gemini read on what you do well and what you miss', size: 'L', always: true, render(el) { renderAICard(el); } },
   latest: { name: 'Latest workout', desc: 'Route, distance, pace and heart rate', size: 'M', render(el) {
@@ -122,9 +122,9 @@ const WIDGETS = {
     const tot = z.reduce((a, b) => a + b, 0);
     if (!tot) { el.innerHTML = head('Intensity mix', '', 'zones') + '<p class="empty">Needs runs with heart rate in the last 4 weeks.</p>'; return; }
     const pc = x => Math.round(x / tot * 100), easy = pc(z[0] + z[1]), mod = pc(z[2]), hard = pc(z[3] + z[4]);
-    const verdict = easy >= 75 ? 'close to the 80/20 balance most coaches aim for' : mod > 25 ? 'a lot of moderate “grey zone” running — make easy days easier' : 'less easy running than the usual 80% target';
+    const verdict = easy >= 75 ? 'Close to the 80/20 balance most coaches aim for.' : mod > 25 ? 'A lot of moderate “grey zone” running — make easy days easier.' : 'Less easy running than the usual 80% target.', ev = STATUS.easy(easy);
     const lab = ZONE.labels;
-    el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>', 'zones') + `<p class="sub" style="margin:0 0 12px"><b>${easy}%</b> easy · <b>${mod}%</b> moderate · <b>${hard}%</b> hard — ${verdict}.</p>
+    el.innerHTML = head('Intensity mix', '<span class="muted sm">Last 4 weeks</span>', 'zones') + `<div class="btns" style="align-items:center;margin:0 0 10px">${badge(ev[0], ev[1])}<span class="sub"><b>${easy}%</b> easy · <b>${mod}%</b> mod · <b>${hard}%</b> hard</span></div><p class="sub help" style="margin:0 0 12px">${verdict}</p>
       <div class="bars">${z.map((s, k) => `<div class="bar-row"><span>${lab[k]}</span><span class="v">${fmtDur(s)} · ${pc(s)}%</span><div class="track"><i style="width:${Math.max(1, s / tot * 100)}%;background:var(--z${k + 1})"></i></div></div>`).join('')}</div>`;
   } },
   drivers: { name: 'What drives your endurance', desc: 'Ceiling, volume, long runs and durability', size: 'M', render(el) { el.innerHTML = head('What drives your endurance', '', 'end') + '<div class="bars"></div>'; renderBreakdown(lastDay(), el.querySelector('.bars')); } },
@@ -153,7 +153,7 @@ function renderBreakdown(D, box) {
     ['Long-run reach', `${Math.round(D.L)} min longest`, gLong(D.L), `Longest run in the last 6 weeks. ${D.L < 90 ? 'A weekly run of 90+ minutes raises this.' : 'Strong.'}`],
     [al('drift', 'Durability'), D.hasDec ? `${f1(D.D)}% HR drift` : 'No 60-min runs', D.hasDec ? clamp((1.04 - 0.012 * D.D - 0.8) / 0.24, 0, 1) : 0.4, D.hasDec ? (D.D < 5 ? 'Heart rate stays steady late in long runs.' : 'Heart rate climbs late in long runs; more easy volume helps.') : 'Run 60+ minutes with heart rate to measure this.'],
   ];
-  box.innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
+  box.innerHTML = items.map(([n, v, f, h]) => `<div class="bar-row"><span>${n} ${badge(...STATUS.factor(f))}</span><span class="v">${v}</span><div class="track"><i style="width:${Math.max(3, f * 100)}%"></i></div><span class="hint">${h}</span></div>`).join('');
 }
 
 function renderOverview() {
@@ -184,16 +184,16 @@ function renderOverview() {
     else if (a === 'down' && k < c.length - 1) [c[k + 1], c[k]] = [c[k], c[k + 1]];
     else if (a === 'size') c[k][1] = b.dataset.s;
     else if (a === 'del') c.splice(k, 1);
-    saveDash(c); renderOverview();
+    saveDash(c); renderOverview(); addChartShare(); addHelp();
   });
   const add = $('#dashAdd'), used = new Set(cfg.map(c => c[0])), free = Object.keys(WIDGETS).filter(id => !used.has(id));
   add.hidden = !edit;
   add.innerHTML = edit ? `<div class="card"><div class="ch"><h3>Add cards</h3><span class="muted sm">${free.length ? 'Tap a card to add it at the end' : 'Every card is on your overview'}</span></div>
     <div class="add-list">${free.map(id => `<button type="button" data-id="${id}"><span><b>+ ${WIDGETS[id].name}</b><span>${WIDGETS[id].desc}</span></span></button>`).join('')}</div></div>` : '';
-  add.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { const c = dashCfg(); c.push([b.dataset.id, WIDGETS[b.dataset.id].size]); saveDash(c); renderOverview(); });
+  add.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { const c = dashCfg(); c.push([b.dataset.id, WIDGETS[b.dataset.id].size]); saveDash(c); renderOverview(); addChartShare(); addHelp(); });
 }
 function initDash() {
-  $('#dashEdit').onclick = () => { st.dashEdit = !st.dashEdit; renderOverview(); addChartShare(); };
-  $('#dashReset').onclick = () => { saveDash(DASH_DEFAULT.map(x => x.split(':'))); renderOverview(); addChartShare(); };
+  $('#dashEdit').onclick = () => { st.dashEdit = !st.dashEdit; renderOverview(); addChartShare(); addHelp(); };
+  $('#dashReset').onclick = () => { saveDash(DASH_DEFAULT.map(x => x.split(':'))); renderOverview(); addChartShare(); addHelp(); };
 }
 // ===== END DASHBOARD =====

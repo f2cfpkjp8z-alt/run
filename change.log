@@ -4,6 +4,16 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v19 — 2026-10-06
+  In short: Cleaner phone screens with ? buttons, and colour-coded status badges.
+  Phones: captions, hints, fine print and long explanations are hidden; each card that has them gets a ?
+    button that shows them (and "How it's calculated" when available). Desktop keeps everything visible.
+  One status language everywhere: a coloured badge with a word — Excellent (purple/blue), Good (green),
+    Normal (grey), Caution (orange), Bad (red). Used for the VO₂max rating, endurance level, training status,
+    training load, intensity balance (80/20), each endurance factor (Strong / Fair / Low / Very low), heart-rate
+    drift on a workout (Solid / Normal / High / Very high) and the status figures on the trend pages.
+  Why: too much text on phones, and statuses should be readable at a glance.
+
 v18 — 2026-10-06
   In short: The version line stays at the bottom of the screen on every page.
   The page now always fills the screen height, so the version / "Check for updates" line no longer jumps up

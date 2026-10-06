@@ -397,6 +397,23 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .algo-steps { padding-left: 1.2em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.875rem; color: var(--ink2); }
 .algo-hist { padding-left: 1.1em; margin: 8px 0 0; display: grid; gap: 8px; font-size: 0.8125rem; color: var(--ink2); }
 .dlg .chip { font-size: 0.75rem; }
+/* status badges */
+.badge { --bc: var(--muted); display: inline-flex; align-items: center; gap: 6px; width: fit-content; white-space: nowrap; font: 700 0.75rem/1 var(--body); padding: 5px 10px 5px 8px; border-radius: 999px;
+  color: var(--ink); background: color-mix(in srgb, var(--bc) 20%, transparent); border: 1px solid color-mix(in srgb, var(--bc) 55%, transparent); vertical-align: middle; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bc); flex: none; }
+.badge .algo-l { text-decoration: none; }
+.b-top { --bc: var(--rt7); } .b-exc { --bc: var(--rt6); } .b-good { --bc: var(--rt4); } .b-ok { --bc: var(--muted); } .b-warn { --bc: var(--rt2); } .b-bad { --bc: var(--rt1); }
+.stat b .badge { font-size: 0.6875rem; margin-left: 4px; }
+.bar-row .badge { font-size: 0.625rem; padding: 3px 8px 3px 6px; margin-left: 6px; }
+/* “?” explanations: shown inline on desktop, behind a ? button on phones */
+.help-btn { display: none; width: 28px; height: 28px; min-height: 0; padding: 0; border-radius: 50%; font: 700 0.875rem/1 var(--body); color: var(--ink2); background: var(--sunk); border: 1px solid var(--line); flex: none; }
+.tile > .help-btn, .card > .help-btn { position: absolute; top: 12px; right: 12px; }
+.card { position: relative; }
+@media (max-width: 820px) {
+  .cap, .hint, .fine, .help, .bar-row .hint { display: none !important; }
+  .help-btn { display: inline-grid; place-items: center; }
+  .ch { flex-wrap: nowrap; } .ch > h3 { flex: 1; min-width: 0; }
+}
 /* update toast + pull-to-refresh */
 .toast { position: fixed; left: 50%; bottom: calc(var(--bnav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 60;
   background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; padding: 10px 16px; border-radius: 18px; max-width: min(92vw, 520px); text-align: center; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
