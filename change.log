@@ -4,6 +4,13 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v24 — 2026-10-06
+  In short: The account menu now opens over the page instead of shifting the layout.
+  Tapping the profile picture used to push the menu into the header, widening the page and leaving an empty strip on
+    the right. The menu is now a floating panel anchored under the picture (a later ".card" rule was overriding its
+    position), with a small open animation and scrolling if the screen is short.
+  Why: it should behave like a native app menu.
+
 v23 — 2026-10-06
   In short: Clear import progress and a list of the runs you just imported.
   While importing, a progress bar shows "Reading 3 of 7 · 2 runs" and "Saving…". When done, a results sheet
