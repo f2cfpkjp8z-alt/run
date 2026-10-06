@@ -328,7 +328,7 @@ function drawWorkout(r, e, S) {
   const tf = v => fmtDur(v * 60), pv = pace.filter(p => p[1] != null).map(p => p[1]).sort((a, b) => a - b);
   const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
   const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
-  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--pace'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
   const hrr = q => q * S.hrMaxEff; // ZONEalg2: zones are % of max HR
   plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', minSpan: 20, series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
     empty: 'No heart-rate data in this file.',
@@ -338,9 +338,9 @@ function drawWorkout(r, e, S) {
     // VO2alg3: each window's oxygen cost against heart rate; the Swain line runs from 37% of max HR (zero) to max HR (= VO₂max)
     const x0 = 0.37 * S.hrMaxEff, at = h => e.est * (h / S.hrMaxEff - 0.37) / 0.64;
     plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: Math.min(x0, ...e.windows.map(w => w[0])) - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est * 1.08, height: 230, label: 'Oxygen cost versus heart rate',
-      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--vo2'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
       extra: (sx, sy) => `<line x1="${sx(x0)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
-        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--vo2)" stroke="var(--surface)" stroke-width="2"/>
         <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
   } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
   const sp2 = splitsOf(r, U());
@@ -375,7 +375,7 @@ function renderTrends() {
   weekChart($('#cWeek'), st.range ? Math.ceil(st.range / 7) : 0);
   efChart($('#cEf'), st.range);
   plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, minSpan: 6, empty: 'Needs steady runs of 40+ minutes with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--c2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: (v, d) => v.toFixed(d) + '%',
+    { name: 'Run', kind: 'dots', color: css('--drift'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: (v, d) => v.toFixed(d) + '%',
     extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5% target</text>` : '' });
   // monthly
   const mon = new Map();

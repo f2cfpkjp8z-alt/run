@@ -40,6 +40,19 @@
   --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
   color-scheme: light;
 }
+:root[data-theme="asphalt"] {
+  --bg: #121212; --surface: #1e1e1e; --sunk: #262626; --raise: #2c2c2e; --ink: #ffffff; --ink2: #c7c7cc; --muted: #8e8e93; --line: #333336;
+  --accent: #fc5200; --accent-ink: #ff7a3d; --accent-soft: #3a1d0d; --on-accent: #ffffff;
+  --c1: #fc5200; --c2: #4c9cff; --hr: #ff3b4f; --elev: #9aa3ad;
+  --pace: #4c9cff; --vo2: #2fd0a5; --end: #a37cff; --fit: #4c9cff; --fat: #ff6fae; --form: #ffc233;
+  --dist: #fc5200; --load: #ffb020; --ef: #5ad06a; --race: #e070ff; --drift: #ffc233;
+  --z1: #5a2a10; --z2: #8f3a0c; --z3: #c44606; --z4: #fc5200; --z5: #ff9a5c;
+}
+/* chart colour per measurement — the same measurement keeps its colour on every chart; themes without their own use --c1/--c2 */
+:root { --pace: var(--c1); --vo2: var(--c1); --end: var(--c1); --fit: var(--c1); --fat: var(--c2); --form: var(--c1);
+  --dist: var(--c1); --load: var(--c1); --ef: var(--c1); --race: var(--c1); --drift: var(--c2); }
+:root[data-theme="asphalt"] body { background: var(--bg); } /* flat, no accent glow */
+:root[data-theme="asphalt"] .eyebrow { color: var(--muted); }
 :root { --hz1: #8b96a3; --hz2: var(--rt6); --hz3: var(--rt4); --hz4: var(--rt2); --hz5: var(--rt1); } /* Garmin heart-rate zone colours */
 :root { --rt1: #e5484d; --rt2: #f2994a; --rt3: #e3b341; --rt4: #3fb950; --rt5: #2bb3a3; --rt6: #3b82f6; --rt7: #a371f7; } /* Garmin-style rating colours (always shown with a label) */
 :root[data-theme="daylight"] { --rt1: #cf2e32; --rt2: #d9731f; --rt3: #b98a00; --rt4: #1f8a3a; --rt5: #11867a; --rt6: #2563c9; --rt7: #7c4dd1; }
@@ -185,7 +198,7 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .meter b { position: absolute; top: -2px; width: 4px; height: 14px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); }
 .wkbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 64px; margin-top: 6px; }
 .wkbars div { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; font-size: 0.6875rem; color: var(--muted); }
-.wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
+.wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--dist); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
 /* workout image */
@@ -682,7 +695,7 @@ img, a, svg { -webkit-user-drag: none; }
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 24, at: '2026-10-06T08:28:43Z' };
+const BUILD = { v: 25, at: '2026-10-06T08:41:56Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -1909,6 +1922,7 @@ const THEMES = [
   ['ember', 'Ember', 'dark', '#110c0a', '#ff8f3f'],
   ['glacier', 'Glacier', 'dark', '#08111c', '#4fd1f0'],
   ['uv', 'Ultraviolet', 'dark', '#0d0a15', '#b197ff'],
+  ['asphalt', 'Asphalt', 'dark', '#121212', '#fc5200'],
   ['daylight', 'Daylight', 'light', '#f3f5f0', '#3b7d16'],
   ['auto', 'Match device', 'auto', null, null],
 ];
@@ -1927,7 +1941,7 @@ function applyUI(p = uiPrefs()) {
   const root = document.documentElement;
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   let t = THEMES.find(x => x[0] === p.theme) || THEMES[0];
-  if (t[0] === 'auto') t = dark ? THEMES[0] : THEMES[4];
+  if (t[0] === 'auto') t = THEMES.find(x => x[0] === (dark ? 'volt' : 'daylight'));
   const font = FONTS[p.font] ? p.font : 'sport', size = SIZES.some(x => x[0] === p.size) ? p.size : 'm';
   if (FONTS[font][1] && !document.getElementById('font-' + font)) {
     const l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'font-' + font;
@@ -2102,7 +2116,7 @@ async function renderShared(id) {
     if ($('#shPace')) {
       const pts = s.paceS.map((v, i) => [i * stp, numOr(v) || null]), pv = pts.filter(p => p[1]).map(p => p[1]).sort((a, b) => a - b);
       const lo = pv[Math.floor(pv.length * 0.02)], hi = pv[Math.floor(pv.length * 0.98)];
-      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+      plot($('#shPace'), Object.assign({}, xo, { invert: true, yMin: lo, yMax: hi, label: 'Pace', minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--pace'), end: false, pts: pts.map(p => [p[0], p[1] == null ? null : clamp(p[1], lo || 0, hi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
     }
     if ($('#shHr')) plot($('#shHr'), Object.assign({}, xo, { label: 'Heart rate', series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: s.hrS.map((v, i) => [i * stp, numOr(v) || null]), fmt: v => Math.round(v) + ' bpm' }] }));
   } else if (s.type === 'profile') {
@@ -2114,7 +2128,7 @@ async function renderShared(id) {
       ${rec.length ? `<div class="card" style="margin-top:12px"><div class="ch"><h3>Recent workouts</h3></div><div class="scroll-x"><table class="tb"><thead><tr><th>Date</th><th>Workout</th><th class="n">Dist ${uName()}</th><th class="n">Time</th><th class="n">Avg HR</th></tr></thead><tbody>${rec.map(w =>
         `<tr><td>${numOr(w.start) ? fmtDate(+w.start, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</td><td>${esc(w.name)}</td><td class="n">${fmtDist(numOr(w.dist))}</td><td class="n">${fmtDur(numOr(w.mov))}</td><td class="n">${numOr(w.avgHR) ? Math.round(w.avgHR) : '–'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}${foot}`;
     if ($('#shWeek')) { const pts = s.weeks.map(w => [numOr(w[0]), (numOr(w[1]) || 0) / U(), numOr(w[2]) || 0]).filter(p => p[0]);
-      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+      plot($('#shWeek'), { label: 'Weekly distance', zero: true, xMin: pts[0][0] - 3.5 * DAY, xMax: pts[pts.length - 1][0] + 3.5 * DAY, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--dist'), pts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] === 1 ? '' : 's'}` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
   } else box.innerHTML = '<p class="empty">Unknown shared item.</p>';
 }
 
@@ -2472,26 +2486,26 @@ function vo2Bands(sx, sy, b) {
 }
 function vo2Chart(el, days, withRuns, height) {
   const { xMin, xMax, inR } = rangeOf(days), series = [];
-  if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
+  if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--vo2'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
     pts: st.runs.map((r, i) => [r.start, st.res[i].est, st.res[i].conf, r.name]).filter(p => p[1] && inR(p[0])) });
-  series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--c1'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
+  series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--vo2'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
   plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series, under: vo2Bands });
 }
 function weekChart(el, weeks, height) {
   const xMax = lastDay().t, all = weekly(), wpts = weeks ? all.filter(p => p[0] >= xMax - weeks * 7 * DAY) : all;
   plot(el, { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMax - 7 * DAY, xMax: xMax + 3.5 * DAY, zero: true, height,
-    series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''} · ${fmtDur(p[3])}` }],
+    series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--dist'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''} · ${fmtDur(p[3])}` }],
     tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
 }
 function loadChart(el, days, height) {
   const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
   plot(el, { label: 'Fitness and fatigue', xMin, xMax, zero: true, height, series: [
-    { name: 'Fitness (42-day)', kind: 'line', color: css('--c1'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
-    { name: 'Fatigue (7-day)', kind: 'line', color: css('--c2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+    { name: 'Fitness (42-day)', kind: 'line', color: css('--fit'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
+    { name: 'Fatigue (7-day)', kind: 'line', color: css('--fat'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
 }
 function endChart(el, days, height) {
   const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
-  plot(el, { label: 'Endurance score over time', xMin, xMax, height, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--c1'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }],
+  plot(el, { label: 'Endurance score over time', xMin, xMax, height, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--end'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }],
     extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
 }
 function efChart(el, days, height) {
@@ -2499,8 +2513,8 @@ function efChart(el, days, height) {
   st.runs.forEach((r, i) => { const e = st.res[i]; if (e.ef && !r.summary && inR(r.start)) pts.push([r.start, e.ef, 0, r.name]); });
   const roll = pts.map(p => { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); return [p[0], w[w.length >> 1]]; });
   plot(el, { label: 'Aerobic efficiency', xMin, xMax, height, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--c1'), pts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
-    { name: '28-day median', kind: 'line', color: css('--c1'), w: 2.5, pts: roll, fmt: v => v.toFixed(2) + ' m/beat' }] });
+    { name: 'Run', kind: 'dots', color: css('--ef'), pts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
+    { name: '28-day median', kind: 'line', color: css('--ef'), w: 2.5, pts: roll, fmt: v => v.toFixed(2) + ' m/beat' }] });
 }
 
 /* ---------- widgets ---------- */
@@ -2716,22 +2730,22 @@ const METRICS = {
     return { html: `<div class="stats">${mStat('Now', b ? f1(b) : '–', 'ml/kg/min', 'vo2')}${mStat('Change', mChange(a, b, 1))}${mStat('Rating', rt ? badge(STATUS.rating(rt.k), rt.name) : '–', '', 'rating')}${mStat('Best run', ests.length ? f1(Math.max(...ests)) : '–')}${mStat('Runs with estimate', ests.length)}</div>
       <div class="wd-grid">${mCard('VO₂max', 'mc1', 'Line: daily value. Dots: single-run estimates (bigger = more confident).', 'vo2')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['VO₂ est.', (r, e) => e.est ? f1(e.est) : '–'], ['Conf.', (r, e) => e.est ? Math.round(e.conf * 100) + '%' : '–']])}</div></div>`,
       draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, under: vo2Bands, series: [
-        { name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
-        { name: 'VO₂max', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
+        { name: 'Run estimate', kind: 'dots', color: css('--vo2'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
+        { name: 'VO₂max', kind: 'line', color: css('--vo2'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
   } },
   end: { title: 'Endurance score', key: 'end', render(P) {
     const a = first(P.days, 'end'), b = lastOf(P.days, 'end'), D = P.days[P.days.length - 1];
     return { html: `<div class="stats">${mStat('Now', b ? f0(b) : '–', '', 'end')}${mStat('Level', b ? badge(STATUS.tier(TIERS.findIndex(t => t[1] === tierOf(b))), tierOf(b)) : '–')}${mStat('Change', mChange(a, b, 0))}${mStat('Weekly time', D ? fmtDur(D.H * 3600) : '–', '', 'ff')}${mStat('Longest run', D ? Math.round(D.L) : '–', 'min')}</div>
       <div class="wd-grid">${mCard('Endurance score', 'mc1', '', 'end')}<div class="card"><h3 style="margin-bottom:10px">${al('end', 'What drives it now')}</h3><div class="bars" id="mBars"></div></div></div>`,
-      draw() { plot($('#mc1'), { label: 'Endurance score', xMin: P.xMin, xMax: P.xMax, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--c1'), pts: P.days.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }] }); renderBreakdown(D, $('#mBars')); } };
+      draw() { plot($('#mc1'), { label: 'Endurance score', xMin: P.xMin, xMax: P.xMax, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--end'), pts: P.days.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }] }); renderBreakdown(D, $('#mBars')); } };
   } },
   ff: { title: 'Fitness, fatigue & form', key: 'ff', render(P) {
     const D = P.days[P.days.length - 1], s = D ? FF.status(D.tsb) : null;
     return { html: `<div class="stats">${mStat('Fitness', D ? f0(D.ctl) : '–', '', 'ff')}${mStat('Fatigue', D ? f0(D.atl) : '–', '', 'ff')}${mStat('Form', D ? (D.tsb >= 0 ? '+' : '') + Math.round(D.tsb) : '–', '', 'ff')}${(() => { const T = TS.of(st.days, st.runs, st.res, st.asOf); return mStat('Training status', badge(TS.styles[T.name], T.name), '', 'ts'); })()}${mStat('Fitness change', mChange(first(P.days, 'ctl'), D && D.ctl, 0))}</div>
       <div class="card" style="margin-top:12px"><h3 style="margin-bottom:10px">${al('ts', 'Training status history')}</h3>${tsStrip(P)}</div><div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
       draw() {
-        plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--c2'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
-        plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
+        plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--fit'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--fat'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+        plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--form'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
           extra: (sx, sy, b) => 0 > b.y0 && 0 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--muted)" stroke-width="1"/>` : '' });
       } };
   } },
@@ -2740,15 +2754,15 @@ const METRICS = {
     return { html: `<div class="stats">${pr ? pr.map(([n, t, d]) => mStat(n, fmtDur(t), fmtPace(t / (d / 1000)) + '/' + uName(), 'race')).join('') : mStat('Predictions', '–')}</div>
       <div class="wd-grid">${RACES.map((x, k) => mCard(x[1], 'mr' + k, 'Faster is higher.', 'race')).join('')}</div>`,
       draw() { RACES.forEach((x, k) => plot($('#mr' + k), { label: x[1] + ' prediction', xMin: P.xMin, xMax: P.xMax, invert: true, minSpan: x[0] / 100, height: 180, yFmt: v => fmtDur(v),
-        series: [{ name: x[1], kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.vo2 ? RACE.predict(d)[k][1] : null]), fmt: v => fmtDur(v) }] })); } };
+        series: [{ name: x[1], kind: 'line', color: css('--race'), pts: P.days.map(d => [d.t, d.vo2 ? RACE.predict(d)[k][1] : null]), fmt: v => fmtDur(v) }] })); } };
   } },
   dist: { title: 'Distance', render(P) {
     const tot = P.idx.reduce((s, i) => s + (st.res[i].dist || 0), 0), tm = P.idx.reduce((s, i) => s + (st.res[i].mov || 0), 0);
     return { html: `<div class="stats">${mStat('Distance', fmtDist(tot), uName())}${mStat('Time', fmtDur(tm))}${mStat('Runs', P.idx.length)}${mStat('Avg pace', tot ? fmtPace(tm / (tot / 1000)) : '–', '/' + uName(), 'gap')}${mStat('Per week', fmtDist(tot / Math.max(1, P.n / 7)), uName())}</div>
       <div class="wd-grid">${mCard(P.n > 60 ? 'Weekly distance' : 'Daily distance', 'mc1')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['Dist ' + uName(), (r, e) => fmtDist(e.dist)], ['Time', (r, e) => fmtDur(e.mov)], ['Pace', (r, e) => fmtPace(e.pace)]])}</div></div>`,
       draw() {
-        if (P.n > 60) { const w = weekly().filter(p => p[0] >= P.t0); plot($('#mc1'), { label: 'Weekly distance', xMin: P.xMin, xMax: P.xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts: w, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} runs` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
-        else plot($('#mc1'), { label: 'Daily distance', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: DAY, color: css('--c1'), pts: dailyDist(P), fmt: v => v ? `${v.toFixed(2)} ${uName()}` : 'rest' }] });
+        if (P.n > 60) { const w = weekly().filter(p => p[0] >= P.t0); plot($('#mc1'), { label: 'Weekly distance', xMin: P.xMin, xMax: P.xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--dist'), pts: w, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} runs` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+        else plot($('#mc1'), { label: 'Daily distance', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: DAY, color: css('--dist'), pts: dailyDist(P), fmt: v => v ? `${v.toFixed(2)} ${uName()}` : 'rest' }] });
       } };
   } },
   load: { title: 'Training load', key: 'acwr', render(P) {
@@ -2758,8 +2772,8 @@ const METRICS = {
     return { html: `<div class="stats">${mStat('7-day load', last ? f0(last[1]) : '–', '', 'acwr')}${mStat('Optimal range', last && last[2] ? `${f0(0.8 * last[2])}–${f0(1.3 * last[2])}` : '–', '', 'acwr')}${mStat('Ratio', last && last[3] ? last[3].toFixed(2) + '×' : '–', '', 'acwr')}${mStat('Status', status ? badge(STATUS.load(last[3]), status[0]) : '–')}${mStat('Load in period', f0(P.idx.reduce((t, i) => t + (st.res[i].load || 0), 0)), '', 'load')}</div>
       <div class="wd-grid">${mCard('Daily load', 'mc1', 'TRIMP of each day.', 'load')}${mCard('7-day load and optimal range', 'mc2', 'Shaded band: 0.8–1.3 × your usual load.', 'acwr')}</div>`,
       draw() {
-        plot($('#mc1'), { label: 'Daily load', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Load', kind: 'bars', bw: DAY, color: css('--c1'), pts: daily, fmt: v => f0(v) }] });
-        plot($('#mc2'), { label: '7-day load', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: Math.max(...s.map(x => x[2] * 1.3)), series: [{ name: '7-day load', kind: 'line', color: css('--c1'), w: 2.5, pts: s.map(x => [x[0], x[1]]), fmt: (v, p) => f0(v) }],
+        plot($('#mc1'), { label: 'Daily load', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Load', kind: 'bars', bw: DAY, color: css('--load'), pts: daily, fmt: v => f0(v) }] });
+        plot($('#mc2'), { label: '7-day load', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: Math.max(...s.map(x => x[2] * 1.3)), series: [{ name: '7-day load', kind: 'line', color: css('--load'), w: 2.5, pts: s.map(x => [x[0], x[1]]), fmt: (v, p) => f0(v) }],
           extra: (sx, sy) => { const top = s.map(x => `${sx(x[0]).toFixed(1)},${sy(x[2] * 1.3).toFixed(1)}`), bot = s.map(x => `${sx(x[0]).toFixed(1)},${sy(x[2] * 0.8).toFixed(1)}`).reverse(); return s.length > 1 ? `<polygon points="${top.concat(bot).join(' ')}" fill="var(--good)" fill-opacity=".12"/>` : ''; } });
       } };
   } },
@@ -2774,7 +2788,7 @@ const METRICS = {
     const pts = P.idx.filter(i => st.res[i].ef && !st.runs[i].summary).map(i => [st.runs[i].start, st.res[i].ef, 0, st.runs[i].name]), avg = pts.length ? pts.reduce((s, p) => s + p[1], 0) / pts.length : null;
     return { html: `<div class="stats">${mStat('Average', avg ? avg.toFixed(2) : '–', 'm/beat', 'ef')}${mStat('Best', pts.length ? Math.max(...pts.map(p => p[1])).toFixed(2) : '–', 'm/beat')}${mStat('Runs', pts.length)}</div>
       <div class="wd-grid">${mCard('Aerobic efficiency', 'mc1', 'Metres per heartbeat at grade-adjusted pace. Higher is better.', 'ef')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['m/beat', (r, e) => e.ef ? e.ef.toFixed(2) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>`,
-      draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--c1'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
+      draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--ef'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
   } },
 };
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };
@@ -2866,13 +2880,13 @@ async function drawWorkoutImage(r, e, p) {
     if (many) {
       const bw = (W - 2 * pad) / laps.length, hmax = lapsH - 70;
       laps.forEach((s, k) => { const f = slow > fast ? (slow - paces[k]) / (slow - fast) : 1, h = hmax * (0.3 + 0.7 * f);
-        g.fillStyle = paces[k] === fast ? C('--accent') : C('--c1'); roundRect(g, pad + k * bw + 2, y + hmax - h, Math.max(2, bw - 4), h, 4); });
+        g.fillStyle = paces[k] === fast ? C('--accent') : C('--pace'); roundRect(g, pad + k * bw + 2, y + hmax - h, Math.max(2, bw - 4), h, 4); });
       g.fillStyle = C('--muted'); g.font = font(500, 22, mono); g.fillText(`fastest ${fmtPace(fast)} · slowest ${fmtPace(slow)}`, pad, y + hmax + 34);
     } else {
       const rh = Math.min(34, (lapsH - 40) / laps.length), labW = 70, valW = 230, bwMax = W - 2 * pad - labW - valW;
       laps.forEach((s, k) => { const f = slow > fast ? (slow - paces[k]) / (slow - fast) : 1, yy = y + k * rh;
         g.fillStyle = C('--ink2'); g.font = font(600, Math.min(24, rh - 6), mono); g.fillText(s.len < U() * 0.99 ? (s.len / U()).toFixed(2) : String(k + 1), pad, yy + rh - 8);
-        g.fillStyle = paces[k] === fast ? C('--accent') : C('--c1'); roundRect(g, pad + labW, yy + 5, bwMax * (0.35 + 0.65 * f), rh - 10, 4);
+        g.fillStyle = paces[k] === fast ? C('--accent') : C('--pace'); roundRect(g, pad + labW, yy + 5, bwMax * (0.35 + 0.65 * f), rh - 10, 4);
         g.fillStyle = C('--ink'); g.fillText(fmtPace(paces[k]) + (s.hr && on('hr') ? `  ${Math.round(s.hr)} bpm` : ''), W - pad - valW + 10, yy + rh - 8); });
     }
   }
@@ -3276,7 +3290,7 @@ function drawWorkout(r, e, S) {
   const tf = v => fmtDur(v * 60), pv = pace.filter(p => p[1] != null).map(p => p[1]).sort((a, b) => a - b);
   const pLo = pv[Math.floor(pv.length * 0.02)], pHi = pv[Math.floor(pv.length * 0.98)];
   const xo = { xTime: false, xFmt: v => v + "'", tipX: v => tf(v), height: 190 };
-  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--c1'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
+  plot($('#dPace'), Object.assign({}, xo, { invert: true, label: 'Pace over time', yMin: pLo, yMax: pHi, minSpan: 30, series: [{ name: 'Pace', kind: 'line', color: css('--pace'), end: false, pts: pace.map(p => [p[0], p[1] == null ? null : clamp(p[1], pLo || 0, pHi || 1e9)]), fmt: v => fmtPace(v) + '/' + uName() }], yFmt: v => fmtPace(v) }));
   const hrr = q => q * S.hrMaxEff; // ZONEalg2: zones are % of max HR
   plot($('#dHr'), Object.assign({}, xo, { label: 'Heart rate over time', minSpan: 20, series: [{ name: 'Heart rate', kind: 'line', color: css('--hr'), end: false, pts: hr, fmt: v => Math.round(v) + ' bpm' }],
     empty: 'No heart-rate data in this file.',
@@ -3286,9 +3300,9 @@ function drawWorkout(r, e, S) {
     // VO2alg3: each window's oxygen cost against heart rate; the Swain line runs from 37% of max HR (zero) to max HR (= VO₂max)
     const x0 = 0.37 * S.hrMaxEff, at = h => e.est * (h / S.hrMaxEff - 0.37) / 0.64;
     plot($('#dFit'), { xTime: false, xFmt: v => String(v), xMin: Math.min(x0, ...e.windows.map(w => w[0])) - 5, xMax: S.hrMaxEff + 5, zero: true, yMax: e.est * 1.08, height: 230, label: 'Oxygen cost versus heart rate',
-      series: [{ name: 'Steady window', kind: 'dots', color: css('--c1'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
+      series: [{ name: 'Steady window', kind: 'dots', color: css('--vo2'), pts: e.windows.map(w => [w[0], w[1], w[2], w[3]]), r: p => 3 + 2 * p[2], op: 0.45, tip: p => `<b>${Math.round(p[0])} bpm</b> · VO₂ ${p[1].toFixed(1)} → VO₂max ${p[3].toFixed(1)}` }],
       extra: (sx, sy) => `<line x1="${sx(x0)}" y1="${sy(0)}" x2="${sx(S.hrMaxEff)}" y2="${sy(e.est)}" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="6 4"/>
-        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--c1)" stroke="var(--surface)" stroke-width="2"/>
+        <circle cx="${sx(S.hrMaxEff)}" cy="${sy(e.est)}" r="6" fill="var(--vo2)" stroke="var(--surface)" stroke-width="2"/>
         <text class="fitlab" x="${sx(S.hrMaxEff) - 10}" y="${sy(e.est) + 4}" text-anchor="end">VO₂max ${e.est.toFixed(1)} at ${Math.round(S.hrMaxEff)} bpm</text>` });
   } else $('#dFit').innerHTML = `<p class="empty">${r.hasHR ? 'Not enough steady running to estimate VO₂max. Even-paced runs of 20+ minutes work best.' : 'No heart-rate data in this file.'}</p>`;
   const sp2 = splitsOf(r, U());
@@ -3323,7 +3337,7 @@ function renderTrends() {
   weekChart($('#cWeek'), st.range ? Math.ceil(st.range / 7) : 0);
   efChart($('#cEf'), st.range);
   plot($('#cDec'), { label: 'Heart-rate drift', xMin, xMax, zero: true, minSpan: 6, empty: 'Needs steady runs of 40+ minutes with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--c2'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: (v, d) => v.toFixed(d) + '%',
+    { name: 'Run', kind: 'dots', color: css('--drift'), pts: decPts, r: p => 3 + 3 * p[2], op: 0.5, fmt: (v, p) => `${v.toFixed(1)}% · ${p[3]}` }], yFmt: (v, d) => v.toFixed(d) + '%',
     extra: (sx, sy, b) => 5 > b.y0 && 5 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(5)}" y2="${sy(5)}" stroke="var(--good)" stroke-dasharray="6 4" stroke-width="1.5"/><text class="ax" x="${b.W - b.m.r - 2}" y="${sy(5) - 4}" text-anchor="end">5% target</text>` : '' });
   // monthly
   const mon = new Map();

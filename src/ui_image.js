@@ -60,13 +60,13 @@ async function drawWorkoutImage(r, e, p) {
     if (many) {
       const bw = (W - 2 * pad) / laps.length, hmax = lapsH - 70;
       laps.forEach((s, k) => { const f = slow > fast ? (slow - paces[k]) / (slow - fast) : 1, h = hmax * (0.3 + 0.7 * f);
-        g.fillStyle = paces[k] === fast ? C('--accent') : C('--c1'); roundRect(g, pad + k * bw + 2, y + hmax - h, Math.max(2, bw - 4), h, 4); });
+        g.fillStyle = paces[k] === fast ? C('--accent') : C('--pace'); roundRect(g, pad + k * bw + 2, y + hmax - h, Math.max(2, bw - 4), h, 4); });
       g.fillStyle = C('--muted'); g.font = font(500, 22, mono); g.fillText(`fastest ${fmtPace(fast)} · slowest ${fmtPace(slow)}`, pad, y + hmax + 34);
     } else {
       const rh = Math.min(34, (lapsH - 40) / laps.length), labW = 70, valW = 230, bwMax = W - 2 * pad - labW - valW;
       laps.forEach((s, k) => { const f = slow > fast ? (slow - paces[k]) / (slow - fast) : 1, yy = y + k * rh;
         g.fillStyle = C('--ink2'); g.font = font(600, Math.min(24, rh - 6), mono); g.fillText(s.len < U() * 0.99 ? (s.len / U()).toFixed(2) : String(k + 1), pad, yy + rh - 8);
-        g.fillStyle = paces[k] === fast ? C('--accent') : C('--c1'); roundRect(g, pad + labW, yy + 5, bwMax * (0.35 + 0.65 * f), rh - 10, 4);
+        g.fillStyle = paces[k] === fast ? C('--accent') : C('--pace'); roundRect(g, pad + labW, yy + 5, bwMax * (0.35 + 0.65 * f), rh - 10, 4);
         g.fillStyle = C('--ink'); g.fillText(fmtPace(paces[k]) + (s.hr && on('hr') ? `  ${Math.round(s.hr)} bpm` : ''), W - pad - valW + 10, yy + rh - 8); });
     }
   }

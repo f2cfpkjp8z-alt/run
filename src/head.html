@@ -39,6 +39,19 @@
   --z1: #89c566; --z2: #6ba547; --z3: #4e8626; --z4: #316800; --z5: #144b00;
   color-scheme: light;
 }
+:root[data-theme="asphalt"] {
+  --bg: #121212; --surface: #1e1e1e; --sunk: #262626; --raise: #2c2c2e; --ink: #ffffff; --ink2: #c7c7cc; --muted: #8e8e93; --line: #333336;
+  --accent: #fc5200; --accent-ink: #ff7a3d; --accent-soft: #3a1d0d; --on-accent: #ffffff;
+  --c1: #fc5200; --c2: #4c9cff; --hr: #ff3b4f; --elev: #9aa3ad;
+  --pace: #4c9cff; --vo2: #2fd0a5; --end: #a37cff; --fit: #4c9cff; --fat: #ff6fae; --form: #ffc233;
+  --dist: #fc5200; --load: #ffb020; --ef: #5ad06a; --race: #e070ff; --drift: #ffc233;
+  --z1: #5a2a10; --z2: #8f3a0c; --z3: #c44606; --z4: #fc5200; --z5: #ff9a5c;
+}
+/* chart colour per measurement — the same measurement keeps its colour on every chart; themes without their own use --c1/--c2 */
+:root { --pace: var(--c1); --vo2: var(--c1); --end: var(--c1); --fit: var(--c1); --fat: var(--c2); --form: var(--c1);
+  --dist: var(--c1); --load: var(--c1); --ef: var(--c1); --race: var(--c1); --drift: var(--c2); }
+:root[data-theme="asphalt"] body { background: var(--bg); } /* flat, no accent glow */
+:root[data-theme="asphalt"] .eyebrow { color: var(--muted); }
 :root { --hz1: #8b96a3; --hz2: var(--rt6); --hz3: var(--rt4); --hz4: var(--rt2); --hz5: var(--rt1); } /* Garmin heart-rate zone colours */
 :root { --rt1: #e5484d; --rt2: #f2994a; --rt3: #e3b341; --rt4: #3fb950; --rt5: #2bb3a3; --rt6: #3b82f6; --rt7: #a371f7; } /* Garmin-style rating colours (always shown with a label) */
 :root[data-theme="daylight"] { --rt1: #cf2e32; --rt2: #d9731f; --rt3: #b98a00; --rt4: #1f8a3a; --rt5: #11867a; --rt6: #2563c9; --rt7: #7c4dd1; }
@@ -184,7 +197,7 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .meter b { position: absolute; top: -2px; width: 4px; height: 14px; border-radius: 2px; background: var(--ink); transform: translateX(-2px); }
 .wkbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 64px; margin-top: 6px; }
 .wkbars div { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; font-size: 0.6875rem; color: var(--muted); }
-.wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--c1); min-height: 2px; }
+.wkbars i { width: min(100%, 18px); border-radius: 4px 4px 0 0; background: var(--dist); min-height: 2px; }
 .wkbars .today { color: var(--ink); font-weight: 700; }
 
 /* workout image */

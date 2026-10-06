@@ -4,6 +4,16 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v25 — 2026-10-06
+  In short: New Asphalt theme — dark grey with orange, and every chart in its own colour.
+  Asphalt (Profile → Appearance) is a flat neutral-grey dark theme with an orange accent, without the tinted glow.
+    In it each measurement has its own colour on every chart: heart rate red, pace blue, elevation grey,
+    VO₂max teal, endurance purple, fitness blue / fatigue pink / form yellow, distance orange, load amber,
+    efficiency green, race predictions magenta, heart-rate drift yellow.
+  Charts now ask for a colour per measurement (--pace, --vo2, …) instead of the generic series colour; the
+    other themes map these to their existing colours, so they look the same as before.
+  Why: requested a Strava-like dark mode where charts aren't all one colour.
+
 v24 — 2026-10-06
   In short: The account menu now opens over the page instead of shifting the layout.
   Tapping the profile picture used to push the menu into the header, widening the page and leaving an empty strip on

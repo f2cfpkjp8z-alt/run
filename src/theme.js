@@ -5,6 +5,7 @@ const THEMES = [
   ['ember', 'Ember', 'dark', '#110c0a', '#ff8f3f'],
   ['glacier', 'Glacier', 'dark', '#08111c', '#4fd1f0'],
   ['uv', 'Ultraviolet', 'dark', '#0d0a15', '#b197ff'],
+  ['asphalt', 'Asphalt', 'dark', '#121212', '#fc5200'],
   ['daylight', 'Daylight', 'light', '#f3f5f0', '#3b7d16'],
   ['auto', 'Match device', 'auto', null, null],
 ];
@@ -23,7 +24,7 @@ function applyUI(p = uiPrefs()) {
   const root = document.documentElement;
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   let t = THEMES.find(x => x[0] === p.theme) || THEMES[0];
-  if (t[0] === 'auto') t = dark ? THEMES[0] : THEMES[4];
+  if (t[0] === 'auto') t = THEMES.find(x => x[0] === (dark ? 'volt' : 'daylight'));
   const font = FONTS[p.font] ? p.font : 'sport', size = SIZES.some(x => x[0] === p.size) ? p.size : 'm';
   if (FONTS[font][1] && !document.getElementById('font-' + font)) {
     const l = document.createElement('link'); l.rel = 'stylesheet'; l.id = 'font-' + font;

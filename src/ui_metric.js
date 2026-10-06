@@ -23,22 +23,22 @@ const METRICS = {
     return { html: `<div class="stats">${mStat('Now', b ? f1(b) : '–', 'ml/kg/min', 'vo2')}${mStat('Change', mChange(a, b, 1))}${mStat('Rating', rt ? badge(STATUS.rating(rt.k), rt.name) : '–', '', 'rating')}${mStat('Best run', ests.length ? f1(Math.max(...ests)) : '–')}${mStat('Runs with estimate', ests.length)}</div>
       <div class="wd-grid">${mCard('VO₂max', 'mc1', 'Line: daily value. Dots: single-run estimates (bigger = more confident).', 'vo2')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['VO₂ est.', (r, e) => e.est ? f1(e.est) : '–'], ['Conf.', (r, e) => e.est ? Math.round(e.conf * 100) + '%' : '–']])}</div></div>`,
       draw() { plot($('#mc1'), { label: 'VO2max', xMin: P.xMin, xMax: P.xMax, minSpan: 4, under: vo2Bands, series: [
-        { name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
-        { name: 'VO₂max', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
+        { name: 'Run estimate', kind: 'dots', color: css('--vo2'), op: 0.4, r: p => 3 + 3 * p[2], pts: P.idx.map(i => [st.runs[i].start, st.res[i].est, st.res[i].conf, st.runs[i].name]).filter(p => p[1]), fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}` },
+        { name: 'VO₂max', kind: 'line', color: css('--vo2'), w: 2.5, pts: P.days.map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) }] }); } };
   } },
   end: { title: 'Endurance score', key: 'end', render(P) {
     const a = first(P.days, 'end'), b = lastOf(P.days, 'end'), D = P.days[P.days.length - 1];
     return { html: `<div class="stats">${mStat('Now', b ? f0(b) : '–', '', 'end')}${mStat('Level', b ? badge(STATUS.tier(TIERS.findIndex(t => t[1] === tierOf(b))), tierOf(b)) : '–')}${mStat('Change', mChange(a, b, 0))}${mStat('Weekly time', D ? fmtDur(D.H * 3600) : '–', '', 'ff')}${mStat('Longest run', D ? Math.round(D.L) : '–', 'min')}</div>
       <div class="wd-grid">${mCard('Endurance score', 'mc1', '', 'end')}<div class="card"><h3 style="margin-bottom:10px">${al('end', 'What drives it now')}</h3><div class="bars" id="mBars"></div></div></div>`,
-      draw() { plot($('#mc1'), { label: 'Endurance score', xMin: P.xMin, xMax: P.xMax, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--c1'), pts: P.days.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }] }); renderBreakdown(D, $('#mBars')); } };
+      draw() { plot($('#mc1'), { label: 'Endurance score', xMin: P.xMin, xMax: P.xMax, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--end'), pts: P.days.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }] }); renderBreakdown(D, $('#mBars')); } };
   } },
   ff: { title: 'Fitness, fatigue & form', key: 'ff', render(P) {
     const D = P.days[P.days.length - 1], s = D ? FF.status(D.tsb) : null;
     return { html: `<div class="stats">${mStat('Fitness', D ? f0(D.ctl) : '–', '', 'ff')}${mStat('Fatigue', D ? f0(D.atl) : '–', '', 'ff')}${mStat('Form', D ? (D.tsb >= 0 ? '+' : '') + Math.round(D.tsb) : '–', '', 'ff')}${(() => { const T = TS.of(st.days, st.runs, st.res, st.asOf); return mStat('Training status', badge(TS.styles[T.name], T.name), '', 'ts'); })()}${mStat('Fitness change', mChange(first(P.days, 'ctl'), D && D.ctl, 0))}</div>
       <div class="card" style="margin-top:12px"><h3 style="margin-bottom:10px">${al('ts', 'Training status history')}</h3>${tsStrip(P)}</div><div class="wd-grid">${mCard('Fitness & fatigue', 'mc1', '42-day and 7-day load averages.', 'ff')}${mCard('Form', 'mc2', 'Fitness minus fatigue. Above 0 you are fresher than usual.', 'ff')}</div>`,
       draw() {
-        plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--c1'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--c2'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
-        plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
+        plot($('#mc1'), { label: 'Fitness and fatigue', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Fitness', kind: 'line', color: css('--fit'), w: 2.5, pts: P.days.map(d => [d.t, d.ctl]), fmt: v => f0(v) }, { name: 'Fatigue', kind: 'line', color: css('--fat'), pts: P.days.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+        plot($('#mc2'), { label: 'Form', xMin: P.xMin, xMax: P.xMax, minSpan: 20, series: [{ name: 'Form', kind: 'line', color: css('--form'), pts: P.days.map(d => [d.t, d.tsb]), fmt: v => (v >= 0 ? '+' : '') + Math.round(v) + ' · ' + FF.status(v)[0] }],
           extra: (sx, sy, b) => 0 > b.y0 && 0 < b.y1 ? `<line x1="${b.m.l}" x2="${b.W - b.m.r}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--muted)" stroke-width="1"/>` : '' });
       } };
   } },
@@ -47,15 +47,15 @@ const METRICS = {
     return { html: `<div class="stats">${pr ? pr.map(([n, t, d]) => mStat(n, fmtDur(t), fmtPace(t / (d / 1000)) + '/' + uName(), 'race')).join('') : mStat('Predictions', '–')}</div>
       <div class="wd-grid">${RACES.map((x, k) => mCard(x[1], 'mr' + k, 'Faster is higher.', 'race')).join('')}</div>`,
       draw() { RACES.forEach((x, k) => plot($('#mr' + k), { label: x[1] + ' prediction', xMin: P.xMin, xMax: P.xMax, invert: true, minSpan: x[0] / 100, height: 180, yFmt: v => fmtDur(v),
-        series: [{ name: x[1], kind: 'line', color: css('--c1'), pts: P.days.map(d => [d.t, d.vo2 ? RACE.predict(d)[k][1] : null]), fmt: v => fmtDur(v) }] })); } };
+        series: [{ name: x[1], kind: 'line', color: css('--race'), pts: P.days.map(d => [d.t, d.vo2 ? RACE.predict(d)[k][1] : null]), fmt: v => fmtDur(v) }] })); } };
   } },
   dist: { title: 'Distance', render(P) {
     const tot = P.idx.reduce((s, i) => s + (st.res[i].dist || 0), 0), tm = P.idx.reduce((s, i) => s + (st.res[i].mov || 0), 0);
     return { html: `<div class="stats">${mStat('Distance', fmtDist(tot), uName())}${mStat('Time', fmtDur(tm))}${mStat('Runs', P.idx.length)}${mStat('Avg pace', tot ? fmtPace(tm / (tot / 1000)) : '–', '/' + uName(), 'gap')}${mStat('Per week', fmtDist(tot / Math.max(1, P.n / 7)), uName())}</div>
       <div class="wd-grid">${mCard(P.n > 60 ? 'Weekly distance' : 'Daily distance', 'mc1')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['Dist ' + uName(), (r, e) => fmtDist(e.dist)], ['Time', (r, e) => fmtDur(e.mov)], ['Pace', (r, e) => fmtPace(e.pace)]])}</div></div>`,
       draw() {
-        if (P.n > 60) { const w = weekly().filter(p => p[0] >= P.t0); plot($('#mc1'), { label: 'Weekly distance', xMin: P.xMin, xMax: P.xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts: w, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} runs` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
-        else plot($('#mc1'), { label: 'Daily distance', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: DAY, color: css('--c1'), pts: dailyDist(P), fmt: v => v ? `${v.toFixed(2)} ${uName()}` : 'rest' }] });
+        if (P.n > 60) { const w = weekly().filter(p => p[0] >= P.t0); plot($('#mc1'), { label: 'Weekly distance', xMin: P.xMin, xMax: P.xMax + 3 * DAY, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--dist'), pts: w, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} runs` }], tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) }); }
+        else plot($('#mc1'), { label: 'Daily distance', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Distance', kind: 'bars', bw: DAY, color: css('--dist'), pts: dailyDist(P), fmt: v => v ? `${v.toFixed(2)} ${uName()}` : 'rest' }] });
       } };
   } },
   load: { title: 'Training load', key: 'acwr', render(P) {
@@ -65,8 +65,8 @@ const METRICS = {
     return { html: `<div class="stats">${mStat('7-day load', last ? f0(last[1]) : '–', '', 'acwr')}${mStat('Optimal range', last && last[2] ? `${f0(0.8 * last[2])}–${f0(1.3 * last[2])}` : '–', '', 'acwr')}${mStat('Ratio', last && last[3] ? last[3].toFixed(2) + '×' : '–', '', 'acwr')}${mStat('Status', status ? badge(STATUS.load(last[3]), status[0]) : '–')}${mStat('Load in period', f0(P.idx.reduce((t, i) => t + (st.res[i].load || 0), 0)), '', 'load')}</div>
       <div class="wd-grid">${mCard('Daily load', 'mc1', 'TRIMP of each day.', 'load')}${mCard('7-day load and optimal range', 'mc2', 'Shaded band: 0.8–1.3 × your usual load.', 'acwr')}</div>`,
       draw() {
-        plot($('#mc1'), { label: 'Daily load', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Load', kind: 'bars', bw: DAY, color: css('--c1'), pts: daily, fmt: v => f0(v) }] });
-        plot($('#mc2'), { label: '7-day load', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: Math.max(...s.map(x => x[2] * 1.3)), series: [{ name: '7-day load', kind: 'line', color: css('--c1'), w: 2.5, pts: s.map(x => [x[0], x[1]]), fmt: (v, p) => f0(v) }],
+        plot($('#mc1'), { label: 'Daily load', xMin: P.xMin, xMax: P.xMax, zero: true, series: [{ name: 'Load', kind: 'bars', bw: DAY, color: css('--load'), pts: daily, fmt: v => f0(v) }] });
+        plot($('#mc2'), { label: '7-day load', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: Math.max(...s.map(x => x[2] * 1.3)), series: [{ name: '7-day load', kind: 'line', color: css('--load'), w: 2.5, pts: s.map(x => [x[0], x[1]]), fmt: (v, p) => f0(v) }],
           extra: (sx, sy) => { const top = s.map(x => `${sx(x[0]).toFixed(1)},${sy(x[2] * 1.3).toFixed(1)}`), bot = s.map(x => `${sx(x[0]).toFixed(1)},${sy(x[2] * 0.8).toFixed(1)}`).reverse(); return s.length > 1 ? `<polygon points="${top.concat(bot).join(' ')}" fill="var(--good)" fill-opacity=".12"/>` : ''; } });
       } };
   } },
@@ -81,7 +81,7 @@ const METRICS = {
     const pts = P.idx.filter(i => st.res[i].ef && !st.runs[i].summary).map(i => [st.runs[i].start, st.res[i].ef, 0, st.runs[i].name]), avg = pts.length ? pts.reduce((s, p) => s + p[1], 0) / pts.length : null;
     return { html: `<div class="stats">${mStat('Average', avg ? avg.toFixed(2) : '–', 'm/beat', 'ef')}${mStat('Best', pts.length ? Math.max(...pts.map(p => p[1])).toFixed(2) : '–', 'm/beat')}${mStat('Runs', pts.length)}</div>
       <div class="wd-grid">${mCard('Aerobic efficiency', 'mc1', 'Metres per heartbeat at grade-adjusted pace. Higher is better.', 'ef')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['m/beat', (r, e) => e.ef ? e.ef.toFixed(2) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>`,
-      draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--c1'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
+      draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--ef'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
   } },
 };
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };

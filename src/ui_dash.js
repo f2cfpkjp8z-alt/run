@@ -13,26 +13,26 @@ function vo2Bands(sx, sy, b) {
 }
 function vo2Chart(el, days, withRuns, height) {
   const { xMin, xMax, inR } = rangeOf(days), series = [];
-  if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--c1'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
+  if (withRuns) series.push({ name: 'Run estimate', kind: 'dots', color: css('--vo2'), op: 0.35, r: p => 3 + 3 * p[2], fmt: (v, p) => `${v.toFixed(1)} · ${p[3]}`,
     pts: st.runs.map((r, i) => [r.start, st.res[i].est, st.res[i].conf, r.name]).filter(p => p[1] && inR(p[0])) });
-  series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--c1'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
+  series.push({ name: withRuns ? 'Blended VO₂max' : 'VO₂max', kind: withRuns ? 'line' : 'area', color: css('--vo2'), w: withRuns ? 2.5 : 2, pts: st.days.filter(d => inR(d.t)).map(d => [d.t, d.vo2]), fmt: v => v.toFixed(1) + ' ml/kg/min' });
   plot(el, { label: 'VO2max over time', xMin, xMax, height, minSpan: 4, series, under: vo2Bands });
 }
 function weekChart(el, weeks, height) {
   const xMax = lastDay().t, all = weekly(), wpts = weeks ? all.filter(p => p[0] >= xMax - weeks * 7 * DAY) : all;
   plot(el, { label: 'Weekly distance', xMin: wpts.length ? wpts[0][0] - 3.5 * DAY : xMax - 7 * DAY, xMax: xMax + 3.5 * DAY, zero: true, height,
-    series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--c1'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''} · ${fmtDur(p[3])}` }],
+    series: [{ name: 'Distance', kind: 'bars', bw: 7 * DAY, color: css('--dist'), pts: wpts, fmt: (v, p) => `${v.toFixed(1)} ${uName()} · ${p[2]} run${p[2] > 1 ? 's' : ''} · ${fmtDur(p[3])}` }],
     tipX: t => 'Week of ' + fmtDate(t - 3.5 * DAY) });
 }
 function loadChart(el, days, height) {
   const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
   plot(el, { label: 'Fitness and fatigue', xMin, xMax, zero: true, height, series: [
-    { name: 'Fitness (42-day)', kind: 'line', color: css('--c1'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
-    { name: 'Fatigue (7-day)', kind: 'line', color: css('--c2'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
+    { name: 'Fitness (42-day)', kind: 'line', color: css('--fit'), w: 2.5, pts: dd.map(d => [d.t, d.ctl]), fmt: v => f0(v) },
+    { name: 'Fatigue (7-day)', kind: 'line', color: css('--fat'), pts: dd.map(d => [d.t, d.atl]), fmt: v => f0(v) }] });
 }
 function endChart(el, days, height) {
   const { xMin, xMax, inR } = rangeOf(days), dd = st.days.filter(d => inR(d.t));
-  plot(el, { label: 'Endurance score over time', xMin, xMax, height, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--c1'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }],
+  plot(el, { label: 'Endurance score over time', xMin, xMax, height, minSpan: 400, series: [{ name: 'Endurance score', kind: 'area', color: css('--end'), pts: dd.map(d => [d.t, d.end]), fmt: v => `${f0(v)} · ${tierOf(v)}` }],
     extra: (sx, sy, b) => TIERS.filter(t => t[0] > b.y0 && t[0] < b.y1).map(t => `<text class="ax" x="${b.W - b.m.r - 2}" y="${sy(t[0]) - 4}" text-anchor="end">${t[1]}</text>`).join('') });
 }
 function efChart(el, days, height) {
@@ -40,8 +40,8 @@ function efChart(el, days, height) {
   st.runs.forEach((r, i) => { const e = st.res[i]; if (e.ef && !r.summary && inR(r.start)) pts.push([r.start, e.ef, 0, r.name]); });
   const roll = pts.map(p => { const w = pts.filter(q => q[0] <= p[0] && q[0] > p[0] - 28 * DAY).map(q => q[1]).sort((a, b) => a - b); return [p[0], w[w.length >> 1]]; });
   plot(el, { label: 'Aerobic efficiency', xMin, xMax, height, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [
-    { name: 'Run', kind: 'dots', color: css('--c1'), pts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
-    { name: '28-day median', kind: 'line', color: css('--c1'), w: 2.5, pts: roll, fmt: v => v.toFixed(2) + ' m/beat' }] });
+    { name: 'Run', kind: 'dots', color: css('--ef'), pts, op: 0.35, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` },
+    { name: '28-day median', kind: 'line', color: css('--ef'), w: 2.5, pts: roll, fmt: v => v.toFixed(2) + ' m/beat' }] });
 }
 
 /* ---------- widgets ---------- */
