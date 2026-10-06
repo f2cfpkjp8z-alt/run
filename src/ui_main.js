@@ -544,13 +544,35 @@ function renderLook() {
 /* ---------- import ---------- */
 const setStatus = t => { $('#status').textContent = t; };
 async function importFiles(files) { st.importing = true; try { await importFilesNow(files); } finally { st.importing = false; } }
+/* import feedback: a progress bar while reading, then a results sheet listing the imported runs */
+function impProgress(text, frac) {
+  let el = $('#impbar'); if (!el) { el = document.createElement('div'); el.id = 'impbar'; el.className = 'impbar'; el.setAttribute('role', 'status'); el.innerHTML = '<span class="ai-busy"></span><span class="t"></span><i><b></b></i>'; document.body.appendChild(el); }
+  el.hidden = false; el.querySelector('.t').textContent = text; el.querySelector('b').style.width = Math.round(clamp(frac, 0.03, 1) * 100) + '%';
+}
+const impDone = () => { const el = $('#impbar'); if (el) el.hidden = true; };
+function importResult(o) {
+  impDone(); setStatus('');
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const chips = [o.added ? badge('good', `+${n(o.added, 'new run', 'new runs')}`) : '', o.upd ? badge('exc', `${n(o.upd, 'run', 'runs')} with full detail`) : '',
+    o.dup ? badge('ok', `${o.dup} already imported`) : '', o.other ? badge('warn', `${o.other} not running`) : '', o.bad ? badge('bad', `${n(o.bad, 'file', 'files')} unreadable`) : '',
+    o.hr ? badge('top', `Max HR ↑ ${o.hr[1]} bpm`) : ''].join('');
+  const list = (o.runs || []).slice().sort((x, y) => y.start - x.start).map(r => { const i = st.idx.get(r.id), e = i != null ? st.res[i] : null, g = routeGlyph(r);
+    return `<a class="imp-run" href="#w-${esc(r.id)}"><span class="glyph">${g ? `<svg viewBox="0 0 34 34"><path d="${g}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>` : ''}</span>
+      <span class="nm"><b>${esc(r.name)}</b><span>${fmtDate(r.start, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span></span>
+      <span class="m">${e ? `<b>${fmtDist(e.dist)}</b> ${uName()}<span>${fmtDur(e.mov)} · ${fmtPace(e.pace)}</span>` : ''}</span></a>`; }).join('');
+  const title = o.title || (o.added || o.upd ? 'Import done' : 'Nothing new');
+  openDlg(`<h2>${title}</h2>${o.msg ? `<p>${o.msg}</p>` : ''}<div class="btns" style="margin-bottom:12px">${chips}</div>
+    ${list ? `<div class="imp-list">${list}</div>` : ''}
+    <div class="btns" style="margin-top:14px">${list ? '<a class="btn primary" href="#workouts" data-close>All workouts</a>' : ''}<button type="button" data-close>${list ? 'Done' : 'OK'}</button></div>`);
+  $$('#dlgBody .imp-run, #dlgBody a[data-close]').forEach(a => a.addEventListener('click', () => $('#dlg').close()));
+}
 async function importFilesNow(files) {
   if (!st.user) { st.pending = files; showAuth(`Create a profile${st.backend.kind === 'firebase' ? ' or sign in' : ''} to keep the ${files.length} file${files.length === 1 ? '' : 's'} you chose. The import continues right after.`); return; }
   const found = [], skipped = { other: 0, bad: 0 }; let seen = 0;
   const handle = async (name, getBuf) => {
     const ext = name.toLowerCase().split('.').pop();
     if (!['fit', 'tcx', 'gpx', 'csv', 'zip'].includes(ext)) return;
-    seen++; if (seen % 5 === 0) { setStatus(`Reading files… ${seen} so far, ${found.length} runs found`); await new Promise(r => setTimeout(r)); }
+    seen++; if (seen % 5 === 0) await new Promise(r => setTimeout(r));
     try {
       const buf = await getBuf();
       if (ext === 'zip') { for (const en of zipEntries(buf)) await handle(en.name, () => inflateEntry(en)); return; }
@@ -561,11 +583,10 @@ async function importFilesNow(files) {
       const g = buildGrid(raw, { src: ext.toUpperCase() }); if (g) found.push(g); else skipped.bad++;
     } catch (err) { skipped.bad++; console.warn(name, err); }
   };
-  setStatus('Reading files…');
   let k = 0;
-  for (const f of files) { k++; if (files.length > 1) setStatus(`Reading file ${k} of ${files.length}… ${found.length} runs found`); await handle(f.name, () => f.arrayBuffer()); }
-  const tail = `${skipped.other ? ` ${skipped.other} non-running activities skipped.` : ''}${skipped.bad ? ` ${skipped.bad} files could not be read.` : ''}`;
-  if (!found.length) { setStatus(`No runs found in ${seen} file${seen === 1 ? '' : 's'}.${tail} Supported: Garmin .fit, .tcx, .gpx, .zip and activities .csv.`); return; }
+  for (const f of files) { k++; impProgress(files.length > 1 ? `Reading ${k} of ${files.length} · ${found.length} runs` : 'Reading file…', (k - 0.5) / files.length * 0.8); await new Promise(r => setTimeout(r, 0)); await handle(f.name, () => f.arrayBuffer()); }
+  const base = { other: skipped.other, bad: skipped.bad };
+  if (!found.length) { importResult(Object.assign(base, { title: 'No runs found', msg: 'Use Garmin .fit, .tcx, .gpx, .zip or the activities .csv.' })); return; }
   // keep only workouts not already stored (or imported earlier in this batch); upgrade a CSV row to full detail
   const kept = st.runs.slice(), bucket = new Map(), toSave = [], drop = []; let added = 0, upd = 0, dup = 0;
   const key = t => Math.round(t / 60000), near = r => { const k = key(r.start), out = []; for (let m = k - 2; m <= k + 2; m++) out.push(...(bucket.get(m) || [])); return out; };
@@ -577,16 +598,13 @@ async function importFilesNow(files) {
     if (!betterCopy(r, ex)) { dup++; continue; }
     kept[kept.indexOf(ex)] = r; index(r); toSave.push(r); upd++; if (ex.id !== r.id) drop.push(ex.id);
   }
-  const dupMsg = dup ? ` Skipped ${dup} duplicate${dup === 1 ? "" : "s"} (already imported).` : '';
-  if (!toSave.length) { setStatus(`No new workouts: ${dup === 1 ? 'that workout is' : `all ${dup} are`} already imported.${tail}`); return; }
-  setStatus(`Saving ${toSave.length} workouts…`);
-  try { await st.backend.putWorkouts(toSave); for (const id of drop) await st.backend.deleteWorkout(id); } catch (e) { setStatus('Saving failed: ' + (e.message || e)); return; }
+  if (!toSave.length) { importResult(Object.assign(base, { dup, msg: dup === 1 ? 'That run is already in your history.' : 'These runs are already in your history.' })); return; }
+  impProgress(`Saving ${toSave.length} run${toSave.length === 1 ? '' : 's'}…`, 0.9);
+  try { await st.backend.putWorkouts(toSave); for (const id of drop) await st.backend.deleteWorkout(id); } catch (e) { impDone(); importResult(Object.assign(base, { title: 'Saving failed', msg: esc(e.message || String(e)) })); return; }
   const hrBefore = st.S.hrMaxEff;
   st.runs = kept; glyphCache.clear(); st.shown = 30; refresh();
-  const hrNote = !st.S.hrMax && st.S.hrMaxEff > hrBefore && st.hm.source === 'detected' ? ` New max heart rate detected: ${Math.round(st.S.hrMaxEff)} bpm (was ${Math.round(hrBefore)}) in “${st.hm.run.name}” — VO₂max, zones and load updated.` : '';
-  const lastNew = toSave.reduce((a, b) => (b.start > a.start ? b : a), toSave[0]);
-  setStatus(`Imported ${added} new workout${added === 1 ? '' : 's'}${upd ? `, added full detail to ${upd}` : ''}, dated ${fmtDate(Math.min(...toSave.map(r => r.start)), { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(lastNew.start, { day: 'numeric', month: 'short', year: 'numeric' })}.${dupMsg}${hrNote}${tail}`);
-  if (toSave.length === 1) location.hash = '#w-' + toSave[0].id;
+  const hr = !st.S.hrMax && st.S.hrMaxEff > hrBefore && st.hm.source === 'detected' ? [Math.round(hrBefore), Math.round(st.S.hrMaxEff)] : null;
+  importResult(Object.assign(base, { added, upd, dup, hr, runs: toSave }));
 }
 ['#file', '#folder'].forEach(s => $(s).addEventListener('change', ev => { const fs = [...ev.target.files]; ev.target.value = ''; if (fs.length) importFiles(fs); }));
 let dragN = 0;

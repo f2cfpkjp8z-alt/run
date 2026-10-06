@@ -438,6 +438,17 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
   .help-btn { display: inline-grid; place-items: center; }
   .ch { flex-wrap: nowrap; } .ch > h3 { flex: 1; min-width: 0; }
 }
+/* import progress + results */
+.impbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bnav-h) + 18px + env(safe-area-inset-bottom, 0px)); z-index: 55; width: min(92vw, 420px);
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px 10px; padding: 12px 14px; border-radius: 16px; background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; box-shadow: 0 10px 30px rgb(0 0 0 / .4); font-weight: 600; font-size: 0.875rem; }
+.impbar i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: #26313c; overflow: hidden; } .impbar b { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
+.imp-list { display: grid; gap: 2px; max-height: 46dvh; overflow: auto; margin: 0 -6px; }
+.imp-run { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 12px; color: var(--ink); text-decoration: none; }
+.imp-run:active, .imp-run:hover { background: var(--sunk); }
+.imp-run .glyph { width: 40px; height: 40px; border-radius: 10px; background: var(--sunk); display: grid; place-items: center; } .imp-run .glyph svg { width: 34px; height: 34px; }
+.imp-run .nm { min-width: 0; } .imp-run .nm b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imp-run .nm span, .imp-run .m span { display: block; font-size: 0.75rem; color: var(--muted); }
+.imp-run .m { text-align: right; font-family: var(--mono); font-size: 0.8125rem; white-space: nowrap; }
 /* update toast + pull-to-refresh */
 .toast { position: fixed; left: 50%; bottom: calc(var(--bnav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none; z-index: 60;
   background: #0b0f13f2; color: #eef3f6; border: 1px solid #2c3742; padding: 10px 16px; border-radius: 18px; max-width: min(92vw, 520px); text-align: center; font-weight: 600; font-size: 0.875rem; box-shadow: 0 8px 24px rgb(0 0 0 / .35); transition: opacity .2s, transform .2s; }
