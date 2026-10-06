@@ -4,6 +4,14 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v29 — 2026-10-06
+  In short: Running goals now count only real runs at least as long as the goal.
+  A goal like 10K at 7:00/km is reached only by a run of 10 km or longer (1% GPS slack) with an average pace
+    of 7:00/km or faster. Progress uses your best such run in the last 12 weeks; the bar starts at your typical
+    (median) pace on those runs in the 12 weeks before you set the goal. If there's no long-enough run, it says so.
+  Race predictions and fastest 10 km stretches inside runs no longer count.
+  Why: the goal showed "on target" from the VO₂max race prediction without a run that actually did it.
+
 v28 — 2026-10-06
   In short: Set running and weight goals in Profile — see your progress and get coaching toward them.
   Profile → Goals: a running goal (5K / 10K / half / marathon or any distance, target pace like 6:00/km, optional

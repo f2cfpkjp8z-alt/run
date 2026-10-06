@@ -10,25 +10,26 @@ function parsePace(s) { // "6:00", "6", "5:45.5" → seconds per unit
   const p = String(s || '').trim().split(':').map(Number); if (!p.length || p.some(x => !isFinite(x) || x < 0)) return null;
   const sec = p.length === 1 ? p[0] * 60 : p.length === 2 ? p[0] * 60 + p[1] : null; return sec && sec >= 120 && sec <= 1800 ? sec : null;
 }
-// Where the runner stands for a distance: race prediction (RACEalg2) and the fastest effort over it in the last 12 weeks.
+// Where the runner stands for a running goal: only whole runs at least the goal distance count (1% GPS slack),
+// judged by their average moving pace. Race predictions are not used.
+const goalRuns = (dist, from, to) => st.runs.map((r, i) => [r, st.res[i]]).filter(([r, e]) => r.start >= from && r.start <= to && e.dist >= dist * 0.99 && e.pace > 0);
 function goalNow(dist) {
-  const D = st.days.length ? lastDay() : null, pred = D && D.vo2 ? RACE.at(D, dist) : null, from = st.asOf - 84 * DAY;
-  let best = null, pr = null;
-  const take = (sec, r) => { const x = { sec, t: r.start, id: r.id }; if (!pr || sec < pr.sec) pr = x; if (r.start >= from && (!best || sec < best.sec)) best = x; };
-  st.runs.forEach((r, i) => { const e = st.res[i];
-    for (const f of e.efforts) if (f.label !== 'Run' && Math.abs(f.D - dist) < 1) take(f.sec, r);
-    if (e.dist && Math.abs(e.dist - dist) / dist < 0.015 && e.mov) take(e.mov * dist / e.dist, r); }); // a whole run at about this distance
-  const c = [pred, best && best.sec].filter(Boolean);
-  return { pred, best, pr, sec: c.length ? Math.min(...c) : null };
+  const pick = rs => rs.reduce((b, [r, e]) => !b || e.pace < b.pace ? { pace: e.pace, dist: e.dist, t: r.start, id: r.id } : b, null);
+  const best = pick(goalRuns(dist, st.asOf - 84 * DAY, Infinity)), pr = pick(goalRuns(dist, -Infinity, Infinity));
+  const longest = st.runs.reduce((m, r, i) => r.start >= st.asOf - 84 * DAY ? Math.max(m, st.res[i].dist || 0) : m, 0);
+  return { best, pr, longest, pace: best ? best.pace : null };
 }
-// where the bar starts: your level now or 12 weeks ago, whichever was slower, so a new goal already shows recent progress
-function goalStart(dist) { const now = goalNow(dist).sec, A = st.days.length ? dayAt(st.asOf - 84 * DAY) : null, then = A && A.vo2 ? RACE.at(A, dist) : null; return now && then ? Math.max(now, then) : now || then; }
+// where the bar starts: the median pace of qualifying runs in the 12 weeks before the goal was set
+function goalBase(g) {
+  const t = g.set || st.asOf, ps = goalRuns(g.dist, t - 84 * DAY, t).map(([, e]) => e.pace).sort((a, b) => a - b);
+  return ps.length ? ps[ps.length >> 1] : null;
+}
 function goalProgress(g) {
   const now = goalNow(g.dist), target = g.pace * g.dist / 1000;
-  if (!now.sec) return { now, target, pct: null };
-  const start = g.start || now.sec;
-  const pct = now.sec <= target ? 1 : start > target ? clamp((start - now.sec) / (start - target), 0, 1) : target / now.sec;
-  return { now, target, pct };
+  if (!now.pace) return { now, target, pct: null };
+  const base = Math.max(goalBase(g) || now.pace, now.pace);
+  const pct = now.pace <= g.pace ? 1 : base > g.pace ? clamp((base - now.pace) / (base - g.pace), 0, 1) : g.pace / now.pace;
+  return { now, target, base, pct };
 }
 function weightProgress(w) {
   const now = st.S.weight, start = w.start || now; if (!now) return { now, pct: null };
@@ -43,8 +44,8 @@ function goalBlocks() {
     const P = goalProgress(g), n = P.now, done = P.pct >= 1;
     out.push(`<div class="goal"><div class="goal-h"><span><b>${esc(goalName(g.dist))} in ${fmtDur(P.target)}</b> <span class="muted sm">${fmtPace(g.pace)}/${uName()}${goalWhen(g.date)}</span></span><span class="pct num">${P.pct == null ? '–' : Math.round(P.pct * 100) + '%'}</span></div>
       ${gbar(P.pct, 'run')}
-      <div class="gstats">${n.sec ? `<span>Now ${fmtDur(n.sec)} · ${fmtPace(n.sec / (g.dist / 1000))}/${uName()}</span><span>${done ? 'On target 🎯' : fmtDur(n.sec - P.target) + ' to go'}</span>` : '<span>Needs a VO₂max estimate or a recent run at this distance.</span>'}</div>
-      <div class="gstats">${n.pred ? `<span>${al('race', 'Predicted')} ${fmtDur(n.pred)}</span>` : ''}${n.best ? `<span>${al('best', 'Best, 12 weeks')} <a href="#w-${esc(n.best.id)}">${fmtDur(n.best.sec)}</a></span>` : ''}${n.pr && n.pr !== n.best ? `<span>${al('best', 'PR')} <a href="#w-${esc(n.pr.id)}">${fmtDur(n.pr.sec)}</a></span>` : ''}</div></div>`);
+      <div class="gstats">${n.best ? `<span>Best ${esc(goalName(g.dist))}+ run, 12 weeks: <a href="#w-${esc(n.best.id)}">${fmtPace(n.best.pace)}/${uName()}</a> · ${fmtDist(n.best.dist)} ${uName()} · ${fmtDate(n.best.t)}</span><span>${done ? 'On target 🎯' : fmtPace(n.best.pace - g.pace) + '/' + uName() + ' to go'}</span>` : `<span>No run of ${esc(goalName(g.dist))} or longer in the last 12 weeks${n.longest ? ` (longest ${fmtDist(n.longest)} ${uName()})` : ''}.</span>`}</div>
+      <div class="gstats">${P.base && P.pct < 1 ? `<span>Bar starts at ${fmtPace(P.base)}/${uName()}, your typical pace on these runs when you set the goal</span>` : ''}${n.pr && (!n.best || n.pr.id !== n.best.id) ? `<span>Fastest ever: <a href="#w-${esc(n.pr.id)}">${fmtPace(n.pr.pace)}/${uName()}</a></span>` : ''}</div></div>`);
   }
   if (wgoalOn(w)) {
     const P = weightProgress(w), left = P.now ? P.now - w.kg : null;
@@ -66,7 +67,7 @@ function renderGoals() {
     <div class="goals" id="goalNow">${goalBlocks() || '<p class="muted sm">No goal yet. Set a race goal, a weight goal or both.</p>'}</div>
     <form id="goalForm" autocomplete="off">
       <p class="eyebrow" style="margin-top:16px">Running goal</p>
-      <p class="muted sm help" style="margin:0 0 8px">The bar runs from your level 12 weeks before you set the goal to the target time.</p>
+      <p class="muted sm help" style="margin:0 0 8px">Only runs at least this long count, by their average pace. The bar runs from your typical pace on such runs (12 weeks before you set the goal) to the target.</p>
       <div class="form">
         <label for="gDist">Distance<select id="gDist">${GOAL_DISTS.map(([d, n]) => `<option value="${d}"${std && std[0] === d ? ' selected' : ''}>${n}</option>`).join('')}<option value="c"${g && !std ? ' selected' : ''}>Other distance</option></select></label>
         <label for="gCustom" id="gCustomL"${g && !std ? '' : ' hidden'}>Distance (${u})<input id="gCustom" type="number" min="0.4" max="250" step="0.01" inputmode="decimal" value="${g && !std ? (g.dist / U()).toFixed(2) : ''}"></label>
@@ -95,7 +96,7 @@ function renderGoals() {
     if (p && !(d >= 400)) { $('#goalSaved').textContent = 'Enter the goal distance.'; return; }
     let goal = null;
     if (p) { const pace = p * 1000 / U(), old = S.goal, same = old && Math.abs(old.dist - d) < 1 && Math.abs(old.pace - pace) < 0.5;
-      goal = { dist: d, pace, date: $('#gDate').value, start: same ? old.start : goalStart(d), set: same ? old.set : Date.now() }; }
+      goal = { dist: d, pace, date: $('#gDate').value, set: same ? old.set : Date.now() }; }
     setWeight(num('#gW'));
     const kg = num('#gWt'), wold = S.wgoal;
     const wgoal = kg ? { kg, start: num('#gWs') || (wold && wold.kg === kg && wold.start) || S.weight, date: $('#gWd').value, set: wold && wold.kg === kg ? wold.set : Date.now() } : null;
