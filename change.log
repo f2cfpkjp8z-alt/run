@@ -3,6 +3,18 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v14 — 2026-10-06
+  Feels like a native app on phones:
+    - no page zoom: pinch and double-tap zoom are blocked (iOS ignores the viewport setting, so its pinch
+      gesture is blocked in code); text boxes are 16 px+ so iOS no longer zooms in when you tap one.
+      Bigger text is in Profile → Appearance → Text size.
+    - the route map gets its own two-finger pinch zoom, like a maps app.
+    - no grey tap flash, no long-press link/image menus, no accidental text selection (still selectable in
+      text boxes, formulas and the AI coach), no rubber-band bounce or pull-to-refresh.
+    - buttons, cards and tabs shrink slightly when pressed; desktop-only hover effects are off on touch screens.
+    - the top bar extends under the iPhone status bar / notch when installed to the home screen.
+  Why: so the app behaves like an installed app, not a web page.
+
 v13 — 2026-10-06
   Installable web app. "Add to Home Screen" on iPhone/iPad and "Install app" in Chrome/Android/desktop now
     use the Pace & Pulse icon and name and open full-screen without browser bars: web app manifest, icons

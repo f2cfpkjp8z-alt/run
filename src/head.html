@@ -79,7 +79,7 @@ input, select, textarea { font: 0.9375rem var(--body); padding: 10px 12px; borde
 textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
 
 /* ---------- top bar & tabs ---------- */
-.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent);
+.top { position: sticky; top: 0; padding-top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
 .top-in { display: flex; align-items: center; gap: 16px; min-height: 64px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
@@ -392,5 +392,27 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .algo-steps { padding-left: 1.2em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.875rem; color: var(--ink2); }
 .algo-hist { padding-left: 1.1em; margin: 8px 0 0; display: grid; gap: 8px; font-size: 0.8125rem; color: var(--ink2); }
 .dlg .chip { font-size: 0.75rem; }
+/* ---------- native-app feel ---------- */
+/* no page zoom (pinch / double-tap) — text size lives in Profile → Appearance; no grey tap flash, no long-press menus */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, select, [contenteditable], .formula, .ai-lines, .linkrow input { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, a, svg { -webkit-user-drag: none; }
+.auth-side { padding-top: calc(28px + env(safe-area-inset-top, 0px)); }
+.dlg { margin-top: max(16px, env(safe-area-inset-top, 0px)); }
+/* phones: text boxes at 16px+ so iOS never zooms in on focus; press feedback instead of hover */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(1rem, 16px); }
+  button, .btn, .w > .card.go, a.row, .plist button, .algo-card, .bnav a { transition: transform .12s ease, background .12s, opacity .12s; }
+  button:active, .btn:active, .plist button:active, .algo-card:active { transform: scale(.96); }
+  .w > .card.go:active, a.row:active { transform: scale(.985); opacity: .85; }
+  .bnav a:active svg { transform: scale(.88); }
+}
+@media (hover: none) {
+  button:hover, .btn:hover { border-color: var(--line); } .primary:hover { filter: none; border-color: var(--accent); }
+  .tabs a:hover, .menu button:hover, .row:hover { background: transparent; } .w > .card.go:hover { border-color: var(--line); } .algo-l:hover { color: inherit; }
+}
+/* installed app (home screen): no browser chrome, so keep the bottom bar clear of the home indicator */
+@media (display-mode: standalone) { .ver { padding-bottom: 8px; } }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>

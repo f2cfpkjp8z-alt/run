@@ -1,4 +1,4 @@
-<!doctype html><html lang="en" data-theme="volt" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0f13"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon.svg" type="image/svg+xml"><link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Pace&amp;Pulse"><meta name="application-name" content="Pace &amp; Pulse"><meta name="description" content="Running physiology from your Garmin files: VO2max, endurance, training load, trends and records."><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}body{margin:0;background:#0b0f13}img{max-width:100%}[hidden]{display:none!important}</style><script>try{var p=JSON.parse(localStorage.getItem("pp-ui"))||{},d=document.documentElement,t=p.theme||"volt";if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"volt":"daylight";d.dataset.theme=t;d.dataset.mode=t==="daylight"?"light":"dark";if(p.size)d.dataset.size=p.size;if(p.font)d.dataset.font=p.font}catch(e){}</script></head><body>
+<!doctype html><html lang="en" data-theme="volt" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0b0f13"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon.svg" type="image/svg+xml"><link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Pace&amp;Pulse"><meta name="application-name" content="Pace &amp; Pulse"><meta name="description" content="Running physiology from your Garmin files: VO2max, endurance, training load, trends and records."><style>:root{padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}body{margin:0;background:#0b0f13}img{max-width:100%}[hidden]{display:none!important}</style><script>try{var p=JSON.parse(localStorage.getItem("pp-ui"))||{},d=document.documentElement,t=p.theme||"volt";if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"volt":"daylight";d.dataset.theme=t;d.dataset.mode=t==="daylight"?"light":"dark";if(p.size)d.dataset.size=p.size;if(p.font)d.dataset.font=p.font}catch(e){}</script></head><body>
 <title>Pace &amp; Pulse</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,7 +80,7 @@ input, select, textarea { font: 0.9375rem var(--body); padding: 10px 12px; borde
 textarea { font: 0.75rem/1.5 var(--mono); min-height: 120px; resize: vertical; }
 
 /* ---------- top bar & tabs ---------- */
-.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent);
+.top { position: sticky; top: 0; padding-top: env(safe-area-inset-top, 0px); z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
 .top-in { display: flex; align-items: center; gap: 16px; min-height: 64px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; flex: none; }
@@ -393,6 +393,28 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 .algo-steps { padding-left: 1.2em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.875rem; color: var(--ink2); }
 .algo-hist { padding-left: 1.1em; margin: 8px 0 0; display: grid; gap: 8px; font-size: 0.8125rem; color: var(--ink2); }
 .dlg .chip { font-size: 0.75rem; }
+/* ---------- native-app feel ---------- */
+/* no page zoom (pinch / double-tap) — text size lives in Profile → Appearance; no grey tap flash, no long-press menus */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }
+body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, select, [contenteditable], .formula, .ai-lines, .linkrow input { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, a, svg { -webkit-user-drag: none; }
+.auth-side { padding-top: calc(28px + env(safe-area-inset-top, 0px)); }
+.dlg { margin-top: max(16px, env(safe-area-inset-top, 0px)); }
+/* phones: text boxes at 16px+ so iOS never zooms in on focus; press feedback instead of hover */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(1rem, 16px); }
+  button, .btn, .w > .card.go, a.row, .plist button, .algo-card, .bnav a { transition: transform .12s ease, background .12s, opacity .12s; }
+  button:active, .btn:active, .plist button:active, .algo-card:active { transform: scale(.96); }
+  .w > .card.go:active, a.row:active { transform: scale(.985); opacity: .85; }
+  .bnav a:active svg { transform: scale(.88); }
+}
+@media (hover: none) {
+  button:hover, .btn:hover { border-color: var(--line); } .primary:hover { filter: none; border-color: var(--accent); }
+  .tabs a:hover, .menu button:hover, .row:hover { background: transparent; } .w > .card.go:hover { border-color: var(--line); } .algo-l:hover { color: inherit; }
+}
+/* installed app (home screen): no browser chrome, so keep the bottom bar clear of the home indicator */
+@media (display-mode: standalone) { .ver { padding-bottom: 8px; } }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
 </style>
 <!-- ============ AUTH SCREEN ============ -->
@@ -593,7 +615,7 @@ details summary { cursor: pointer; font-weight: 600; font-size: 0.875rem; color:
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 13, at: '2026-10-06T00:18:38Z' };
+const BUILD = { v: 14, at: '2026-10-06T00:26:37Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -2921,11 +2943,16 @@ function mapView(el, r, mode) {
       `<circle cx="${e[0]}" cy="${e[1]}" r="7" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="7" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/><g class="hl"></g>`;
   };
   fit(); draw();
-  // interactions: drag to pan, buttons / double-click to zoom, hover for details
-  let drag = null;
-  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.setPointerCapture(ev.pointerId); el.style.cursor = 'grabbing'; });
-  el.addEventListener('pointerup', () => { drag = null; el.style.cursor = ''; });
+  // interactions: drag to pan, two-finger pinch / buttons / double-tap to zoom, hover for details
+  let drag = null, pinch = null; const pts = new Map();
+  const mid = () => { const [a, b] = [...pts.values()], rc = el.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2 - rc.left, y: (a.y + b.y) / 2 - rc.top }; };
+  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }); el.setPointerCapture(ev.pointerId);
+    if (pts.size === 2) { drag = null; pinch = mid(); } else if (pts.size === 1) { drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.style.cursor = 'grabbing'; } });
+  const up = ev => { pts.delete(ev.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; el.style.cursor = ''; } };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   el.addEventListener('pointermove', ev => {
+    if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pinch && pts.size === 2) { const m = mid(), f = m.d / pinch.d; if (f > 1.45 || f < 0.69) { zoom(f > 1 ? 1 : -1, m.x, m.y); pinch = m; } tip.hidden = true; return; }
     if (drag) { cx = drag.cx - (ev.clientX - drag.x); cy = drag.cy - (ev.clientY - drag.y); draw(); tip.hidden = true; return; }
     const rc = el.getBoundingClientRect(), px = ev.clientX - rc.left, py = ev.clientY - rc.top;
     let best = null, bd = 26; for (const p of P) { const dd = Math.hypot(p[0] - px, p[1] - py); if (dd < bd) { bd = dd; best = p; } }
@@ -3329,6 +3356,9 @@ async function checkUpdate() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 setTimeout(checkUpdate, 3000);
+// native feel: iOS Safari ignores user-scalable=no, so block its pinch gestures directly (the route map has its own pinch)
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 // installable app (home screen / Chrome install): offline copy via the service worker
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 initSocial(); initDash(); initAlgo();

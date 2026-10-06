@@ -208,11 +208,16 @@ function mapView(el, r, mode) {
       `<circle cx="${e[0]}" cy="${e[1]}" r="7" fill="var(--ink)" stroke="var(--surface)" stroke-width="2.5"/><circle cx="${s[0]}" cy="${s[1]}" r="7" fill="var(--good)" stroke="var(--surface)" stroke-width="2.5"/><g class="hl"></g>`;
   };
   fit(); draw();
-  // interactions: drag to pan, buttons / double-click to zoom, hover for details
-  let drag = null;
-  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.setPointerCapture(ev.pointerId); el.style.cursor = 'grabbing'; });
-  el.addEventListener('pointerup', () => { drag = null; el.style.cursor = ''; });
+  // interactions: drag to pan, two-finger pinch / buttons / double-tap to zoom, hover for details
+  let drag = null, pinch = null; const pts = new Map();
+  const mid = () => { const [a, b] = [...pts.values()], rc = el.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2 - rc.left, y: (a.y + b.y) / 2 - rc.top }; };
+  el.addEventListener('pointerdown', ev => { if (ev.target.closest('.ctrl')) return; pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }); el.setPointerCapture(ev.pointerId);
+    if (pts.size === 2) { drag = null; pinch = mid(); } else if (pts.size === 1) { drag = { x: ev.clientX, y: ev.clientY, cx, cy }; el.style.cursor = 'grabbing'; } });
+  const up = ev => { pts.delete(ev.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; el.style.cursor = ''; } };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   el.addEventListener('pointermove', ev => {
+    if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pinch && pts.size === 2) { const m = mid(), f = m.d / pinch.d; if (f > 1.45 || f < 0.69) { zoom(f > 1 ? 1 : -1, m.x, m.y); pinch = m; } tip.hidden = true; return; }
     if (drag) { cx = drag.cx - (ev.clientX - drag.x); cy = drag.cy - (ev.clientY - drag.y); draw(); tip.hidden = true; return; }
     const rc = el.getBoundingClientRect(), px = ev.clientX - rc.left, py = ev.clientY - rc.top;
     let best = null, bd = 26; for (const p of P) { const dd = Math.hypot(p[0] - px, p[1] - py); if (dd < bd) { bd = dd; best = p; } }
@@ -616,6 +621,9 @@ async function checkUpdate() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 setTimeout(checkUpdate, 3000);
+// native feel: iOS Safari ignores user-scalable=no, so block its pinch gestures directly (the route map has its own pinch)
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 // installable app (home screen / Chrome install): offline copy via the service worker
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 initSocial(); initDash(); initAlgo();
