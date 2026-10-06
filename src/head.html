@@ -195,7 +195,17 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 /* gauge */
 .gauge { width: 100%; max-width: 260px; display: block; margin: 0 auto; overflow: visible; }
 .gauge .g-val { font: 700 2.1rem/1 var(--display); fill: var(--ink); }
-.gauge .g-lab { font: 700 0.75rem var(--body); fill: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.gwrap { position: relative; width: 100%; max-width: 260px; margin: 0 auto; }
+.gwrap > .badge { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); }
+/* Garmin-style training status */
+.ts-name { --bc: var(--muted); display: flex; align-items: center; gap: 10px; font: 700 2.1rem/1.05 var(--display); color: var(--bc); margin: 2px 0; }
+.ts-name i { width: 12px; height: 12px; border-radius: 50%; background: var(--bc); flex: none; }
+:root[data-mode="dark"] .ts-name { filter: brightness(1.15); }
+.segbar { position: relative; padding-top: 12px; }
+.sb-track { position: relative; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
+.sb-track span { position: absolute; top: 0; bottom: 0; opacity: .85; border-right: 2px solid var(--surface); }
+.sb-mark { position: absolute; top: 0; width: 0; height: 0; transform: translateX(-7px); border: 7px solid transparent; border-top: 9px solid var(--ink); border-bottom: 0; }
+.sb-lab { display: flex; justify-content: space-between; gap: 8px; font-size: 0.75rem; color: var(--muted); margin-top: 6px; } .sb-lab b { color: var(--ink); }
 .gauge .g-tick { font: 0.625rem var(--mono); fill: var(--muted); }
 
 /* ---------- AI coach ---------- */

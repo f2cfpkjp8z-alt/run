@@ -4,6 +4,17 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v20 — 2026-10-06
+  In short: Garmin-style training status, and one status per gauge.
+  New TSalg1 (training status), like Garmin: Productive, Maintaining, Recovery, Peaking, Unproductive,
+    Detraining or Overreaching, from your 3-week VO₂max trend and your load ratio (ACWRalg2). The card shows the
+    status in its colour, the VO₂max trend arrow and a Garmin-style acute-load bar (low / optimal / high /
+    very high with a marker). Fitness, fatigue and form moved behind the ? on phones. Replaces the form-only
+    label (Fresh / Balanced / Building / Overreaching).
+  Gauges no longer print their own label under the number; the coloured status badge sits inside the arc
+    instead (VO₂max, endurance, training load), so each status shows once.
+  Why: duplicated statuses, and training status should read like Garmin's.
+
 v19 — 2026-10-06
   In short: Cleaner phone screens with ? buttons, and colour-coded status badges.
   Phones: captions, hints, fine print and long explanations are hidden; each card that has them gets a ?

@@ -49,22 +49,28 @@ const WIDGETS = {
     let g = `<div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>`;
     if (rt) { const b = rt.bounds, lo = Math.floor(b[0] - (b[1] - b[0]) * 1.6), hi = Math.ceil(b[3] + (b[3] - b[2]) * 1.2);
       g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),
+        badge: badge(STATUS.rating(rt.k), al('rating', `${rt.name} · ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)),
         bands: [[lo, b[0]], [b[0], b[1]], [b[1], b[2]], [b[2], b[3]], [b[3], hi]].map(([f, t], k) => [f, t, RATE.names[k], ratingCol(k, 5)]) }); }
     el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span>${g}
-      ${rt ? badge(STATUS.rating(rt.k), al('rating', `${rt.name} for ${S.sex === 'f' ? 'women' : 'men'} ${S.age}`)) : `<span class="chip help">Add age &amp; sex in Profile for a rating</span>`}
+      ${rt ? '' : `<span class="chip help">Add age &amp; sex in Profile for a rating</span>`}
       <div class="sub">${fa ? `${al('rating', 'Fitness age')} <b>${fa}</b>${fa < S.age ? ` · ${S.age - fa} years younger` : ''}<br>` : ''}${ago && ago.vo2 ? delta(D.vo2 - ago.vo2, 1, '', 0.05) : ''}</div><div class="sub help">${al('hrmax', 'Max HR')} <span class="num">${Math.round(S.hrMaxEff)}</span> ${S.hrMax ? '(yours)' : st.hm && st.hm.source === 'detected' ? '(auto, from a run)' : st.hm && st.hm.source === 'age' ? '(auto, 220 − age)' : '(default)'}<br>Heart-rate model <span class="num">${f1(D.vo2hr)}</span>${D.vo2perf ? ` · race efforts <span class="num">${f1(D.vo2perf)}</span>` : ''}${S.weight ? ` · <span class="num">${(D.vo2 * S.weight / 1000).toFixed(2)}</span> L/min` : ''}</div>`;
   } },
   end: { name: 'Endurance score', desc: 'How long you can hold your aerobic ceiling', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay();
     if (!D.end) { el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span><p class="sub">Appears once a VO₂max estimate exists.</p>`; return; }
     const lo = 2000, hi = 13000, bands = TIERS.map(([f, n], k) => [Math.max(lo, f), k < TIERS.length - 1 ? TIERS[k + 1][0] : hi, n, ratingCol(k, 7)]);
-    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands })}
-      ${badge(STATUS.tier(TIERS.findIndex(t => t[1] === tierOf(D.end))), tierOf(D.end))}${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
+    el.innerHTML = `<span class="label">${al('end', 'Endurance score')}</span>${gauge({ label: 'Endurance score', value: D.end, min: lo, max: hi, center: f0(D.end), fmt: v => (v / 1000) + 'k', bands, badge: badge(STATUS.tier(TIERS.findIndex(t => t[1] === tierOf(D.end))), tierOf(D.end)) })}
+      ${ago && ago.end ? `<div class="sub">${delta(D.end - ago.end, 0, '', 20)}</div>` : ''}`;
   } },
-  status: { name: 'Training status', desc: 'Form, fitness, fatigue and weekly time', size: 'S', render(el) {
-    const D = lastDay(), tsb = D.tsb, s = FF.status(tsb);
-    el.innerHTML = `<span class="label">${al('ff', 'Training status')}</span><div class="big">${tsb >= 0 ? '+' : ''}${Math.round(tsb)}<small>form</small></div>${badge(STATUS.form(tsb), s[0])}
-      <dl class="kv"><dt>Fitness (42-day load)</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue (7-day load)</dt><dd>${f0(D.atl)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
+  status: { name: 'Training status', desc: 'Productive, maintaining, recovery… like Garmin', size: 'S', render(el) {
+    const D = lastDay(), T = TS.of(st.days, st.runs, st.res, st.asOf), L = T.load, lv = TS.styles[T.name];
+    const bar = L.chronic ? segbar({ label: 'Acute load', value: L.acute, min: 0, max: Math.max(L.chronic * 1.8, L.acute * 1.1),
+      bands: [[0, 0.8 * L.chronic, 'Low', 'var(--rt6)'], [0.8 * L.chronic, 1.3 * L.chronic, 'Optimal', 'var(--rt4)'], [1.3 * L.chronic, 1.5 * L.chronic, 'High', 'var(--rt2)'], [1.5 * L.chronic, Math.max(L.chronic * 1.8, L.acute * 1.1), 'Very high', 'var(--rt1)']],
+      left: `${al('acwr', 'Acute load')} <b>${f0(L.acute)}</b>`, right: `optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}` }) : '';
+    el.innerHTML = `<span class="label">${al('ts', 'Training status')}</span><div class="ts-name b-${lv}"><i></i>${T.name}</div>
+      ${T.dv != null ? `<div class="sub">${al('vo2', 'VO₂max')} <b>${f1(D.vo2)}</b> <span class="${T.dv > 0.5 ? 'delta-up' : T.dv < -0.5 ? 'delta-down' : ''}">${T.dv > 0.5 ? '▲' : T.dv < -0.5 ? '▼' : '▶'} ${Math.abs(T.dv).toFixed(1)}</span> in 3 weeks</div>` : ''}
+      ${bar}<p class="sub help">${TS.why[T.name]}</p>
+      <dl class="kv help"><dt>${al('ff', 'Fitness')}</dt><dd>${f0(D.ctl)}</dd><dt>Fatigue</dt><dd>${f0(D.atl)}</dd><dt>Form</dt><dd>${D.tsb >= 0 ? '+' : ''}${Math.round(D.tsb)}</dd><dt>Weekly running time</dt><dd>${fmtDur(D.H * 3600)}</dd></dl>`;
   } },
   race: { name: 'Race predictions', desc: '5K to marathon from VO₂max and endurance', size: 'S', render(el) {
     const D = lastDay();
@@ -86,8 +92,8 @@ const WIDGETS = {
     const L = ACWR.compute(st.runs, st.res, st.asOf), lab = `<span class="label">${al('acwr', 'Training load')}</span>`;
     if (!L.chronic) { el.innerHTML = lab + '<p class="sub">Needs a few weeks of workouts.</p>'; return; }
     const bands = [[0, 0.8, 'Low', 'var(--rt6)'], [0.8, 1.3, 'Optimal', 'var(--rt4)'], [1.3, 1.5, 'High', 'var(--rt2)'], [1.5, 2, 'Very high', 'var(--rt1)']];
-    el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands })
-      + badge(STATUS.load(L.ratio), L.status[0]) + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}</div><div class="sub help">${L.status[2]}</div>`;
+    el.innerHTML = lab + gauge({ label: 'Load ratio', value: L.ratio, min: 0, max: 2, center: L.ratio.toFixed(2) + '×', fmt: v => v.toFixed(1), bands, badge: badge(STATUS.load(L.ratio), L.status[0]) })
+      + `<div class="sub"><b>${f0(L.acute)}</b> load in 7 days · optimal ${f0(0.8 * L.chronic)}–${f0(1.3 * L.chronic)}</div><div class="sub help">${L.status[2]}</div>`;
   } },
   ai: { name: 'AI coach', desc: 'A short Gemini read on what you do well and what you miss', size: 'L', always: true, render(el) { renderAICard(el); } },
   latest: { name: 'Latest workout', desc: 'Route, distance, pace and heart rate', size: 'M', render(el) {

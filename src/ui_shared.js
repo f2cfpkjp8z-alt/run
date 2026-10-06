@@ -10,6 +10,12 @@ const f0 = x => x == null || !isFinite(x) ? '–' : Math.round(x).toLocaleString
 
 /* ---------- status badges: one colour language for good / normal / bad everywhere ---------- */
 // levels: top (purple) · exc (blue) · good (green) · ok (grey, "normal") · warn (orange) · bad (red) — always with a word
+// Garmin-style horizontal bar: coloured ranges with a marker at your value. bands: [[from, to, label, colour]]
+function segbar(o) {
+  const span = o.max - o.min, pc = v => clamp((v - o.min) / span * 100, 0, 100);
+  return `<div class="segbar" role="img" aria-label="${esc(o.label)}"><div class="sb-track">${o.bands.map(([f, t, l, c]) => `<span style="left:${pc(f)}%;width:${pc(t) - pc(f)}%;background:${c}" title="${esc(l)}"></span>`).join('')}</div>
+    <b class="sb-mark" style="left:${pc(o.value)}%"></b><div class="sb-lab"><span>${o.left || ''}</span><span>${o.right || ''}</span></div></div>`;
+}
 const badge = (lv, label) => `<span class="badge b-${lv}"><i></i>${label}</span>`;
 const STATUS = {
   rating: k => ['bad', 'warn', 'good', 'exc', 'top'][k],                         // Poor … Superior
@@ -32,8 +38,9 @@ function gauge(o) {
   s += o.bands.slice(1).map(([f]) => { const a = ang(f), x = cx + (r + sw / 2 + 9) * Math.cos(a); return `<text class="g-tick" x="${x.toFixed(1)}" y="${(cy - (r + sw / 2 + 9) * Math.sin(a) + 3).toFixed(1)}" text-anchor="${x < cx - 20 ? 'end' : x > cx + 20 ? 'start' : 'middle'}">${esc(o.fmt(f))}</text>`; }).join('');
   const a = ang(o.value);
   s += `<path d="M${pt(a, r - sw / 2 - 1)} L${pt(a - 0.09, r - sw / 2 - 15)} L${pt(a + 0.09, r - sw / 2 - 15)} Z" fill="var(--ink)" stroke="var(--surface)" stroke-width="2" stroke-linejoin="round"/>`;
-  s += `<text class="g-val" x="${cx}" y="${cy - 22}" text-anchor="middle">${esc(o.center)}</text><text class="g-lab" x="${cx}" y="${cy + 4}" text-anchor="middle">${esc(o.bands[ci][2])}</text>`;
-  return `<svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>`;
+  s += `<text class="g-val" x="${cx}" y="${cy - 30}" text-anchor="middle">${esc(o.center)}</text>`;
+  // the status shows once, as the badge inside the arc (o.badge), not as a second text label
+  return `<div class="gwrap"><svg class="gauge" viewBox="-14 -6 268 130" role="img" aria-label="${esc(o.label)}: ${esc(o.center)}, ${esc(o.bands[ci][2])}">${s}</svg>${o.badge || ''}</div>`;
 }
 // Garmin-style rating colours: poor red → fair orange → good green → excellent blue → superior purple
 const RATING_COLS = { 5: ['--rt1', '--rt2', '--rt4', '--rt6', '--rt7'], 7: ['--rt1', '--rt2', '--rt3', '--rt4', '--rt5', '--rt6', '--rt7'] };
