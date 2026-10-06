@@ -3,6 +3,11 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v12 — 2026-10-06
+  Update check: a few seconds after opening (and whenever you return to the tab) the app asks GitHub Pages
+    for the latest version, bypassing the browser cache. If it is newer, a banner offers "Update now".
+    Why: GitHub Pages lets browsers keep the page for 10 minutes, so new versions didn't show right away.
+
 v11 — 2026-10-06
   Import button icon changed to a file with a plus; the old up-arrow looked like the Share icon.
   Workouts can be shared as an image (workout page → 🖼 Share image), no account needed: OpenStreetMap

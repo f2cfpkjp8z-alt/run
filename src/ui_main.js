@@ -604,5 +604,17 @@ async function boot() {
   else { renderChrome(); route(); }
 }
 if (typeof BUILD !== 'undefined') $$('[data-ver]').forEach(el => { el.textContent = `Version ${BUILD.v} · ${new Date(BUILD.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`; el.title = 'Built ' + BUILD.at; });
+/* ---------- update check: GitHub Pages lets browsers cache the page for 10 min; offer the newer version ---------- */
+async function checkUpdate() {
+  if (typeof BUILD === 'undefined' || !/^https?:/.test(location.protocol)) return;
+  try {
+    const t = await (await fetch(location.pathname + '?check=' + Date.now(), { cache: 'no-store' })).text(), m = t.match(/const BUILD = \{ v: (\d+)/);
+    if (!m || +m[1] <= BUILD.v || $('#upd')) return;
+    const d = document.createElement('div'); d.id = 'upd'; d.className = 'banner'; d.innerHTML = `<span class="grow"><b>Version ${m[1]} is available.</b> You are on version ${BUILD.v}.</span><button type="button" class="primary">Update now</button>`;
+    d.querySelector('button').onclick = () => location.replace(location.pathname + '?v=' + m[1] + location.hash); $('#main').prepend(d);
+  } catch (e) { /* offline */ }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+setTimeout(checkUpdate, 3000);
 initSocial(); initDash(); initAlgo();
 boot();
