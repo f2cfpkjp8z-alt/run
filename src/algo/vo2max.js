@@ -29,7 +29,7 @@ const VO2 = algo({
   notes: [
     'Weight: VO₂max is already per kilogram, and running costs about the same oxygen per kilogram for everyone, so weight cancels out. Losing weight raises VO₂max because the same engine carries fewer kilograms — your runs then get faster at the same heart rate, and the estimate follows. Weight is only used to show absolute VO₂ in L/min.',
     'Height: no effect. Formulas that guess VO₂max without exercise use BMI, but your actual heart rate and pace measure it directly and far more accurately.',
-    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg2) and your fitness age. Age also sets the default max heart rate (HRMAXalg4), which matters a lot: every 3 bpm of max HR moves VO₂max by about 1.',
+    'Age and sex: they don’t change your measured VO₂max, but they decide how it is rated (RATEalg3) and your fitness age. Age also sets the default max heart rate (HRMAXalg4), which matters a lot: every 3 bpm of max HR moves VO₂max by about 1.',
   ],
   limits: 'Max heart rate matters most: enter a measured one (or the one Garmin shows) in Profile. Heat, illness, caffeine and optical-HR errors shift single runs; the blend smooths them.',
   history: [

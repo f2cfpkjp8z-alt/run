@@ -45,7 +45,7 @@ const WIDGETS = {
   vo2: { name: 'VO₂max', desc: 'Aerobic ceiling, rating for your age and fitness age', size: 'S', render(el) {
     const D = lastDay(), ago = agoDay(), S = st.S;
     if (!D.vo2) { el.innerHTML = `<span class="label">${al('vo2', 'VO₂max')}</span><p class="sub">Needs a run with heart rate and 10+ minutes of steady running in the 60 days before ${fmtDate(st.asOf)}.</p>`; return; }
-    const rt = RATE.rate(D.vo2, S.age, S.sex), fa = S.age ? RATE.fitnessAge(D.vo2, S.sex) : null;
+    const rt = RATE.rate(D.vo2, S.age, S.sex), fa = S.age ? RATE.fitnessAge(D.vo2, S.sex, S.hrRest, S.weight, S.height) : null;
     let g = `<div class="big">${f1(D.vo2)}<small>ml/kg/min</small></div>`;
     if (rt) { const b = rt.bounds, lo = Math.floor(b[0] - (b[1] - b[0]) * 1.6), hi = Math.ceil(b[3] + (b[3] - b[2]) * 1.2);
       g = gauge({ label: 'VO2max rating', value: D.vo2, min: lo, max: hi, center: f1(D.vo2), fmt: v => Math.round(v),

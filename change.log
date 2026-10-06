@@ -3,6 +3,15 @@ Pace & Pulse — change log
 Newest first. One entry per published version (the number shown at the bottom of every page).
 Each entry says what changed and why. Algorithm changes name the old and new algorithm ids.
 
+v16 — 2026-10-06
+  RATEalg2 → RATEalg3 (fitness age). Why: it compared VO₂max with Cooper medians, which barely change from
+    20 to 39, so 46.8 at age 37 showed fitness age 20 while Garmin shows 32. Now, like Garmin, it also counts
+    resting heart rate (+0.155 ml/kg/min per bpm below average, NTNU fitness model) and BMI (+0.75 per point
+    under 25, Jackson), then compares with the average healthy adult of each age (HUNT Fitness Study,
+    n = 3,816). Your numbers (37, VO₂max 46.8–48, RHR 46, BMI 24.2) → 30–34; Garmin 32. Garmin also counts
+    vigorous minutes, which the app can't see. The Poor…Superior rating is unchanged (Cooper, as Garmin).
+    Set resting HR, height and weight in Profile.
+
 v15 — 2026-10-06
   The app updates itself — useful when it runs from the iPhone home screen, where there is no reload button.
     It checks for a new version when opened, when you come back to it, every 15 minutes while open, and when
