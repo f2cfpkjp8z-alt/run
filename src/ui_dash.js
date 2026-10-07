@@ -182,22 +182,26 @@ const WIDGETS = {
     el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>', 'best') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
   } },
 
-  rhr: { name: 'Resting heart rate', desc: 'Daily resting HR from your watch', size: 'S', always: true, render(el) { dailyTile(el, 'Resting heart rate', 'rhr', 'bpm', v => Math.round(v), 0.5, true); } },
-  stress: { name: 'Stress', desc: 'Average daily stress score', size: 'S', always: true, render(el) { dailyTile(el, 'Stress', 'stress', '', v => Math.round(v), 1, true); } },
-  bb: { name: 'Body battery', desc: 'Highest charge reached each day', size: 'S', always: true, render(el) { dailyTile(el, 'Body battery', 'bbHigh', '', v => Math.round(v), 1, false); } },
+  rhr: { name: 'Heart rate', desc: 'Heart rate through your latest day, with resting HR', size: 'M', chart: true, always: true, render(el, size) { dailyWidget(el, 'hr', size); } },
+  sleep: { name: 'Sleep', desc: 'Last night: duration, stages, score and the week', size: 'M', chart: true, always: true, render(el, size) { dailyWidget(el, 'sleep', size); } },
+  stress: { name: 'Stress', desc: 'Stress through your latest day', size: 'M', chart: true, always: true, render(el, size) { dailyWidget(el, 'stress', size); } },
+  bb: { name: 'Body battery', desc: 'Charge and drain through your latest day', size: 'M', chart: true, always: true, render(el, size) { dailyWidget(el, 'bb', size); } },
+  steps: { name: 'Steps', desc: 'Latest day’s steps as a ring against your goal', size: 'S', always: true, render(el, size) { stepsWidget(el, size); } },
+  weight: { name: 'Weight', desc: 'Current weight and progress to your goal', size: 'S', always: true, render(el) { weightWidget(el); } },
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
-const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records", "rhr": "rhr", "stress": "stress", "bb": "bb"};
-const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'goals:M', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
+const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records", "rhr": "#r-hr", "sleep": "#r-sleep", "steps": "#r-steps", "weight": "#r-weight", "stress": "#r-stress", "bb": "#r-bb"};
+const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'goals:M', 'steps:S', 'weight:S', 'rhr:M', 'sleep:M', 'bb:M', 'stress:M', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
   let raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
   // layouts saved before the Goals card existed get it once, after race predictions (dashV marks layouts saved since)
   if (raw !== DASH_DEFAULT && !st.S.dashV && !raw.some(x => String(x).startsWith('goals:'))) { const k = raw.findIndex(x => String(x).startsWith('race:')); raw = raw.slice(); raw.splice(k + 1, 0, 'goals:M'); }
+  if (raw !== DASH_DEFAULT && (st.S.dashV || 0) < 3) { const have = new Set(raw.map(x => String(x).split(':')[0])); raw = raw.concat(['rhr:M', 'sleep:M', 'bb:M', 'stress:M', 'steps:S', 'weight:S'].filter(x => !have.has(x.split(':')[0]))); } // all-day cards, added once to older layouts
   return raw.map(x => String(x).split(':')).filter(([id, s]) => WIDGETS[id] && ['S', 'M', 'L'].includes(s));
 }
 function saveDash(cfg) {
-  st.S.dash = cfg.map(([id, s]) => id + ':' + s); st.S.dashV = 2;
-  if (st.user) st.backend.updateProfile({ settings: { dash: st.S.dash, dashV: 2 } }).then(u => { if (u) st.user = u; }).catch(e => setStatus('Could not save the layout: ' + e.message));
+  st.S.dash = cfg.map(([id, s]) => id + ':' + s); st.S.dashV = 3;
+  if (st.user) st.backend.updateProfile({ settings: { dash: st.S.dash, dashV: 3 } }).then(u => { if (u) st.user = u; }).catch(e => setStatus('Could not save the layout: ' + e.message));
 }
 function renderBreakdown(D, box) {
   if (!D || !D.vo2) { box.innerHTML = '<p class="empty">Needs a VO₂max estimate.</p>'; return; }

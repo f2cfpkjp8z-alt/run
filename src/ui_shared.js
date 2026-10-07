@@ -96,7 +96,7 @@ function plot(el, o) {
   const cid = 'pc' + (++plotSeq);
   let g = `<defs><clipPath id="${cid}"><rect x="${m.l - 6}" y="${m.t - 6}" width="${iw + 12}" height="${ih + 12}"/></clipPath></defs>`;
   yt.forEach((v, k) => { const y = sy(v); g += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/><text class="ax" x="${m.l - 6}" y="${y + 4 * rem}" text-anchor="end">${esc(labels[k])}</text>`; });
-  const xt = o.xTime === false ? { ticks: niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt || (v => String(v)) } : timeTicks(x0, x1);
+  const xt = o.xTime === false ? { ticks: o.xTicks || niceTicks(x0, x1, Math.max(3, Math.floor(iw / 80))).filter(v => v >= x0 && v <= x1), fmt: o.xFmt || (v => String(v)) } : timeTicks(x0, x1);
   const minGap = 46 * rem; let lastX = -1e9;
   xt.ticks.forEach(v => { const x = sx(v); if (x - lastX < minGap || x > W - m.r - 10) return; lastX = x; g += `<text class="ax" x="${x}" y="${H - 6}" text-anchor="middle">${esc(xt.fmt(v))}</text>`; });
   const yBase = sy(o.invert ? y1 : y0);

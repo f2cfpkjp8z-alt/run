@@ -10,10 +10,10 @@ const st = { backend: null, user: null, guest: true, sample: true, runs: [], dai
 
 const VIEWS = [
   ['overview', 'Overview', '<path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['reports', 'Reports', '<path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['workouts', 'Workouts', '<path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['feed', 'Feed', '<circle cx="5.5" cy="18.5" r="1.8" fill="currentColor"/><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
   ['trends', 'Trends', '<path d="M3 20h18M5 16l4-5 4 3 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
-  ['records', 'Records', '<path d="M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M16 6h3v2a3 3 0 0 1-3 3M8 6H5v2a3 3 0 0 0 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
   ['profile', 'Profile', '<circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4.5 4.2-6.5 8-6.5s7 2 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'],
 ];
 $('#tabs').innerHTML = VIEWS.map(([k, l]) => `<a href="#${k}" data-v="${k}">${l}</a>`).join('');
@@ -169,12 +169,13 @@ function route() {
   if (h.startsWith('w-')) { v = 'workout'; id = h.slice(2); }
   if (h.startsWith('s-')) { v = 'shared'; id = h.slice(2); }
   if (h.startsWith('m-')) { v = 'metric'; id = h.slice(2); if (st.view !== 'metric' || st.detail !== id) st.mRange = 7; } // always opens on 7 days
-  if (!['overview', 'workouts', 'workout', 'feed', 'shared', 'metric', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
+  if (h.startsWith('r-')) { v = 'report'; id = h.slice(2); if (st.view !== 'report' || st.detail !== id) { st.rMode = id === 'weight' ? 365 : 'day'; st.rDay = null; } }
+  if (!['overview', 'workouts', 'reports', 'report', 'workout', 'feed', 'shared', 'metric', 'trends', 'records', 'profile'].includes(v)) v = 'overview';
   if (st.view === 'shared' && v !== 'shared') renderChrome();
   if (v === 'feed' && !online()) { location.replace('#overview'); return; }
   st.view = v; st.detail = id;
   $$('.view').forEach(s => s.hidden = s.dataset.view !== v);
-  const tab = v === 'workout' ? 'workouts' : v === 'metric' ? 'overview' : v;
+  const tab = v === 'workout' ? 'workouts' : v === 'metric' ? 'overview' : (v === 'report' || v === 'records') ? 'reports' : v;
   $$('#tabs a, #bnav a').forEach(a => { if (a.dataset.v === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (v === 'shared') $('#banner').hidden = true;
   renderView();
@@ -187,6 +188,8 @@ function renderView() {
   else if (v === 'workout') renderWorkout(st.detail);
   else if (v === 'trends') renderTrends();
   else if (v === 'records') renderRecords();
+  else if (v === 'reports') renderReports();
+  else if (v === 'report') renderReport(st.detail);
   else if (v === 'profile') renderProfile();
   else if (v === 'feed') renderFeed();
   else if (v === 'shared') renderShared(st.detail);

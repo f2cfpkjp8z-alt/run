@@ -506,4 +506,34 @@ img, a, svg { -webkit-user-drag: none; }
 /* installed app (home screen): no browser chrome, so keep the bottom bar clear of the home indicator */
 @media (display-mode: standalone) { .ver { padding-bottom: 8px; } }
 @keyframes rise { from { transform: translateY(6px); } to { transform: none; } }
+/* Reports hub + all-day report pages */
+.rhub { display: grid; gap: 20px; max-width: 760px; }
+.rcat h3 { font: 700 0.75rem/1 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 4px 8px; }
+.rlist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.rrow { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 58px; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+.rrow:last-child { border-bottom: 0; }
+.rrow:hover { background: var(--sunk); }
+.ric { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.ric svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rt { flex: 1; min-width: 0; }
+.rt b { display: block; font-weight: 600; }
+.rt small { display: block; color: var(--muted); font-size: 0.8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv { font: 700 1rem/1 var(--display); text-align: right; white-space: nowrap; }
+.rv small { display: inline; color: var(--muted); font-weight: 500; margin-left: 3px; }
+.chev { color: var(--muted); font-size: 1.25rem; }
+.daynav { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+.daynav button { min-width: 40px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 1.25rem; line-height: 1; }
+.daynav button:disabled { opacity: .35; }
+.daynav .dlabel { font-weight: 700; flex: 1; min-width: 120px; text-align: center; }
+.daynav input { min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 8px; font: inherit; }
+.ringcard { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.ringcard .ring { flex: none; }
+.ringtxt { line-height: 1.5; }
+.ringtxt b { font: 700 1.5rem/1 var(--display); }
+.stagebar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; gap: 2px; margin: 10px 0; }
+.stagebar i { display: block; height: 100%; }
+.stagelist { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8125rem; color: var(--ink2); }
+.stagelist i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.stagelist small { color: var(--muted); }
+.stats + .card, .stats + .wd-grid, .card + .card { margin-top: 12px; }
 </style>

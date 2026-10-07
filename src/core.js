@@ -455,6 +455,7 @@ function normDaily(id, o) {
   const t = new Date(+m[1], +m[2] - 1, +m[3]).getTime(); o = o || {};
   const pick = (...ks) => { for (const k of ks) { const v = o[k]; if (v != null && v !== '' && isFinite(+v)) return +v; } return null; };
   const vals = (...ks) => { for (const k of ks) { const a = o[k]; if (Array.isArray(a) && a.length) return a.map(p => Array.isArray(p) ? +p[1] : p && typeof p === 'object' ? +(p.v != null ? p.v : p.value) : +p).filter(x => isFinite(x)); } return []; };
+  const pairs = (...ks) => { for (const k of ks) { const a = o[k]; if (Array.isArray(a) && a.length) { const out = a.map(p => Array.isArray(p) ? [+p[0], +p[1]] : p && typeof p === 'object' ? [+p.t, +(p.v != null ? p.v : p.value)] : null).filter(p => p && isFinite(p[0]) && isFinite(p[1])); if (out.length) return out; } } return []; }; // [ms, value] samples
   const hr = vals('hrSeries', 'hr_series', 'heartRate', 'hr'), stress = vals('stressSeries', 'stress_series', 'stressValues', 'stress').filter(x => x >= 0), bb = vals('bodyBatterySeries', 'body_battery_series', 'bodyBattery', 'body_battery').filter(x => x >= 0);
   const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
   const rhr = pick('restingHR', 'restingHr', 'resting_hr', 'restingHeartRate');
@@ -465,5 +466,7 @@ function normDaily(id, o) {
     bbHigh: pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') != null ? pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') : (bb.length ? Math.max(...bb) : null),
     bbLow: pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') != null ? pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') : (bb.length ? Math.min(...bb) : null),
     sleepScore: pick('sleepScore', 'sleep_score') != null ? pick('sleepScore', 'sleep_score') : (o.sleep && isFinite(+o.sleep.score) ? +o.sleep.score : null),
+    stepGoal: pick('stepGoal', 'dailyStepGoal'), sleep: o.sleep && typeof o.sleep === 'object' && isFinite(+o.sleep.sleepTimeSeconds) ? o.sleep : null,
+    hrP: pairs('hrSeries').filter(p => p[1] > 30), stressP: pairs('stressSeries').filter(p => p[1] >= 0), bbP: pairs('bodyBatterySeries').filter(p => p[1] >= 0),
     hr, stressS: stress, bbS: bb };
 }
