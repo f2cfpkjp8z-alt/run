@@ -458,7 +458,7 @@ function normDaily(id, o) {
   const hr = vals('hrSeries', 'hr_series', 'heartRate', 'hr'), stress = vals('stressSeries', 'stress_series', 'stressValues', 'stress').filter(x => x >= 0), bb = vals('bodyBatterySeries', 'body_battery_series', 'bodyBattery', 'body_battery').filter(x => x >= 0);
   const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
   const rhr = pick('restingHR', 'restingHr', 'resting_hr', 'restingHeartRate');
-  return { id, t, steps: pick('steps', 'totalSteps'), rhr: rhr || (Math.min(...hr.filter(x => x > 30)) || null),
+  return { id, t, steps: pick('steps', 'totalSteps'), rhr: rhr || (hr.some(x => x > 30) ? Math.min(...hr.filter(x => x > 30)) : null),
     maxHR: pick('maxHR', 'maxHr', 'max_hr', 'maxHeartRate') || (hr.length ? Math.max(...hr) : null),
     stress: pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') != null ? pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') : (typeof o.stress === 'number' ? o.stress : avg(stress)),
     stressMax: pick('stressMax', 'maxStress', 'stress_max') != null ? pick('stressMax', 'maxStress', 'stress_max') : (stress.length ? Math.max(...stress) : null),

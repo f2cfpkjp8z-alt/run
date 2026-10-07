@@ -4,7 +4,7 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
-v30 — 2026-10-07
+v31 — 2026-10-07
   In short: New all-day pages for resting heart rate, stress and body battery from your Garmin watch.
   The Garmin export job writes one document per day to users/{uid}/daily/{YYYY-MM-DD}; the app now reads the last
     400 days (online accounts only) and shows them on three trend pages (7 days / 4 weeks / Year) and three optional
