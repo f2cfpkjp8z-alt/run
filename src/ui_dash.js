@@ -45,6 +45,15 @@ function efChart(el, days, height) {
 }
 
 /* ---------- widgets ---------- */
+// all-day tile: latest day vs the average of the 4 weeks before it (lowerBetter colours the arrow)
+function dailyTile(el, name, f, unit, fmt, eps, lowerBetter) {
+  const D = st.daily, lab = `<span class="label">${name}</span>`, v = lastOf(D, f);
+  if (v == null) { el.innerHTML = lab + '<p class="sub">No all-day data yet. It appears once the Garmin export job has written your days.</p>'; return; }
+  const last = D[D.length - 1], prev = D.filter(d => d.t < last.t && d.t >= last.t - 28 * DAY && d[f] != null).map(d => d[f]), base = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : null, dv = base == null ? null : v - base;
+  const good = dv == null ? '' : (lowerBetter ? dv <= -eps : dv >= eps) ? 'delta-up' : (lowerBetter ? dv >= eps : dv <= -eps) ? 'delta-down' : '';
+  el.innerHTML = lab + `<div class="big">${fmt(v)}${unit ? `<small>${unit}</small>` : ''}</div><div class="sub">${fmtDate(last.t, { day: 'numeric', month: 'short' })}${dv != null ? ` · <span class="${good}">${dv >= 0 ? '▲' : '▼'} ${Math.abs(dv).toFixed(0)}</span> vs 4-week average` : ''}</div>`;
+}
+
 const head = (t, extra = '', key) => `<div class="ch"><h3>${key ? al(key, t) : t}</h3>${extra}</div>`;
 const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
 function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
@@ -172,9 +181,13 @@ const WIDGETS = {
     const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
     el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>', 'best') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
   } },
+
+  rhr: { name: 'Resting heart rate', desc: 'Daily resting HR from your watch', size: 'S', always: true, render(el) { dailyTile(el, 'Resting heart rate', 'rhr', 'bpm', v => Math.round(v), 0.5, true); } },
+  stress: { name: 'Stress', desc: 'Average daily stress score', size: 'S', always: true, render(el) { dailyTile(el, 'Stress', 'stress', '', v => Math.round(v), 1, true); } },
+  bb: { name: 'Body battery', desc: 'Highest charge reached each day', size: 'S', always: true, render(el) { dailyTile(el, 'Body battery', 'bbHigh', '', v => Math.round(v), 1, false); } },
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
-const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
+const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records", "rhr": "rhr", "stress": "stress", "bb": "bb"};
 const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'goals:M', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
   let raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
@@ -214,7 +227,7 @@ function renderOverview() {
   });
   box.querySelectorAll('.w > .card').forEach(el => {
     const id = el.dataset.w, latest = id === 'latest' && st.runs.length ? '#w-' + st.runs[st.runs.length - 1].id : null, g = DASH_GO[id];
-    const href = latest || (g ? (g[0] === '#' ? g : '#m-' + g) : null); if (!href || !st.runs.length) return;
+    const href = latest || (g ? (g[0] === '#' ? g : '#m-' + g) : null); if (!href || (!st.runs.length && !WIDGETS[id].always)) return;
     el.classList.add('go'); el.tabIndex = 0; el.setAttribute('role', 'link'); el.setAttribute('aria-label', WIDGETS[id].name + ' — open trends');
     el.onclick = ev => { if (st.dashEdit || ev.target.closest('a, button, input, select, [data-algo]')) return; location.hash = href; };
     el.onkeydown = ev => { if (ev.key === 'Enter' && ev.target === el && !st.dashEdit) location.hash = href; };

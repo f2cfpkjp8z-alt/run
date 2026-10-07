@@ -83,6 +83,7 @@ const LocalBackend = {
     if (!this.db) return [...this.mem.values()].filter(r => r.pid === u.id);
     return await this._tx('readonly', os => os.index('pid').getAll(u.id));
   },
+  async listDaily() { return []; }, // all-day data needs the online account
   async putWorkouts(list) {
     const u = this.user(); if (!u) throw new Error('Sign in first');
     const rows = list.map(r => Object.assign({}, r, { pid: u.id, key: u.id + '|' + r.id }));
@@ -155,6 +156,12 @@ const FirebaseBackend = {
   _col() { return this.fs.collection('users').doc(this.auth.currentUser.uid).collection('workouts'); },
   _enc(r) { const o = {}; for (const [k, v] of Object.entries(r)) { if (v == null || k === 'pid' || k === 'key') continue; o[k] = ArrayBuffer.isView(v) ? { __t: v.constructor.name, b: firebase.firestore.Blob.fromUint8Array(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) } : v; } return o; },
   _dec(o) { const r = {}; for (const [k, v] of Object.entries(o)) { if (v && v.__t && TYPED[v.__t]) { const u8 = v.b.toUint8Array(); r[k] = new TYPED[v.__t](u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } else r[k] = v; } return r; },
+  // all-day data from the Garmin export job: one doc per day, id = YYYY-MM-DD (newest `days` days)
+  async listDaily(days = 400) {
+    if (!this.auth.currentUser) return []; const from = new Date(Date.now() - days * 864e5), key = from.getFullYear() + '-' + String(from.getMonth() + 1).padStart(2, '0') + '-' + String(from.getDate()).padStart(2, '0');
+    const qs = await this.fs.collection('users').doc(this.auth.currentUser.uid).collection('daily').where(firebase.firestore.FieldPath.documentId(), '>=', key).get();
+    return qs.docs.map(d => normDaily(d.id, d.data())).filter(Boolean).sort((a, b) => a.t - b.t);
+  },
   async listWorkouts() { if (!this.auth.currentUser) return []; const qs = await this._col().get(); return qs.docs.map(d => this._dec(d.data())); },
   async putWorkouts(list) {
     for (let i = 0; i < list.length; i += 20) { // small batches keep each commit well under Firestore's 10 MB request cap

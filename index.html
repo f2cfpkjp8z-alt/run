@@ -45,12 +45,12 @@
   --accent: #fc5200; --accent-ink: #ff7a3d; --accent-soft: #3a1d0d; --on-accent: #ffffff;
   --c1: #fc5200; --c2: #4c9cff; --hr: #ff3b4f; --elev: #9aa3ad;
   --pace: #4c9cff; --vo2: #2fd0a5; --end: #a37cff; --fit: #4c9cff; --fat: #ff6fae; --form: #ffc233;
-  --dist: #fc5200; --load: #ffb020; --ef: #5ad06a; --race: #e070ff; --drift: #ffc233;
+  --dist: #fc5200; --load: #ffb020; --ef: #5ad06a; --race: #e070ff; --drift: #ffc233; --rhr: #ff3b4f; --stress: #ffb020; --bb: #2fd0a5;
   --z1: #5a2a10; --z2: #8f3a0c; --z3: #c44606; --z4: #fc5200; --z5: #ff9a5c;
 }
 /* chart colour per measurement — the same measurement keeps its colour on every chart; themes without their own use --c1/--c2 */
 :root { --pace: var(--c1); --vo2: var(--c1); --end: var(--c1); --fit: var(--c1); --fat: var(--c2); --form: var(--c1);
-  --dist: var(--c1); --load: var(--c1); --ef: var(--c1); --race: var(--c1); --drift: var(--c2); }
+  --dist: var(--c1); --load: var(--c1); --ef: var(--c1); --race: var(--c1); --drift: var(--c2); --rhr: var(--hr); --stress: var(--c2); --bb: var(--c1); }
 :root[data-theme="asphalt"] body { background: var(--bg); } /* flat, no accent glow */
 :root[data-theme="asphalt"] .eyebrow { color: var(--muted); }
 :root { --hz1: #8b96a3; --hz2: var(--rt6); --hz3: var(--rt4); --hz4: var(--rt2); --hz5: var(--rt1); } /* Garmin heart-rate zone colours */
@@ -708,7 +708,7 @@ img, a, svg { -webkit-user-drag: none; }
 <dialog id="dlg" class="card dlg"><div id="dlgBody"></div></dialog>
 <div class="drop" id="drop" hidden>Drop Garmin files to import</div>
 <script>
-const BUILD = { v: 29, at: '2026-10-06T15:03:33Z' };
+const BUILD = { v: 30, at: '2026-10-07T12:41:12Z' };
 // ===== CORE: parsing + physiology (no DOM except DOMParser for XML) =====
 const DAY = 86400000;
 const DT = 2; // analysis grid, seconds
@@ -1157,6 +1157,26 @@ function splitsOf(r, unitM) {
   for (let i = 1; i < n; i++) if (d[i] - d[0] >= target) { out.push(seg(i0, i, unitM)); i0 = i; target += unitM; }
   const rest = d[n - 1] - d[i0]; if (rest > unitM * 0.1) out.push(seg(i0, n - 1, rest));
   return out;
+}
+
+/* ---------- All-day data: users/{uid}/daily/{YYYY-MM-DD}, written by the Garmin export job ---------- */
+// Tolerant of field-name variants and series shapes (numbers, [time, value] pairs or {t, v} objects) so a renamed field never breaks the app.
+function normDaily(id, o) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(id); if (!m) return null;
+  const t = new Date(+m[1], +m[2] - 1, +m[3]).getTime(); o = o || {};
+  const pick = (...ks) => { for (const k of ks) { const v = o[k]; if (v != null && v !== '' && isFinite(+v)) return +v; } return null; };
+  const vals = (...ks) => { for (const k of ks) { const a = o[k]; if (Array.isArray(a) && a.length) return a.map(p => Array.isArray(p) ? +p[1] : p && typeof p === 'object' ? +(p.v != null ? p.v : p.value) : +p).filter(x => isFinite(x)); } return []; };
+  const hr = vals('hrSeries', 'hr_series', 'heartRate', 'hr'), stress = vals('stressSeries', 'stress_series', 'stressValues', 'stress').filter(x => x >= 0), bb = vals('bodyBatterySeries', 'body_battery_series', 'bodyBattery', 'body_battery').filter(x => x >= 0);
+  const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const rhr = pick('restingHR', 'restingHr', 'resting_hr', 'restingHeartRate');
+  return { id, t, steps: pick('steps', 'totalSteps'), rhr: rhr || (Math.min(...hr.filter(x => x > 30)) || null),
+    maxHR: pick('maxHR', 'maxHr', 'max_hr', 'maxHeartRate') || (hr.length ? Math.max(...hr) : null),
+    stress: pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') != null ? pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') : (typeof o.stress === 'number' ? o.stress : avg(stress)),
+    stressMax: pick('stressMax', 'maxStress', 'stress_max') != null ? pick('stressMax', 'maxStress', 'stress_max') : (stress.length ? Math.max(...stress) : null),
+    bbHigh: pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') != null ? pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') : (bb.length ? Math.max(...bb) : null),
+    bbLow: pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') != null ? pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') : (bb.length ? Math.min(...bb) : null),
+    sleepScore: pick('sleepScore', 'sleep_score') != null ? pick('sleepScore', 'sleep_score') : (o.sleep && isFinite(+o.sleep.score) ? +o.sleep.score : null),
+    hr, stressS: stress, bbS: bb };
 }
 // ===== ALGORITHMS — one file per measurement, each with a versioned id (e.g. VO2alg3) =====
 // Every file registers { key, id, name, summary, steps, formula, inputs, limits, history, live? } so the UI can
@@ -1694,6 +1714,7 @@ const LocalBackend = {
     if (!this.db) return [...this.mem.values()].filter(r => r.pid === u.id);
     return await this._tx('readonly', os => os.index('pid').getAll(u.id));
   },
+  async listDaily() { return []; }, // all-day data needs the online account
   async putWorkouts(list) {
     const u = this.user(); if (!u) throw new Error('Sign in first');
     const rows = list.map(r => Object.assign({}, r, { pid: u.id, key: u.id + '|' + r.id }));
@@ -1766,6 +1787,12 @@ const FirebaseBackend = {
   _col() { return this.fs.collection('users').doc(this.auth.currentUser.uid).collection('workouts'); },
   _enc(r) { const o = {}; for (const [k, v] of Object.entries(r)) { if (v == null || k === 'pid' || k === 'key') continue; o[k] = ArrayBuffer.isView(v) ? { __t: v.constructor.name, b: firebase.firestore.Blob.fromUint8Array(new Uint8Array(v.buffer, v.byteOffset, v.byteLength)) } : v; } return o; },
   _dec(o) { const r = {}; for (const [k, v] of Object.entries(o)) { if (v && v.__t && TYPED[v.__t]) { const u8 = v.b.toUint8Array(); r[k] = new TYPED[v.__t](u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } else r[k] = v; } return r; },
+  // all-day data from the Garmin export job: one doc per day, id = YYYY-MM-DD (newest `days` days)
+  async listDaily(days = 400) {
+    if (!this.auth.currentUser) return []; const from = new Date(Date.now() - days * 864e5), key = from.getFullYear() + '-' + String(from.getMonth() + 1).padStart(2, '0') + '-' + String(from.getDate()).padStart(2, '0');
+    const qs = await this.fs.collection('users').doc(this.auth.currentUser.uid).collection('daily').where(firebase.firestore.FieldPath.documentId(), '>=', key).get();
+    return qs.docs.map(d => normDaily(d.id, d.data())).filter(Boolean).sort((a, b) => a.t - b.t);
+  },
   async listWorkouts() { if (!this.auth.currentUser) return []; const qs = await this._col().get(); return qs.docs.map(d => this._dec(d.data())); },
   async putWorkouts(list) {
     for (let i = 0; i < list.length; i += 20) { // small batches keep each commit well under Firestore's 10 MB request cap
@@ -2615,6 +2642,15 @@ function efChart(el, days, height) {
 }
 
 /* ---------- widgets ---------- */
+// all-day tile: latest day vs the average of the 4 weeks before it (lowerBetter colours the arrow)
+function dailyTile(el, name, f, unit, fmt, eps, lowerBetter) {
+  const D = st.daily, lab = `<span class="label">${name}</span>`, v = lastOf(D, f);
+  if (v == null) { el.innerHTML = lab + '<p class="sub">No all-day data yet. It appears once the Garmin export job has written your days.</p>'; return; }
+  const last = D[D.length - 1], prev = D.filter(d => d.t < last.t && d.t >= last.t - 28 * DAY && d[f] != null).map(d => d[f]), base = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : null, dv = base == null ? null : v - base;
+  const good = dv == null ? '' : (lowerBetter ? dv <= -eps : dv >= eps) ? 'delta-up' : (lowerBetter ? dv >= eps : dv <= -eps) ? 'delta-down' : '';
+  el.innerHTML = lab + `<div class="big">${fmt(v)}${unit ? `<small>${unit}</small>` : ''}</div><div class="sub">${fmtDate(last.t, { day: 'numeric', month: 'short' })}${dv != null ? ` · <span class="${good}">${dv >= 0 ? '▲' : '▼'} ${Math.abs(dv).toFixed(0)}</span> vs 4-week average` : ''}</div>`;
+}
+
 const head = (t, extra = '', key) => `<div class="ch"><h3>${key ? al(key, t) : t}</h3>${extra}</div>`;
 const delta = (dv, digits, unit, eps) => dv == null ? '' : `<span class="${dv >= eps ? 'delta-up' : dv <= -eps ? 'delta-down' : ''}">${dv >= 0 ? '▲' : '▼'} <span class="num">${Math.abs(dv).toFixed(digits)}</span>${unit} in 4 weeks</span>`;
 function agoDay() { const D = lastDay(), a = dayAt(D.t - 28 * DAY); return a && a !== D ? a : null; }
@@ -2742,9 +2778,13 @@ const WIDGETS = {
     const rows = EFFORTS.map(([, l]) => best[l]).filter(Boolean);
     el.innerHTML = head('Personal bests', '<a class="sm" href="#records">All records →</a>', 'best') + (rows.length ? `<dl class="kv">${rows.map(({ e, r }) => `<dt><a href="#w-${esc(r.id)}" style="color:inherit">${e.label}</a> <span class="muted sm">${fmtDate(r.start, { day: 'numeric', month: 'short', year: '2-digit' })}</span></dt><dd>${fmtDur(e.sec)}<small>${fmtPace(e.sec / (e.D / 1000))}/${uName()}</small></dd>`).join('')}</dl>` : '<p class="empty">Run 5 km or more to set a best.</p>');
   } },
+
+  rhr: { name: 'Resting heart rate', desc: 'Daily resting HR from your watch', size: 'S', always: true, render(el) { dailyTile(el, 'Resting heart rate', 'rhr', 'bpm', v => Math.round(v), 0.5, true); } },
+  stress: { name: 'Stress', desc: 'Average daily stress score', size: 'S', always: true, render(el) { dailyTile(el, 'Stress', 'stress', '', v => Math.round(v), 1, true); } },
+  bb: { name: 'Body battery', desc: 'Highest charge reached each day', size: 'S', always: true, render(el) { dailyTile(el, 'Body battery', 'bbHigh', '', v => Math.round(v), 1, false); } },
 };
 // where tapping each card goes: a metric page (#m-key), or a page hash
-const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records"};
+const DASH_GO = {"focus": "zones", "fage": "vo2", "vo2": "vo2", "end": "end", "status": "ff", "race": "race", "week": "dist", "acute": "load", "vo2chart": "vo2", "weekchart": "dist", "loadchart": "ff", "endchart": "end", "efchart": "ef", "calendar": "dist", "zones": "zones", "drivers": "end", "records": "#records", "rhr": "rhr", "stress": "stress", "bb": "bb"};
 const DASH_DEFAULT = ['vo2:S', 'end:S', 'status:S', 'race:S', 'goals:M', 'ai:L', 'latest:M', 'vo2chart:M', 'week:S', 'acute:S', 'weekchart:M', 'calendar:M', 'focus:M', 'drivers:M', 'fage:S'];
 function dashCfg() {
   let raw = Array.isArray(st.S.dash) && st.S.dash.length ? st.S.dash : DASH_DEFAULT;
@@ -2784,7 +2824,7 @@ function renderOverview() {
   });
   box.querySelectorAll('.w > .card').forEach(el => {
     const id = el.dataset.w, latest = id === 'latest' && st.runs.length ? '#w-' + st.runs[st.runs.length - 1].id : null, g = DASH_GO[id];
-    const href = latest || (g ? (g[0] === '#' ? g : '#m-' + g) : null); if (!href || !st.runs.length) return;
+    const href = latest || (g ? (g[0] === '#' ? g : '#m-' + g) : null); if (!href || (!st.runs.length && !WIDGETS[id].always)) return;
     el.classList.add('go'); el.tabIndex = 0; el.setAttribute('role', 'link'); el.setAttribute('aria-label', WIDGETS[id].name + ' — open trends');
     el.onclick = ev => { if (st.dashEdit || ev.target.closest('a, button, input, select, [data-algo]')) return; location.hash = href; };
     el.onkeydown = ev => { if (ev.key === 'Enter' && ev.target === el && !st.dashEdit) location.hash = href; };
@@ -3004,7 +3044,29 @@ const METRICS = {
       <div class="wd-grid">${mCard('Aerobic efficiency', 'mc1', 'Metres per heartbeat at grade-adjusted pace. Higher is better.', 'ef')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['m/beat', (r, e) => e.ef ? e.ef.toFixed(2) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>`,
       draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--ef'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
   } },
+  // ---- all-day data (users/{uid}/daily, written by the Garmin export job); values come straight from Garmin ----
+  rhr: { title: 'Resting heart rate', daily: true, render(P) {
+    const D = dailyIn(P), a = first(D, 'rhr'), b = lastOf(D, 'rhr'), v = D.map(d => d.rhr).filter(Boolean);
+    return { html: `<div class="stats">${mStat('Now', b ? Math.round(b) : '–', 'bpm')}${mStat('Change', mChange(a, b, 0))}${mStat('Average', v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : '–', 'bpm')}${mStat('Lowest', v.length ? Math.min(...v) : '–', 'bpm')}${mStat('Highest', v.length ? Math.max(...v) : '–', 'bpm')}</div>
+      <div class="wd-grid">${mCard('Resting heart rate', 'mc1', 'Lower and steady is better. A jump of 5+ bpm can mean fatigue or illness.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Resting heart rate', xMin: P.xMin, xMax: P.xMax, minSpan: 6, empty: 'No all-day data in this period.', series: [{ name: 'Resting HR', kind: 'line', color: css('--rhr'), w: 2.5, pts: D.map(d => [d.t, d.rhr]), fmt: v => Math.round(v) + ' bpm' }] }); } };
+  } },
+  stress: { title: 'Stress', daily: true, render(P) {
+    const D = dailyIn(P), v = D.map(d => d.stress).filter(x => x != null), b = lastOf(D, 'stress'), lv = x => x < 26 ? 'Resting' : x < 51 ? 'Low' : x < 76 ? 'Medium' : 'High';
+    return { html: `<div class="stats">${mStat('Latest day', b != null ? Math.round(b) : '–')}${mStat('Level', b != null ? lv(b) : '–')}${mStat('Average', v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : '–')}${mStat('Calmest day', v.length ? Math.round(Math.min(...v)) : '–')}${mStat('Most stressed', v.length ? Math.round(Math.max(...v)) : '–')}</div>
+      <div class="wd-grid">${mCard('Average stress', 'mc1', 'Garmin stress score, 0–100, from heart-rate variability. Lower is calmer.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Average stress', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: 100, empty: 'No all-day data in this period.', series: [{ name: 'Stress', kind: P.n > 60 ? 'line' : 'bars', bw: DAY, color: css('--stress'), w: 2.5, pts: D.map(d => [d.t, d.stress]), fmt: v => Math.round(v) + ' · ' + lv(v) }] }); } };
+  } },
+  bb: { title: 'Body battery', daily: true, render(P) {
+    const D = dailyIn(P), hi = D.map(d => d.bbHigh).filter(x => x != null), lo = D.map(d => d.bbLow).filter(x => x != null), b = D[D.length - 1];
+    return { html: `<div class="stats">${mStat('Latest high', b && b.bbHigh != null ? Math.round(b.bbHigh) : '–')}${mStat('Latest low', b && b.bbLow != null ? Math.round(b.bbLow) : '–')}${mStat('Average high', hi.length ? Math.round(hi.reduce((x, y) => x + y, 0) / hi.length) : '–')}${mStat('Average low', lo.length ? Math.round(lo.reduce((x, y) => x + y, 0) / lo.length) : '–')}${mStat('Days', D.length)}</div>
+      <div class="wd-grid">${mCard('Body battery', 'mc1', 'Each day’s highest and lowest charge, 0–100. Good recovery shows as a high peak after sleep.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Body battery', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: 100, empty: 'No all-day data in this period.', series: [
+        { name: 'Daily high', kind: 'line', color: css('--bb'), w: 2.5, pts: D.map(d => [d.t, d.bbHigh]), fmt: v => Math.round(v) },
+        { name: 'Daily low', kind: 'line', color: css('--bb'), op: 0.5, pts: D.map(d => [d.t, d.bbLow]), fmt: v => Math.round(v) }] }); } };
+  } },
 };
+const dailyIn = P => st.daily.filter(d => d.t >= P.t0 && d.t <= P.t1);
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };
 
 // Garmin-style strip: one coloured cell per day with that day's training status
@@ -3025,7 +3087,7 @@ function renderMetric(key) {
   if (!m) { location.hash = '#overview'; return; }
   const head = `<a class="btn back ghost" href="#overview">← Overview</a><div class="vh"><h2>${m.key ? al(m.key, m.title) : m.title}</h2>
     <div class="seg" role="group" aria-label="Period">${M_RANGES.map(([n, l]) => `<button type="button" data-r="${n}" aria-pressed="${(st.mRange || 7) === n}">${l}</button>`).join('')}</div></div>`;
-  if (!st.runs.length) { box.innerHTML = head + '<p class="empty">Import workouts to see this.</p>'; return; }
+  if (!st.runs.length && !(m.daily && st.daily.length)) { box.innerHTML = head + `<p class="empty">${m.daily ? 'No all-day data yet. It appears once the Garmin export job has written your days.' : 'Import workouts to see this.'}</p>`; return; }
   const P = mPeriod(), out = m.render(P);
   box.innerHTML = head + `<p class="muted sm" style="margin:-6px 0 12px">${fmtDate(P.t0, { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(P.t1, { day: 'numeric', month: 'short', year: 'numeric' })}</p>` + out.html;
   box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { st.mRange = +b.dataset.r; renderMetric(key); addChartShare(); addHelp(); });
@@ -3181,7 +3243,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 
-const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
+const st = { backend: null, user: null, guest: true, sample: true, runs: [], daily: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
   range: 182, shown: 30, view: 'overview', detail: null, q: '', yr: 'all', sort: 'new', mapMode: 'pace', pending: null, authMode: 'in' };
 
 const VIEWS = [
@@ -3250,6 +3312,7 @@ async function enterUser(u) {
   setStatus('Loading workouts…');
   try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
   setShell(true); st.shown = 30; refresh();
+  st.daily = []; st.backend.listDaily().then(d => { st.daily = d; if (d.length) refresh(); }).catch(e => console.warn('daily data', e)); // all-day data is optional
   if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
   maybeOfferMigration(); loadPublished();
   if (online()) { aiAdopt(); if (st.user.ui) setUI(st.user.ui, true); else uiSync(uiPrefs()); }

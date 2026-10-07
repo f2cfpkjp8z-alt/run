@@ -5,7 +5,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 
-const st = { backend: null, user: null, guest: true, sample: true, runs: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
+const st = { backend: null, user: null, guest: true, sample: true, runs: [], daily: [], S: Object.assign({}, DEFAULT_SETTINGS), res: [], days: [], asOf: Date.now(),
   range: 182, shown: 30, view: 'overview', detail: null, q: '', yr: 'all', sort: 'new', mapMode: 'pace', pending: null, authMode: 'in' };
 
 const VIEWS = [
@@ -74,6 +74,7 @@ async function enterUser(u) {
   setStatus('Loading workouts…');
   try { st.runs = await st.backend.listWorkouts(); setStatus(''); } catch (e) { st.runs = []; setStatus('Could not load workouts: ' + (e.message || e)); }
   setShell(true); st.shown = 30; refresh();
+  st.daily = []; st.backend.listDaily().then(d => { st.daily = d; if (d.length) refresh(); }).catch(e => console.warn('daily data', e)); // all-day data is optional
   if (st.pending) { const f = st.pending; st.pending = null; importFiles(f); }
   maybeOfferMigration(); loadPublished();
   if (online()) { aiAdopt(); if (st.user.ui) setUI(st.user.ui, true); else uiSync(uiPrefs()); }

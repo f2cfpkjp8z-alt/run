@@ -83,7 +83,29 @@ const METRICS = {
       <div class="wd-grid">${mCard('Aerobic efficiency', 'mc1', 'Metres per heartbeat at grade-adjusted pace. Higher is better.', 'ef')}<div class="card"><h3 style="margin-bottom:8px">Workouts</h3>${mRuns(P, [['m/beat', (r, e) => e.ef ? e.ef.toFixed(2) : '–'], ['Avg HR', (r, e) => e.avgHR ? Math.round(e.avgHR) : '–']])}</div></div>`,
       draw() { plot($('#mc1'), { label: 'Aerobic efficiency', xMin: P.xMin, xMax: P.xMax, minSpan: 0.1, empty: 'Needs runs with heart rate.', series: [{ name: 'Run', kind: 'dots', color: css('--ef'), pts, fmt: (v, p) => `${v.toFixed(2)} m/beat · ${p[3]}` }] }); } };
   } },
+  // ---- all-day data (users/{uid}/daily, written by the Garmin export job); values come straight from Garmin ----
+  rhr: { title: 'Resting heart rate', daily: true, render(P) {
+    const D = dailyIn(P), a = first(D, 'rhr'), b = lastOf(D, 'rhr'), v = D.map(d => d.rhr).filter(Boolean);
+    return { html: `<div class="stats">${mStat('Now', b ? Math.round(b) : '–', 'bpm')}${mStat('Change', mChange(a, b, 0))}${mStat('Average', v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : '–', 'bpm')}${mStat('Lowest', v.length ? Math.min(...v) : '–', 'bpm')}${mStat('Highest', v.length ? Math.max(...v) : '–', 'bpm')}</div>
+      <div class="wd-grid">${mCard('Resting heart rate', 'mc1', 'Lower and steady is better. A jump of 5+ bpm can mean fatigue or illness.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Resting heart rate', xMin: P.xMin, xMax: P.xMax, minSpan: 6, empty: 'No all-day data in this period.', series: [{ name: 'Resting HR', kind: 'line', color: css('--rhr'), w: 2.5, pts: D.map(d => [d.t, d.rhr]), fmt: v => Math.round(v) + ' bpm' }] }); } };
+  } },
+  stress: { title: 'Stress', daily: true, render(P) {
+    const D = dailyIn(P), v = D.map(d => d.stress).filter(x => x != null), b = lastOf(D, 'stress'), lv = x => x < 26 ? 'Resting' : x < 51 ? 'Low' : x < 76 ? 'Medium' : 'High';
+    return { html: `<div class="stats">${mStat('Latest day', b != null ? Math.round(b) : '–')}${mStat('Level', b != null ? lv(b) : '–')}${mStat('Average', v.length ? Math.round(v.reduce((x, y) => x + y, 0) / v.length) : '–')}${mStat('Calmest day', v.length ? Math.round(Math.min(...v)) : '–')}${mStat('Most stressed', v.length ? Math.round(Math.max(...v)) : '–')}</div>
+      <div class="wd-grid">${mCard('Average stress', 'mc1', 'Garmin stress score, 0–100, from heart-rate variability. Lower is calmer.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Average stress', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: 100, empty: 'No all-day data in this period.', series: [{ name: 'Stress', kind: P.n > 60 ? 'line' : 'bars', bw: DAY, color: css('--stress'), w: 2.5, pts: D.map(d => [d.t, d.stress]), fmt: v => Math.round(v) + ' · ' + lv(v) }] }); } };
+  } },
+  bb: { title: 'Body battery', daily: true, render(P) {
+    const D = dailyIn(P), hi = D.map(d => d.bbHigh).filter(x => x != null), lo = D.map(d => d.bbLow).filter(x => x != null), b = D[D.length - 1];
+    return { html: `<div class="stats">${mStat('Latest high', b && b.bbHigh != null ? Math.round(b.bbHigh) : '–')}${mStat('Latest low', b && b.bbLow != null ? Math.round(b.bbLow) : '–')}${mStat('Average high', hi.length ? Math.round(hi.reduce((x, y) => x + y, 0) / hi.length) : '–')}${mStat('Average low', lo.length ? Math.round(lo.reduce((x, y) => x + y, 0) / lo.length) : '–')}${mStat('Days', D.length)}</div>
+      <div class="wd-grid">${mCard('Body battery', 'mc1', 'Each day’s highest and lowest charge, 0–100. Good recovery shows as a high peak after sleep.')}</div>`,
+      draw() { plot($('#mc1'), { label: 'Body battery', xMin: P.xMin, xMax: P.xMax, zero: true, yMax: 100, empty: 'No all-day data in this period.', series: [
+        { name: 'Daily high', kind: 'line', color: css('--bb'), w: 2.5, pts: D.map(d => [d.t, d.bbHigh]), fmt: v => Math.round(v) },
+        { name: 'Daily low', kind: 'line', color: css('--bb'), op: 0.5, pts: D.map(d => [d.t, d.bbLow]), fmt: v => Math.round(v) }] }); } };
+  } },
 };
+const dailyIn = P => st.daily.filter(d => d.t >= P.t0 && d.t <= P.t1);
 const pcOf = (z, a, b) => { const t = z.reduce((x, y) => x + y, 0); return t ? Math.round(z.slice(a, b).reduce((x, y) => x + y, 0) / t * 100) + '%' : '–'; };
 
 // Garmin-style strip: one coloured cell per day with that day's training status
@@ -104,7 +126,7 @@ function renderMetric(key) {
   if (!m) { location.hash = '#overview'; return; }
   const head = `<a class="btn back ghost" href="#overview">← Overview</a><div class="vh"><h2>${m.key ? al(m.key, m.title) : m.title}</h2>
     <div class="seg" role="group" aria-label="Period">${M_RANGES.map(([n, l]) => `<button type="button" data-r="${n}" aria-pressed="${(st.mRange || 7) === n}">${l}</button>`).join('')}</div></div>`;
-  if (!st.runs.length) { box.innerHTML = head + '<p class="empty">Import workouts to see this.</p>'; return; }
+  if (!st.runs.length && !(m.daily && st.daily.length)) { box.innerHTML = head + `<p class="empty">${m.daily ? 'No all-day data yet. It appears once the Garmin export job has written your days.' : 'Import workouts to see this.'}</p>`; return; }
   const P = mPeriod(), out = m.render(P);
   box.innerHTML = head + `<p class="muted sm" style="margin:-6px 0 12px">${fmtDate(P.t0, { day: 'numeric', month: 'short', year: 'numeric' })} – ${fmtDate(P.t1, { day: 'numeric', month: 'short', year: 'numeric' })}</p>` + out.html;
   box.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { st.mRange = +b.dataset.r; renderMetric(key); addChartShare(); addHelp(); });

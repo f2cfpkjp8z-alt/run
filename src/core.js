@@ -447,3 +447,23 @@ function splitsOf(r, unitM) {
   const rest = d[n - 1] - d[i0]; if (rest > unitM * 0.1) out.push(seg(i0, n - 1, rest));
   return out;
 }
+
+/* ---------- All-day data: users/{uid}/daily/{YYYY-MM-DD}, written by the Garmin export job ---------- */
+// Tolerant of field-name variants and series shapes (numbers, [time, value] pairs or {t, v} objects) so a renamed field never breaks the app.
+function normDaily(id, o) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(id); if (!m) return null;
+  const t = new Date(+m[1], +m[2] - 1, +m[3]).getTime(); o = o || {};
+  const pick = (...ks) => { for (const k of ks) { const v = o[k]; if (v != null && v !== '' && isFinite(+v)) return +v; } return null; };
+  const vals = (...ks) => { for (const k of ks) { const a = o[k]; if (Array.isArray(a) && a.length) return a.map(p => Array.isArray(p) ? +p[1] : p && typeof p === 'object' ? +(p.v != null ? p.v : p.value) : +p).filter(x => isFinite(x)); } return []; };
+  const hr = vals('hrSeries', 'hr_series', 'heartRate', 'hr'), stress = vals('stressSeries', 'stress_series', 'stressValues', 'stress').filter(x => x >= 0), bb = vals('bodyBatterySeries', 'body_battery_series', 'bodyBattery', 'body_battery').filter(x => x >= 0);
+  const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const rhr = pick('restingHR', 'restingHr', 'resting_hr', 'restingHeartRate');
+  return { id, t, steps: pick('steps', 'totalSteps'), rhr: rhr || (Math.min(...hr.filter(x => x > 30)) || null),
+    maxHR: pick('maxHR', 'maxHr', 'max_hr', 'maxHeartRate') || (hr.length ? Math.max(...hr) : null),
+    stress: pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') != null ? pick('stressAvg', 'avgStress', 'averageStress', 'stress_avg') : (typeof o.stress === 'number' ? o.stress : avg(stress)),
+    stressMax: pick('stressMax', 'maxStress', 'stress_max') != null ? pick('stressMax', 'maxStress', 'stress_max') : (stress.length ? Math.max(...stress) : null),
+    bbHigh: pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') != null ? pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') : (bb.length ? Math.max(...bb) : null),
+    bbLow: pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') != null ? pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') : (bb.length ? Math.min(...bb) : null),
+    sleepScore: pick('sleepScore', 'sleep_score') != null ? pick('sleepScore', 'sleep_score') : (o.sleep && isFinite(+o.sleep.score) ? +o.sleep.score : null),
+    hr, stressS: stress, bbS: bb };
+}

@@ -4,6 +4,14 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v30 — 2026-10-07
+  In short: New all-day pages for resting heart rate, stress and body battery from your Garmin watch.
+  The Garmin export job writes one document per day to users/{uid}/daily/{YYYY-MM-DD}; the app now reads the last
+    400 days (online accounts only) and shows them on three trend pages (7 days / 4 weeks / Year) and three optional
+    overview cards (Customize → Add cards): Resting heart rate, Stress, Body battery.
+  Field names are read tolerantly (restingHR, stressAvg, bodyBatteryHigh/Low, or a series for each), so a renamed field doesn't break the app.
+  Values are shown as Garmin supplies them; no new algorithm, so no algorithm ids change.
+
 v29 — 2026-10-06
   In short: Running goals now count only real runs at least as long as the goal.
   A goal like 10K at 7:00/km is reached only by a run of 10 km or longer (1% GPS slack) with an average pace
