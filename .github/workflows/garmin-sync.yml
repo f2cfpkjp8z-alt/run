@@ -1,0 +1,21 @@
+name: Garmin sync
+on:
+  schedule: [{ cron: '15 5 * * *' }, { cron: '15 17 * * *' }]  # twice a day (UTC)
+  workflow_dispatch: {}
+concurrency: garmin-sync
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: pip, cache-dependency-path: garmin_sync/requirements.txt }
+      - run: pip install -r garmin_sync/requirements.txt
+      - uses: actions/cache@v4   # keeps the Garmin session between runs so we don't log in from scratch each time
+        with: { path: ~/.garminconnect, key: garmin-tokens-${{ github.run_id }}, restore-keys: garmin-tokens- }
+      - run: python garmin_sync/sync.py --days 3
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          PP_EMAIL: ${{ secrets.PP_EMAIL }}
+          PP_PASSWORD: ${{ secrets.PP_PASSWORD }}
