@@ -79,12 +79,13 @@ def enc(v):
         t = {'float32': 'Float32Array', 'uint8': 'Uint8Array'}[str(v.dtype)]
         return {'mapValue': {'fields': {'__t': {'stringValue': t}, 'b': {'bytesValue': base64.b64encode(v.astype('<' + v.dtype.str[1:]).tobytes()).decode()}}}}
     if isinstance(v, dict): return {'mapValue': {'fields': {k: enc(x) for k, x in v.items() if x is not None}}}
-    if isinstance(v, (list, tuple)): return {'arrayValue': {'values': [enc(x) for x in v]}}
+    if isinstance(v, (list, tuple)):  # Firestore forbids nested arrays: [t, v] pairs are stored as {t, v} maps (the app's normDaily reads both)
+        return {'arrayValue': {'values': [enc({'t': x[0], 'v': x[1]}) if isinstance(x, (list, tuple)) and len(x) == 2 else enc(x) for x in v]}}
     raise TypeError(type(v))
 
 
 # ---------------------------------------------------------------- FIT -> app workout record (port of core.js parseFIT/buildGrid)
-def parse_fit(blob):
+def parse_fit(blob, any_sport=False):
     import fitdecode
     pts, start, sport = [], None, None
     with fitdecode.FitReader(io.BytesIO(blob)) as fr:
@@ -103,13 +104,13 @@ def parse_fit(blob):
                             'cad': None if cad is None else cad + (fc or 0), 'lat': None if lat is None else lat * 180 / 2 ** 31,
                             'lon': None if lon is None else lon * 180 / 2 ** 31})
     if not pts: return None
-    if sport is not None and str(sport) != 'running': return None
+    if sport is not None and str(sport) != 'running' and not any_sport: return None
     t0 = start or pts[0]['ts']
     if t0.tzinfo is None: t0 = t0.replace(tzinfo=timezone.utc)
     for p in pts:
         ts = p['ts'] if p['ts'].tzinfo else p['ts'].replace(tzinfo=timezone.utc)
         p['t'] = (ts - t0).total_seconds()
-    return {'start': int(round(t0.timestamp() * 1000)), 'pts': pts}
+    return {'start': int(round(t0.timestamp() * 1000)), 'pts': pts, 'sport': None if sport is None else str(sport)}
 
 
 def hav(a, b, c, d):
@@ -183,7 +184,7 @@ def build_grid(raw, name):
     return {'ver': 2, 'id': 'a%d' % round(start / 60000), 'start': start, 'n': n, 'd': d, 'hr': hr, 'alt': alt, 'cad': cad, 'mv': mv,
             'hasHR': has_hr, 'hasAlt': has_alt, 'hrPeak': hr_peak, 'hasGPS': has_gps,
             'lat0': g0['lat'] if has_gps else None, 'lon0': g0['lon'] if has_gps else None,
-            'dla': dla if has_gps else None, 'dlo': dlo if has_gps else None, 'name': name, 'src': 'GARMIN'}
+            'dla': dla if has_gps else None, 'dlo': dlo if has_gps else None, 'name': name, 'src': 'GARMIN', 'sport': raw.get('sport')}
 
 
 # ---------------------------------------------------------------- Garmin
@@ -248,13 +249,32 @@ def daily_doc(g, day):
     return {k: v for k, v in doc.items() if v is not None}
 
 
-def sync_activities(g, fs, days, dry, out=None):
+def sync_activities(g, fs, days, dry, out=None, all_sports=False):
+    """Runs go to Firestore (+ --out). With all_sports, every other activity type is exported to --out only (workouts_other/),
+    so the app's running analytics are not polluted by rides, walks, etc."""
     from garminconnect import Garmin
     have = fs.existing_workouts(); start = (date.today() - timedelta(days=days)).isoformat()
-    acts = g.get_activities_by_date(start, date.today().isoformat(), 'running')
+    acts = g.get_activities_by_date(start, date.today().isoformat(), None if all_sports else 'running')
     new = upd = skip = 0
     for a in acts:
         aid = a['activityId']; name = a.get('activityName') or 'Run'
+        tkey = ((a.get('activityType') or {}).get('typeKey') or '').lower()
+        other = all_sports and 'running' not in tkey   # run variants (trail_running, treadmill_running, ...) stay on the normal path
+        if other:
+            if not out: skip += 1; continue
+            fname = f"{a['startTimeGMT'][:16].replace('-', '').replace(':', '').replace(' ', '_')}_{tkey or 'activity'}_{aid}"
+            if os.path.exists(os.path.join(out, 'workouts_other', fname + '.json')): skip += 1; continue
+            try:
+                z = g.download_activity(aid, dl_fmt=Garmin.ActivityDownloadFormat.ORIGINAL)
+                with zipfile.ZipFile(io.BytesIO(z)) as zf:
+                    fit = next(zf.read(n) for n in zf.namelist() if n.lower().endswith('.fit'))
+                raw = parse_fit(fit, True); rec = build_grid(raw, name) if raw else None
+            except Exception as e:
+                print(f'  activity {aid} ({tkey}): skipped ({e})', file=sys.stderr); continue
+            if not rec: print(f'  other: {fname} has too little data, skipped'); skip += 1; continue
+            rec['type'] = tkey; rec['activityId'] = aid
+            print(f"  other ({tkey}): {fname} {name} ({rec['n'] * DT // 60} min)")
+            save_local(out, 'workouts_other', fname, rec); new += 1; continue
         st_ms = None
         try:  # "startTimeGMT" = 'YYYY-MM-DD HH:MM:SS' (UTC)
             st_ms = int(datetime.strptime(a['startTimeGMT'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp() * 1000)
@@ -285,6 +305,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--days', type=int, default=14, help='how many days back to (re)sync (default 14)')
     ap.add_argument('--no-activities', action='store_true'); ap.add_argument('--no-daily', action='store_true')
+    ap.add_argument('--all-sports', action='store_true', help='also export non-running activities (to <out>/workouts_other/ only, never to Firestore)')
     ap.add_argument('--out', default=os.environ.get('GARMIN_OUT_DIR'), help='also save the exported data as JSON files in this folder')
     ap.add_argument('--dry-run', action='store_true', help='read from Garmin, print what would be written')
     a = ap.parse_args()
@@ -292,7 +313,7 @@ def main():
     miss = [k for k in need if not os.environ.get(k)]
     if miss: sys.exit('Missing environment variables: ' + ', '.join(miss))
     fs = Firestore(os.environ['PP_EMAIL'], os.environ['PP_PASSWORD']); g = garmin_login()
-    if not a.no_activities: sync_activities(g, fs, a.days, a.dry_run, a.out)
+    if not a.no_activities: sync_activities(g, fs, a.days, a.dry_run, a.out, a.all_sports)
     if not a.no_daily:
         for k in range(a.days, -1, -1):
             day = date.today() - timedelta(days=k); doc = daily_doc(g, day)
