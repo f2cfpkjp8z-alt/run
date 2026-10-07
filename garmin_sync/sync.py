@@ -191,10 +191,11 @@ def garmin_login():
     from garminconnect import Garmin
     tok = os.path.expanduser(os.environ.get('GARMINTOKENS', '~/.garminconnect'))
     g = Garmin(os.environ.get('GARMIN_EMAIL'), os.environ.get('GARMIN_PASSWORD'))
-    try: g.login(tok)
-    except Exception: g.login()
-    try: g.garth.dump(tok)  # cache the session so twice-daily runs don't log in from scratch
-    except Exception: pass
+    # One login attempt only: garminconnect >= 0.3 loads the cached tokens from `tok` if present, otherwise logs in with the
+    # credentials and saves the tokens there, so later runs skip the Garmin login. (A second fallback login would just hit
+    # Garmin's rate limit again.)
+    mfa, _ = g.login(tok)
+    if mfa: raise SystemExit('Garmin asks for a verification (MFA) code; log in once interactively to create the token cache')
     return g
 
 
