@@ -15,6 +15,8 @@ and a stored CSV summary or older record is replaced by the fuller one. Daily do
 `GARMIN_EMAIL`, `GARMIN_PASSWORD`, `PP_EMAIL`, `PP_PASSWORD` (the app account must use email + password sign-in).
 Optional `GARMINTOKENS` (token cache dir, default `~/.garminconnect`).
 
+Add `--out <dir>` (or `GARMIN_OUT_DIR`) to also save the exported data as JSON (`workouts/<id>.json`, `daily/<date>.json`) in that folder.
+
 ```
 pip install -r garmin_sync/requirements.txt
 python garmin_sync/sync.py --dry-run --days 3   # read only, prints what would be written

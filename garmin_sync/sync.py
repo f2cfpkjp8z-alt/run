@@ -11,6 +11,7 @@ Environment (nothing is stored in the repo):
   GARMIN_EMAIL, GARMIN_PASSWORD   Garmin Connect login
   PP_EMAIL, PP_PASSWORD           the Pace & Pulse (Firebase email+password) account
   GARMINTOKENS                    optional dir to cache the Garmin session (default ~/.garminconnect)
+  GARMIN_OUT_DIR                  optional, same as --out
 """
 import argparse, base64, io, json, math, os, sys, zipfile
 from datetime import date, datetime, timedelta, timezone
@@ -197,6 +198,19 @@ def garmin_login():
     return g
 
 
+def save_local(out, kind, name, data):
+    """Write one exported document as JSON under <out>/<kind>/<name>.json (arrays -> lists, NaN -> null)."""
+    def conv(v):
+        if isinstance(v, np.ndarray): return [None if (isinstance(x, float) and math.isnan(x)) else x for x in v.tolist()]
+        if isinstance(v, dict): return {k: conv(x) for k, x in v.items()}
+        if isinstance(v, (list, tuple)): return [conv(x) for x in v]
+        if isinstance(v, (np.integer,)): return int(v)
+        if isinstance(v, (float, np.floating)): return None if math.isnan(v) else float(v)
+        return v
+    d = os.path.join(out, kind); os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, name + '.json'), 'w', encoding='utf-8') as f: json.dump(conv(data), f, separators=(',', ':'))
+
+
 def series(pairs, lo=None):
     out = []
     for p in pairs or []:
@@ -233,7 +247,7 @@ def daily_doc(g, day):
     return {k: v for k, v in doc.items() if v is not None}
 
 
-def sync_activities(g, fs, days, dry):
+def sync_activities(g, fs, days, dry, out=None):
     from garminconnect import Garmin
     have = fs.existing_workouts(); start = (date.today() - timedelta(days=days)).isoformat()
     acts = g.get_activities_by_date(start, date.today().isoformat(), 'running')
@@ -257,6 +271,7 @@ def sync_activities(g, fs, days, dry):
         if not rec: skip += 1; continue
         old = have.get(rec['id']) or (have[near[0]] if near else None)
         print(f"  {'update' if old else 'new'}: {rec['id']} {name} ({rec['n'] * DT // 60} min)")
+        if out: save_local(out, 'workouts', rec['id'], rec)
         if not dry:
             for i in near:  # an existing summary/older copy of the same run is replaced under its own id
                 if i != rec['id']: rec['id'] = i; break
@@ -269,18 +284,20 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--days', type=int, default=14, help='how many days back to (re)sync (default 14)')
     ap.add_argument('--no-activities', action='store_true'); ap.add_argument('--no-daily', action='store_true')
+    ap.add_argument('--out', default=os.environ.get('GARMIN_OUT_DIR'), help='also save the exported data as JSON files in this folder')
     ap.add_argument('--dry-run', action='store_true', help='read from Garmin, print what would be written')
     a = ap.parse_args()
     need = ['GARMIN_EMAIL', 'GARMIN_PASSWORD', 'PP_EMAIL', 'PP_PASSWORD']
     miss = [k for k in need if not os.environ.get(k)]
     if miss: sys.exit('Missing environment variables: ' + ', '.join(miss))
     fs = Firestore(os.environ['PP_EMAIL'], os.environ['PP_PASSWORD']); g = garmin_login()
-    if not a.no_activities: sync_activities(g, fs, a.days, a.dry_run)
+    if not a.no_activities: sync_activities(g, fs, a.days, a.dry_run, a.out)
     if not a.no_daily:
         for k in range(a.days, -1, -1):
             day = date.today() - timedelta(days=k); doc = daily_doc(g, day)
             if len(doc) > 2:
                 print(f'  daily {day}: {", ".join(x for x in doc if x not in ("date", "syncedAt"))}')
+                if a.out: save_local(a.out, 'daily', day.isoformat(), doc)
                 if not a.dry_run: fs.write('daily/' + day.isoformat(), doc, merge=True)
         print('daily: done')
 
