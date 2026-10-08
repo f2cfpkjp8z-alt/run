@@ -179,7 +179,8 @@ footer { color: var(--muted); font-size: 0.8125rem; padding-block: 28px 8px; }
 .w > .card { flex: 1; }
 .w-S { grid-column: span 1; } .w-M { grid-column: span 2; } .w-L { grid-column: 1 / -1; }
 @media (max-width: 1000px) { .dash { grid-template-columns: repeat(2, minmax(0, 1fr)); } .w-M { grid-column: 1 / -1; } }
-@media (max-width: 560px) { .dash { grid-template-columns: minmax(0, 1fr); } .w-S, .w-M { grid-column: 1 / -1; } }
+/* phones: S = half a row (two per row), M = a full row, L = a full row, about twice as tall */
+@media (max-width: 560px) { .dash { grid-template-columns: repeat(2, minmax(0, 1fr)); } .w-S { grid-column: span 1; } .w-M, .w-L { grid-column: 1 / -1; } .w-L > .card { min-height: 540px; } .w-S > .card { padding: 12px; } }
 .w-ctl { display: none; position: absolute; inset: 8px 8px auto auto; z-index: 3; gap: 4px; padding: 4px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 6px 18px rgb(0 0 0 / .35); }
 .w-ctl button { min-height: 32px; min-width: 32px; padding: 0 9px; font-size: 0.8125rem; border: 0; background: var(--sunk); }
 .w-ctl button.on { background: var(--accent); color: var(--on-accent); }
@@ -530,6 +531,7 @@ img, a, svg { -webkit-user-drag: none; }
 .ringcard .ring { flex: none; }
 .ringtxt { line-height: 1.5; }
 .ringtxt b { font: 700 1.5rem/1 var(--display); }
+:root { --sl-deep: #2f5fd0; --sl-light: #5bb5f0; --sl-rem: #b46de0; --sl-awake: #ff8a3d; }
 .stagebar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; gap: 2px; margin: 10px 0; }
 .stagebar i { display: block; height: 100%; }
 .stagelist { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8125rem; color: var(--ink2); }

@@ -466,6 +466,7 @@ function normDaily(id, o) {
     bbHigh: pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') != null ? pick('bodyBatteryHigh', 'bbHigh', 'body_battery_high', 'bodyBatteryMax') : (bb.length ? Math.max(...bb) : null),
     bbLow: pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') != null ? pick('bodyBatteryLow', 'bbLow', 'body_battery_low', 'bodyBatteryMin') : (bb.length ? Math.min(...bb) : null),
     sleepScore: pick('sleepScore', 'sleep_score') != null ? pick('sleepScore', 'sleep_score') : (o.sleep && isFinite(+o.sleep.score) ? +o.sleep.score : null),
+    hrv: o.hrv && typeof o.hrv === 'object' && +o.hrv.rmssd > 0 ? o.hrv : null,
     stepGoal: pick('stepGoal', 'dailyStepGoal'), sleep: o.sleep && typeof o.sleep === 'object' && isFinite(+o.sleep.sleepTimeSeconds) ? o.sleep : null,
     hrP: pairs('hrSeries').filter(p => p[1] > 30), stressP: pairs('stressSeries').filter(p => p[1] >= 0), bbP: pairs('bodyBatterySeries').filter(p => p[1] >= 0),
     hr, stressS: stress, bbS: bb };

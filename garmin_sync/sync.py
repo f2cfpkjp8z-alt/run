@@ -239,14 +239,62 @@ def daily_doc(g, day):
     vals = series([p for e in bb for p in (e.get('bodyBatteryValuesArray') or [])], 0)
     if vals:
         doc['bodyBatterySeries'] = vals; v = [p[1] for p in vals]; doc['bodyBatteryHigh'] = max(v); doc['bodyBatteryLow'] = min(v)
-    sl = (safe(g.get_sleep_data, ds) or {}).get('dailySleepDTO') or {}
+    sd = safe(g.get_sleep_data, ds) or {}; sl = sd.get('dailySleepDTO') or {}
     if sl.get('sleepTimeSeconds'):
         score = ((sl.get('sleepScores') or {}).get('overall') or {}).get('value')
         doc['sleepScore'] = score
         doc['sleep'] = {k: sl.get(k) for k in ('sleepTimeSeconds', 'deepSleepSeconds', 'lightSleepSeconds', 'remSleepSeconds', 'awakeSleepSeconds',
                                                 'sleepStartTimestampGMT', 'sleepEndTimestampGMT')}
         if score is not None: doc['sleep']['score'] = score
+        # stage timeline (0 deep, 1 light, 2 REM, 3 awake) as {s, e, l} maps in epoch ms, for the hypnogram
+        lv = []
+        for x in sd.get('sleepLevels') or []:
+            try:
+                f = lambda t: int(datetime.strptime(t[:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=timezone.utc).timestamp() * 1000)
+                if x.get('activityLevel') is not None and 0 <= x['activityLevel'] <= 3: lv.append({'s': f(x['startGMT']), 'e': f(x['endGMT']), 'l': int(x['activityLevel'])})
+            except Exception: pass
+        if lv: doc['sleep']['levels'] = lv
+        avg = lambda a: round(sum(p['value'] for p in a if p.get('value') is not None) / max(1, sum(1 for p in a if p.get('value') is not None)), 1) if a else None
+        doc['sleep']['avgHR'] = avg(sd.get('sleepHeartRate')); doc['sleep']['avgStress'] = avg(sd.get('sleepStress')); doc['sleep']['avgResp'] = sl.get('averageRespirationValue')
+        doc['sleep'] = {k: v for k, v in doc['sleep'].items() if v is not None}
     return {k: v for k, v in doc.items() if v is not None}
+
+
+def hrv_from_fit(blob):
+    """Session summary of the third-party HRV app (Connect IQ developer fields RMSSD, SDNN, pNN50 …) or None."""
+    import fitdecode
+    with fitdecode.FitReader(io.BytesIO(blob)) as fr:
+        for m in fr:
+            if isinstance(m, fitdecode.FitDataMessage) and m.name == 'session':
+                g = lambda k: float(m.get_value(k)) if m.has_field(k) and m.get_value(k) is not None else None
+                r = g('RMSSD')
+                if not r or r <= 0: return None
+                return {k: v for k, v in {'rmssd': round(r, 2), 'lnRmssd': round(math.log(r), 3), 'sdnn': g('SDNN'), 'sdsd': g('SDSD'), 'pnn50': g('pNN50'), 'avgHR': g('AvgPulse') or g('avg_heart_rate')}.items() if v is not None}
+    return None
+
+
+def collect_hrv(g, days, out=None):
+    """day (YYYY-MM-DD) -> {rmssd, …, t, n}: the first reading of each day from activities named "HRV"."""
+    from garminconnect import Garmin
+    start = (date.today() - timedelta(days=days)).isoformat(); res = {}
+    for a in sorted(g.get_activities_by_date(start, date.today().isoformat()) or [], key=lambda x: x.get('startTimeGMT', '')):
+        if not (a.get('activityName') or '').strip().upper().startswith('HRV'): continue
+        day = (a.get('startTimeLocal') or a['startTimeGMT'])[:10]
+        if day in res: res[day]['n'] += 1; continue
+        cache = out and os.path.join(out, 'hrv', f"{day}.json")
+        if cache and os.path.exists(cache):
+            h = json.load(open(cache, encoding='utf-8')); h['n'] = 1; res[day] = h; continue
+        try:
+            z = g.download_activity(a['activityId'], dl_fmt=Garmin.ActivityDownloadFormat.ORIGINAL)
+            with zipfile.ZipFile(io.BytesIO(z)) as zf: fit = next(zf.read(n) for n in zf.namelist() if n.lower().endswith('.fit'))
+            h = hrv_from_fit(fit)
+        except Exception as e:
+            print(f"  hrv {a['activityId']}: skipped ({e})", file=sys.stderr); continue
+        if not h: continue
+        h['t'] = int(datetime.strptime(a['startTimeGMT'][:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp() * 1000); h['n'] = 1; res[day] = h
+        if out: save_local(out, 'hrv', day, {k: v for k, v in h.items() if k != 'n'})
+    print(f"hrv: {len(res)} day(s) with a reading")
+    return res
 
 
 def sync_activities(g, fs, days, dry, out=None, all_sports=False):
@@ -315,8 +363,10 @@ def main():
     fs = Firestore(os.environ['PP_EMAIL'], os.environ['PP_PASSWORD']); g = garmin_login()
     if not a.no_activities: sync_activities(g, fs, a.days, a.dry_run, a.out, a.all_sports)
     if not a.no_daily:
+        hrv = collect_hrv(g, a.days, a.out)
         for k in range(a.days, -1, -1):
             day = date.today() - timedelta(days=k); doc = daily_doc(g, day)
+            if day.isoformat() in hrv: doc['hrv'] = hrv[day.isoformat()]
             if len(doc) > 2:
                 print(f'  daily {day}: {", ".join(x for x in doc if x not in ("date", "syncedAt"))}')
                 if a.out: save_local(a.out, 'daily', day.isoformat(), doc)

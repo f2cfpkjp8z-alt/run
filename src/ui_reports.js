@@ -3,6 +3,7 @@
 const R_ICON = {
   hr: '<path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"/>',
   sleep: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  hrv: '<path d="M3 12h3l2-5 3 10 3-8 2 3h5"/>',
   stress: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   bb: '<path d="M13 2 5 14h6l-1 8 8-12h-6z"/>',
   steps: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
@@ -15,13 +16,14 @@ const R_ICON = {
 const R_KEYS = {
   hr: { title: 'Heart rate', color: '--rhr', has: d => d.hrP.length || d.rhr != null },
   sleep: { title: 'Sleep', color: '--end', has: d => !!d.sleep },
+  hrv: { title: 'HRV', color: '--race', has: d => !!d.hrv },
   stress: { title: 'Stress', color: '--stress', has: d => d.stressP.length || d.stress != null },
   bb: { title: 'Body battery', color: '--bb', has: d => d.bbP.length || d.bbHigh != null },
   steps: { title: 'Steps', color: '--dist', has: d => d.steps != null },
   weight: { title: 'Weight', color: '--accent', noDay: true, has: () => false },
 };
 const R_HUB = [
-  ['Health stats', [['hr', 'Heart rate', 'Resting, minimum and maximum through the day'], ['sleep', 'Sleep', 'Duration, stages and score'], ['stress', 'Stress', 'All-day stress level'],
+  ['Health stats', [['hr', 'Heart rate', 'Resting, minimum and maximum through the day'], ['sleep', 'Sleep', 'Stages, score and bedtime'], ['hrv', 'HRV', 'Morning reading from your HRV app'], ['stress', 'Stress', 'All-day stress level'],
     ['bb', 'Body battery', 'Energy charge and drain'], ['steps', 'Steps', 'Daily steps against your goal'], ['weight', 'Weight', 'Weight log and goal progress']]],
   ['Training', [['m-vo2', 'VO₂max', 'Aerobic ceiling and rating', 'chart'], ['m-end', 'Endurance score', 'How long you can hold your ceiling', 'chart'], ['m-ff', 'Fitness & form', 'Fitness, fatigue and form', 'chart'],
     ['m-load', 'Training load', 'Acute and chronic load', 'chart'], ['m-zones', 'Intensity mix', 'Time in each heart-rate zone', 'chart'], ['m-ef', 'Aerobic efficiency', 'Metres per heartbeat', 'chart'], ['m-race', 'Race predictions', '5K to marathon', 'chart']]],
@@ -35,7 +37,7 @@ const dayDoc = t => st.daily.find(d => d.t === t) || null;
 const isoDay = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const hm = s => s == null ? '–' : `${Math.floor(s / 3600)}h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}m`;
 const clock = ms => ms ? new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–';
-const SLEEP_STAGES = [['deepSleepSeconds', 'Deep', 'var(--end)'], ['lightSleepSeconds', 'Light', 'var(--fit)'], ['remSleepSeconds', 'REM', 'var(--race)'], ['awakeSleepSeconds', 'Awake', 'var(--warn, #ffb020)']];
+const SLEEP_STAGES = [['deepSleepSeconds', 'Deep'], ['lightSleepSeconds', 'Light'], ['remSleepSeconds', 'REM'], ['awakeSleepSeconds', 'Awake']].map(([k, n], l) => [k, n, 'var(--sl-' + ['deep', 'light', 'rem', 'awake'][l] + ')']);
 const dayLabel = t => { const T = dayStart(Date.now()); return t === T ? 'Today' : t === dayStart(T - DAY / 2) ? 'Yesterday' : fmtDate(t, { weekday: 'long', day: 'numeric', month: 'long' }); };
 
 /* ---------- small shared pieces ---------- */
@@ -50,6 +52,51 @@ function stageBar(sl) {
   return `<div class="stagebar" role="img" aria-label="Sleep stages">${parts.filter(p => p[2] > 0).map(([n, c, s]) => `<i style="width:${s / tot * 100}%;background:${c}" title="${n} ${hm(s)}"></i>`).join('')}</div>
     <div class="stagelist">${parts.map(([n, c, s]) => `<span><i style="background:${c}"></i>${n} <b>${hm(s)}</b> <small>${Math.round(s / tot * 100)}%</small></span>`).join('')}</div>`;
 }
+
+
+const SLEEP_COL = { 0: 'var(--sl-deep)', 1: 'var(--sl-light)', 2: 'var(--sl-rem)', 3: 'var(--sl-awake)' }, SLEEP_NAME = { 0: 'Deep', 1: 'Light', 2: 'REM', 3: 'Awake' };
+// mean of the previous (up to 28) morning HRV readings = your norm; needs 5
+function hrvBase(d) { const prev = st.daily.filter(x => x.hrv && x.t < d.t).slice(-28).map(x => x.hrv.rmssd); return prev.length >= 5 ? mean(prev) : null; }
+function sleepScoreOf(d) { if (!d || !d.sleep) return null; return d._ss || (d._ss = SLEEP.of(d.sleep, { hrv: d.hrv ? d.hrv.rmssd : null, base: hrvBase(d) })); }
+const stageLegend = sl => { const parts = SLEEP_STAGES.map(([k, n, c]) => [n, c, +sl[k] || 0]), tot = parts.reduce((s, p) => s + p[2], 0) || 1;
+  return '<div class="stagelist">' + parts.map(([n, c, s]) => '<span><i style="background:' + c + '"></i>' + n + ' <b>' + hm(s) + '</b> <small>' + Math.round(s / tot * 100) + '%</small></span>').join('') + '</div>'; };
+// Garmin-style hypnogram: one lane per stage (Awake on top, Deep at the bottom), a coloured block per stretch of the night
+function hypnogram(el, sl, height = 150) {
+  const lv = (sl.levels || []).filter(x => x.e > x.s).sort((a, b) => a.s - b.s);
+  if (!lv.length) { el.innerHTML = '<p class="empty">No stage timeline for this night.</p>'; return; }
+  const W = Math.max(220, el.clientWidth || 600), H = height, small = W < 300, ml = small ? 6 : 50, mr = 6, mt = 4, mb = 22, iw = W - ml - mr, lanes = [3, 2, 1, 0], lh = (H - mt - mb) / 4;
+  const t0 = lv[0].s, t1 = lv[lv.length - 1].e, sx = t => ml + (t - t0) / (t1 - t0) * iw, tm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  let g = '';
+  lanes.forEach((l, i) => { const y = mt + i * lh; g += '<line class="grid" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + (y + lh) + '" y2="' + (y + lh) + '"/>' + (small ? '' : '<text class="ax" x="' + (ml - 6) + '" y="' + (y + lh / 2 + 4) + '" text-anchor="end">' + SLEEP_NAME[l] + '</text>'); });
+  for (const x of lv) { const y = mt + lanes.indexOf(x.l) * lh + 2, w = Math.max(1.5, sx(x.e) - sx(x.s));
+    g += '<rect x="' + sx(x.s).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (lh - 4).toFixed(1) + '" rx="3" fill="' + SLEEP_COL[x.l] + '"><title>' + SLEEP_NAME[x.l] + ' ' + tm(x.s) + '–' + tm(x.e) + ' (' + hm((x.e - x.s) / 1000) + ')</title></rect>'; }
+  const stepH = Math.max(1, Math.ceil(46 / (iw / ((t1 - t0) / 3600000)))); let t = new Date(t0); t.setMinutes(0, 0, 0); t = t.getTime() + 3600000;
+  for (let k = 0; t < t1; t += 3600000) { if (k++ % stepH) continue; const x = sx(t); if (x > W - mr - 14) break; g += '<text class="ax" x="' + x.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + String(new Date(t).getHours()).padStart(2, '0') + ':00</text>'; }
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Sleep stages through the night, ' + tm(t0) + ' to ' + tm(t1) + '">' + g + '</svg>';
+}
+// stacked nights: deep / light / REM / awake in hours; long ranges are shown as weekly averages
+function sleepStack(el, P) {
+  const nights = P.D.filter(d => d.sleep);
+  if (!nights.length) { el.innerHTML = '<p class="empty">No sleep data in this period.</p>'; return; }
+  let items = nights.map(d => ({ t: d.t, s: d.sleep, n: 1 }));
+  if (P.n > 60) { const wk = new Map(); for (const it of items) { const dt = new Date(it.t), k = dayStart(it.t - ((dt.getDay() + 6) % 7) * DAY); (wk.get(k) || wk.set(k, []).get(k)).push(it); }
+    items = [...wk].map(([t, a]) => ({ t, n: a.length, s: Object.fromEntries(['deepSleepSeconds', 'lightSleepSeconds', 'remSleepSeconds', 'awakeSleepSeconds', 'sleepTimeSeconds'].map(k => [k, mean(a.map(x => +x.s[k] || 0))])) })); }
+  const W = Math.max(260, el.clientWidth || 600), H = 220, ml = 34, mr = 8, mt = 8, mb = 24, iw = W - ml - mr, ih = H - mt - mb;
+  const keys = [['deepSleepSeconds', 0], ['lightSleepSeconds', 1], ['remSleepSeconds', 2], ['awakeSleepSeconds', 3]], tot = s => keys.reduce((a, [k]) => a + (+s[k] || 0), 0) / 3600;
+  const ymax = Math.max(8, Math.ceil(Math.max(...items.map(i => tot(i.s))) / 2) * 2), sy = h => mt + ih - h / ymax * ih, slot = iw / items.length, bw = Math.max(3, Math.min(34, slot - 3));
+  let g = '';
+  for (let h = 0; h <= ymax; h += 2) g += '<line class="grid" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + sy(h) + '" y2="' + sy(h) + '"/><text class="ax" x="' + (ml - 6) + '" y="' + (sy(h) + 4) + '" text-anchor="end">' + h + 'h</text>';
+  const every = Math.ceil(items.length / Math.max(2, Math.floor(iw / 56)));
+  items.forEach((it, i) => { const x = ml + slot * i + (slot - bw) / 2; let acc = 0, tip = fmtDate(it.t, { weekday: 'short', day: 'numeric', month: 'short' }) + (it.n > 1 ? ' (week average)' : '') + ' · ' + hm(it.s.sleepTimeSeconds);
+    for (const [k, l] of keys) { const v = (+it.s[k] || 0) / 3600; if (!v) continue; g += '<rect x="' + x.toFixed(1) + '" y="' + sy(acc + v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0.5, sy(acc) - sy(acc + v)).toFixed(1) + '" fill="' + SLEEP_COL[l] + '"><title>' + tip + ' · ' + SLEEP_NAME[l] + ' ' + hm(v * 3600) + '</title></rect>'; acc += v; }
+    if (i % every === 0) g += '<text class="ax" x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(fmtDate(it.t)) + '</text>'; });
+  el.innerHTML = '<div class="legend">' + keys.map(([, l]) => '<span><i style="background:' + SLEEP_COL[l] + '"></i>' + SLEEP_NAME[l] + '</span>').join('') + '</div><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Sleep stages by night">' + g + '</svg>';
+}
+const HRV_BANDS = r => r >= 1.05 ? ['Above your norm', 'good'] : r >= 0.9 ? ['In your range', 'good'] : r >= 0.8 ? ['A little low', 'warn'] : ['Low', 'bad'];
+const rolling = (pts, n) => pts.map((p, i) => [p[0], mean(pts.slice(Math.max(0, i - n + 1), i + 1).map(q => q[1]))]);
+const scoreCard = sc => sc ? '<div class="card"><h3>' + al('sleep', 'Sleep score') + ' ' + badge(sc.band[2], sc.band[1]) + ' <span class="num" style="float:right">' + sc.score + '</span></h3><div class="bars">'
+  + sc.parts.map(p => '<div class="bar-row"><span>' + p.name + '</span><span class="v">' + Math.round(p.pts) + '/' + p.max + '</span><div class="track"><i style="width:' + Math.max(3, p.f * 100) + '%"></i></div><span class="hint">' + esc(p.text) + '</span></div>').join('')
+  + '</div>' + (sc.hasHrv ? '' : '<p class="sub help">No HRV reading this morning, so the score uses the other five parts.</p>') + '</div>' : '';
 
 /* ---------- one-day charts (also used by the overview cards) ---------- */
 function intradayPlot(el, key, d, height) {
@@ -88,8 +135,17 @@ function rBody(key, mode, P, d) { // returns {html, draw}
     if (key === 'bb') { const v = d.bbP.map(p => p[1]);
       return { html: stats([mStat('Highest', f0(d.bbHigh)), mStat('Lowest', f0(d.bbLow)), mStat('Latest', v.length ? f0(v[v.length - 1]) : '–'), mStat('Drained', v.length ? f0(Math.max(0, v.reduce((s, x, i) => i && x < v[i - 1] ? s + v[i - 1] - x : s, 0))) : '–')]) + mCard('Body battery through the day', 'rc1', 'Charges while you rest, drains with activity and stress.'),
         draw: () => intradayPlot($('#rc1'), 'bb', d, 240) }; }
-    if (key === 'sleep') { const s = d.sleep;
-      return { html: stats([mStat('Duration', hm(s.sleepTimeSeconds)), mStat('Score', f0(d.sleepScore)), mStat('Bedtime', clock(s.sleepStartTimestampGMT)), mStat('Wake-up', clock(s.sleepEndTimestampGMT))]) + `<div class="card"><h3>Sleep stages</h3>${stageBar(s)}</div>` }; }
+    if (key === 'sleep') { const s = d.sleep, sc = sleepScoreOf(d);
+      return { html: stats([mStat('Duration', hm(s.sleepTimeSeconds)), mStat('Sleep score', sc ? sc.score : '–'), mStat('Bedtime', clock(s.sleepStartTimestampGMT)), mStat('Wake-up', clock(s.sleepEndTimestampGMT))])
+        + '<div class="card chart-card"><h3>Sleep stages</h3><div class="plot" id="rc1"></div>' + stageLegend(s) + '</div>' + scoreCard(sc)
+        + (s.avgHR || s.avgStress || s.avgResp ? stats([mStat('Sleep heart rate', f0(s.avgHR), 'bpm'), mStat('Sleep stress', f0(s.avgStress)), mStat('Respiration', f0(s.avgResp), 'br/min')]) : ''),
+        draw: () => hypnogram($('#rc1'), s, 170) }; }
+    if (key === 'hrv') { const h = d.hrv, base = hrvBase(d), r = base ? h.rmssd / base : null, bd = r ? HRV_BANDS(r) : null;
+      const P = { t0: dayStart(d.t - 29 * DAY), t1: d.t, xMin: dayStart(d.t - 29 * DAY) - DAY / 2, xMax: d.t + DAY / 2, D: st.daily.filter(x => x.t <= d.t && x.t > d.t - 30 * DAY) }, pts = P.D.filter(x => x.hrv).map(x => [x.t, x.hrv.rmssd]);
+      return { html: stats([mStat('RMSSD', f0(h.rmssd), 'ms'), mStat('SDNN', f0(h.sdnn), 'ms'), mStat('pNN50', h.pnn50 != null ? f0(h.pnn50) : '–', '%'), mStat('Heart rate', f0(h.avgHR), 'bpm')])
+        + '<div class="card"><h3>Compared with your norm ' + (bd ? badge(bd[1], bd[0]) : '') + '</h3><p class="sub">' + (base ? 'Your norm is ' + f0(base) + ' ms, the average of your previous readings (up to 28). This one is ' + (r >= 1 ? '+' : '−') + Math.abs(Math.round((r - 1) * 100)) + '%.' : 'A norm appears after 5 readings.') + '</p></div>'
+        + mCard('Last 30 days', 'rc1', 'RMSSD from your morning HRV reading, with a 7-day average.'),
+        draw: () => plot($('#rc1'), { label: 'HRV', xMin: P.xMin, xMax: P.xMax, minSpan: 20, empty: 'No readings.', series: [{ name: 'RMSSD', kind: 'dots', color: css('--race'), pts, fmt: v => Math.round(v) + ' ms' }, { name: '7-day average', kind: 'line', color: css('--race'), w: 2.5, pts: rolling(pts, 7), fmt: v => Math.round(v) + ' ms' }] }) }; }
     if (key === 'steps') { const g = d.stepGoal || 10000;
       return { html: `<div class="card ringcard">${ringSvg(d.steps / g, css('--dist'), f0(d.steps), 'steps', 170)}<div class="ringtxt"><b>${Math.round(d.steps / g * 100)}%</b> of your ${f0(g)} step goal<br><span class="muted">${d.steps >= g ? 'Goal reached 🎯' : f0(g - d.steps) + ' to go'}</span></div></div>` }; }
   }
@@ -105,10 +161,13 @@ function rBody(key, mode, P, d) { // returns {html, draw}
   if (key === 'bb') { const hi = D.map(x => x.bbHigh).filter(x => x != null), lo = D.map(x => x.bbLow).filter(x => x != null);
     return { html: stats([mStat('Average high', hi.length ? f0(mean(hi)) : '–'), mStat('Average low', lo.length ? f0(mean(lo)) : '–'), mStat('Best day', hi.length ? f0(Math.max(...hi)) : '–')]) + mCard('Body battery by day', 'rc1', 'Highest and lowest charge each day.'),
       draw: () => plot($('#rc1'), { ...axis, label: 'Body battery', zero: true, yMax: 100, series: [{ name: 'Highest', kind: 'line', color: css('--bb'), w: 2.5, pts: dayPts(P, x => x.bbHigh), fmt: v => Math.round(v) }, { name: 'Lowest', kind: 'line', color: css('--bb'), op: .5, pts: dayPts(P, x => x.bbLow), fmt: v => Math.round(v) }] }) }; }
-  if (key === 'sleep') { const s = D.filter(x => x.sleep), sc = D.map(x => x.sleepScore).filter(x => x != null);
-    return { html: stats([mStat('Average sleep', s.length ? hm(mean(s.map(x => x.sleep.sleepTimeSeconds))) : '–'), mStat('Average score', sc.length ? f0(mean(sc)) : '–'), mStat('Best night', s.length ? hm(Math.max(...s.map(x => x.sleep.sleepTimeSeconds))) : '–')]) + `<div class="wd-grid">${mCard('Sleep duration', 'rc1', 'Hours asleep each night.')}${mCard('Sleep score', 'rc2', 'Garmin’s 0–100 score.')}</div>`,
-      draw: () => { plot($('#rc1'), { ...axis, label: 'Sleep duration', zero: true, series: [{ name: 'Sleep', kind: bar, bw: DAY, color: css('--end'), w: 2.5, pts: dayPts(P, x => x.sleep ? x.sleep.sleepTimeSeconds / 3600 : null), fmt: v => hm(v * 3600) }] });
-        plot($('#rc2'), { ...axis, label: 'Sleep score', yMax: 100, minSpan: 20, series: [{ name: 'Score', kind: 'line', color: css('--end'), w: 2.5, pts: dayPts(P, x => x.sleepScore), fmt: v => Math.round(v) }] }); } }; }
+  if (key === 'sleep') { const s = D.filter(x => x.sleep), sc = s.map(sleepScoreOf).filter(Boolean).map(x => x.score);
+    return { html: stats([mStat('Average sleep', s.length ? hm(mean(s.map(x => x.sleep.sleepTimeSeconds))) : '–'), mStat('Average score', sc.length ? f0(mean(sc)) : '–'), mStat('Best night', s.length ? hm(Math.max(...s.map(x => x.sleep.sleepTimeSeconds))) : '–')]) + '<div class="wd-grid">' + mCard('Sleep by night', 'rc1', 'Hours in each stage. Long periods show weekly averages.') + mCard('Sleep score', 'rc2', 'Your ' + al('sleep', 'sleep score') + ' for each night.') + '</div>',
+      draw: () => { sleepStack($('#rc1'), P);
+        plot($('#rc2'), { ...axis, label: 'Sleep score', yMax: 100, minSpan: 20, series: [{ name: 'Score', kind: 'line', color: css('--end'), w: 2.5, pts: dayPts(P, x => { const c = sleepScoreOf(x); return c ? c.score : null; }), fmt: v => Math.round(v) }] }); } }; }
+  if (key === 'hrv') { const v = D.filter(x => x.hrv).map(x => x.hrv.rmssd), pts = D.filter(x => x.hrv).map(x => [x.t, x.hrv.rmssd]);
+    return { html: stats([mStat('Average RMSSD', v.length ? f0(mean(v)) : '–', 'ms'), mStat('Highest', v.length ? f0(Math.max(...v)) : '–', 'ms'), mStat('Lowest', v.length ? f0(Math.min(...v)) : '–', 'ms'), mStat('Readings', v.length)]) + mCard('HRV by day', 'rc1', 'Higher than your usual means you are well recovered; a drop of 20% or more can mean fatigue or illness.'),
+      draw: () => plot($('#rc1'), { ...axis, label: 'HRV', minSpan: 20, series: [{ name: 'RMSSD', kind: 'dots', color: css('--race'), pts, fmt: v => Math.round(v) + ' ms' }, { name: '7-day average', kind: 'line', color: css('--race'), w: 2.5, pts: rolling(pts, 7), fmt: v => Math.round(v) + ' ms' }] }) }; }
   if (key === 'steps') { const v = D.map(x => x.steps).filter(x => x != null), hit = D.filter(x => x.steps != null && x.stepGoal && x.steps >= x.stepGoal).length;
     return { html: stats([mStat('Daily average', v.length ? f0(mean(v)) : '–'), mStat('Total', f0(v.reduce((a, b) => a + b, 0))), mStat('Goal reached', `${hit}/${v.length}`, 'days')]) + mCard('Steps by day', 'rc1', 'Dashed line is your daily goal.'),
       draw: () => plot($('#rc1'), { ...axis, label: 'Steps', zero: true, series: [{ name: 'Steps', kind: bar, bw: DAY, color: css('--dist'), w: 2.5, pts: dayPts(P, x => x.steps), fmt: v => f0(v) }, { name: 'Goal', kind: 'line', color: css('--ink2'), dash: true, w: 1.5, end: false, pts: dayPts(P, x => x.stepGoal), fmt: v => f0(v) }] }) }; }
@@ -148,7 +207,8 @@ function rValue(key) {
   if (key === 'weight') { const l = weightLog(); return l.length ? f1(l[l.length - 1][1]) + u('kg') : '–'; }
   if (!d) return '–';
   if (key === 'hr') return d.rhr != null ? f0(d.rhr) + u('bpm') : '–';
-  if (key === 'sleep') return hm(d.sleep.sleepTimeSeconds);
+  if (key === 'sleep') { const c = sleepScoreOf(d); return hm(d.sleep.sleepTimeSeconds) + (c ? '<small>' + c.score + '</small>' : ''); }
+  if (key === 'hrv') return f0(d.hrv.rmssd) + u('ms');
   if (key === 'stress') return d.stress != null ? f0(d.stress) : '–';
   if (key === 'bb') return d.bbHigh != null ? f0(d.bbHigh) : '–';
   if (key === 'steps') return f0(d.steps);
@@ -164,13 +224,12 @@ function renderReports() {
 
 /* ---------- overview cards for the all-day data ---------- */
 function dailyWidget(el, key, size) {
-  const R = R_KEYS[key], d = latestWith(R.has), big = size === 'S' ? 110 : 150;
+  const R = R_KEYS[key], d = latestWith(R.has), big = size === 'S' ? 110 : size === 'L' ? 340 : 150;
   const h = (extra = '') => head(R.title, `<span class="muted sm">${d ? dayLabel(d.t) : ''}</span>${extra}`);
   if (!d) { el.innerHTML = head(R.title) + '<p class="sub">No all-day data yet. It appears once the Garmin export job has written your days.</p>'; return; }
   if (key === 'sleep') {
-    const s = d.sleep; el.innerHTML = h() + `<div class="big">${hm(s.sleepTimeSeconds)}${d.sleepScore != null ? `<small>score ${f0(d.sleepScore)}</small>` : ''}</div>${stageBar(s)}`;
-    if (size !== 'S') { el.insertAdjacentHTML('beforeend', '<div class="plot" style="margin-top:12px"></div>'); const P = { t0: dayStart(d.t - 6 * DAY), t1: d.t, n: 7, xMin: dayStart(d.t - 6 * DAY) - DAY / 2, xMax: d.t + DAY / 2, D: st.daily.filter(x => x.t > d.t - 7 * DAY && x.t <= d.t) };
-      plot(el.querySelector('.plot'), { label: 'Sleep, last 7 nights', xMin: P.xMin, xMax: P.xMax, zero: true, height: 130, series: [{ name: 'Sleep', kind: 'bars', bw: DAY, color: css('--end'), pts: dayPts(P, x => x.sleep ? x.sleep.sleepTimeSeconds / 3600 : null), fmt: v => hm(v * 3600) }] }); }
+    const s = d.sleep, sc = sleepScoreOf(d); el.innerHTML = h() + '<div class="big">' + hm(s.sleepTimeSeconds) + (sc ? '<small>score ' + sc.score + '</small>' : '') + '</div>' + (sc ? '<div style="margin:2px 0 8px">' + badge(sc.band[2], sc.band[1]) + '</div>' : '') + '<div class="plot"></div>' + (size === 'S' ? '' : stageLegend(s));
+    hypnogram(el.querySelector('.plot'), s, size === 'S' ? 100 : size === 'L' ? 320 : 150);
     return;
   }
   const v = key === 'hr' ? [d.rhr, 'bpm resting'] : key === 'stress' ? [d.stress, 'avg'] : [d.bbHigh, `high · low ${f0(d.bbLow)}`];
@@ -190,4 +249,14 @@ function weightWidget(el) {
   el.innerHTML = head('Weight', `<span class="muted sm">${fmtDate(l[l.length - 1][0])}</span>`) + `<div class="big">${f1(now)}<small>kg</small></div>
     ${wp ? `<div class="goal-h" style="margin-top:10px"><span class="muted sm">Goal ${f1(w.kg)} kg${goalWhen(w.date)}</span><span class="pct num">${Math.round(wp.pct * 100)}%</span></div>${gbar(wp.pct, 'wt')}<div class="gstats"><span>From ${f1(wp.start)} · ${wp.pct >= 1 ? 'Reached 🎯' : f1(Math.abs(now - w.kg)) + ' kg to ' + (now > w.kg ? 'lose' : 'gain')}</span></div>`
       : `<div class="sub">${prev != null ? `<span class="${now <= prev ? 'delta-up' : 'delta-down'}">${now >= prev ? '▲' : '▼'} ${f1(Math.abs(now - prev))} kg</span> since the last entry` : 'No goal set. <a href="#profile" data-goto="goalCard">Set one →</a>'}</div>`}`;
+}
+
+
+function hrvWidget(el, size) {
+  const d = latestWith(R_KEYS.hrv.has);
+  if (!d) { el.innerHTML = head('HRV') + '<p class="sub">No HRV readings yet. They appear once an activity named “HRV” is synced.</p>'; return; }
+  const base = hrvBase(d), r = base ? d.hrv.rmssd / base : null, bd = r ? HRV_BANDS(r) : null;
+  const P = { xMin: dayStart(d.t - 29 * DAY) - DAY / 2, xMax: d.t + DAY / 2 }, pts = st.daily.filter(x => x.hrv && x.t <= d.t && x.t > d.t - 30 * DAY).map(x => [x.t, x.hrv.rmssd]);
+  el.innerHTML = head('HRV', '<span class="muted sm">' + dayLabel(d.t) + '</span>') + '<div class="big">' + f0(d.hrv.rmssd) + '<small>ms RMSSD</small></div>' + (bd ? '<div style="margin:2px 0 8px">' + badge(bd[1], bd[0]) + (size === 'S' ? '' : ' <span class="muted sm">norm ' + f0(base) + ' ms</span>') + '</div>' : '') + '<div class="plot"></div>';
+  plot(el.querySelector('.plot'), { label: 'HRV, last 30 days', xMin: P.xMin, xMax: P.xMax, minSpan: 20, height: size === 'S' ? 100 : size === 'L' ? 340 : 150, series: [{ name: 'RMSSD', kind: 'dots', color: css('--race'), pts, fmt: v => Math.round(v) + ' ms' }, { name: '7-day average', kind: 'line', color: css('--race'), w: 2.5, pts: rolling(pts, 7), noLegend: true, fmt: v => Math.round(v) + ' ms' }] });
 }

@@ -4,6 +4,16 @@ Newest first. One entry per published version (the number shown at the bottom of
 Each entry starts with "In short:" (one line, shown in the app's update message), then what changed and why.
 Algorithm changes name the old and new algorithm ids.
 
+v33 — 2026-10-08
+  In short: Sleep now shows Garmin-style coloured stages and a new sleep score, there is an HRV card, and S/M/L card sizes work on phones.
+  Sleep: a stage chart (Awake / REM / Light / Deep lanes, each in its own colour) for the night, stacked stage bars for 7 days / 4 weeks / Year,
+    and a score breakdown. The new Sleep score (SLEEPalg1) combines duration, deep and REM share, continuity, bedtime and, when there is a
+    reading, HRV against your own 28-reading norm. The watch export carries no sleep score, so this is the only score.
+  HRV: the sync reads the RMSSD, SDNN and pNN50 your third-party "HRV" activity records; new HRV card, Reports page (Today / ranges) and trend vs your norm.
+  Card sizes on phones: S is half a row (two per row), M a full row, L a full row about twice as tall (before, S and M were both full rows).
+  The Garmin sync now also stores the sleep stage timeline, sleep heart rate / stress / respiration and the HRV readings.
+  New algorithm SLEEPalg1; saved analyses are recomputed once because the algorithm list changed.
+
 v32 — 2026-10-07
   In short: New Reports tab with day-by-day heart rate, sleep, stress, body battery, steps and weight pages.
   Reports (replaces Records in the tab bar; Records is reached from Reports): a Garmin-style list grouped as Health stats, Training and Activities.
